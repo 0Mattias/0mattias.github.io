@@ -686,6 +686,10 @@ body:hover .cursor-glow { opacity: 1; }
 @media (max-width: 1024px) {
     .work-grid { grid-template-columns: 1fr; }
 
+    .featured-card { display: block; }
+    .featured-img--side { display: none; }
+    .featured-img--inline { display: block; }
+
     .about-layout {
         grid-template-columns: 1fr;
         gap: 3.5rem;
