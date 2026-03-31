@@ -425,7 +425,15 @@ body:hover .cursor-glow { opacity: 1; }
     width: 100%;
     border-radius: 4px;
     border: 1px solid var(--border);
+}
+
+.featured-img--side {
     order: 1;
+}
+
+.featured-img--inline {
+    display: none;
+    margin-bottom: 2rem;
 }
 
 .featured-card:hover {
@@ -745,11 +753,12 @@ body:hover .cursor-glow { opacity: 1; }
     .section { padding: 4rem 0; }
 
     .featured-card {
-        grid-template-columns: 1fr;
+        display: block;
         padding: 1.75rem;
     }
 
-    .featured-img { order: 0; }
+    .featured-img--side { display: none; }
+    .featured-img--inline { display: block; }
     .featured-name { font-size: 1.75rem; }
 
     .contact-buttons { flex-direction: column; }
