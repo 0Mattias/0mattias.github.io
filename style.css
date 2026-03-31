@@ -411,11 +411,21 @@ body:hover .cursor-glow { opacity: 1; }
 /* ── Featured ── */
 
 .featured-card {
-    display: block;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: center;
     border: 1px solid var(--border);
     padding: 3rem;
     transition: all 0.4s var(--ease);
     position: relative;
+}
+
+.featured-img {
+    width: 100%;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    order: 1;
 }
 
 .featured-card:hover {
@@ -734,7 +744,12 @@ body:hover .cursor-glow { opacity: 1; }
     .main-content { padding: 0 1.25rem; }
     .section { padding: 4rem 0; }
 
-    .featured-card { padding: 1.75rem; }
+    .featured-card {
+        grid-template-columns: 1fr;
+        padding: 1.75rem;
+    }
+
+    .featured-img { order: 0; }
     .featured-name { font-size: 1.75rem; }
 
     .contact-buttons { flex-direction: column; }
