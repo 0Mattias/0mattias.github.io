@@ -4,17 +4,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Mattias R. — Systems Engineer. Low-level systems, AI tooling, and data infrastructure.">
-    <title>MATTIAS R.</title>
+    <meta name="theme-color" content="#050505">
+    <meta name="color-scheme" content="dark">
+    <meta name="description" content="Mattias Rask — Systems Engineer. Low-level systems, AI tooling, and data infrastructure. Boston, MA.">
+    <meta name="author" content="Mattias Rask">
+    <title>Mattias Rask — Systems Engineer</title>
+
+    <link rel="canonical" href="https://0mattias.github.io/">
+
+    <!-- Open Graph / Twitter -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://0mattias.github.io/">
+    <meta property="og:title" content="Mattias Rask — Systems Engineer">
+    <meta property="og:description" content="Low-level systems, AI tooling, and data infrastructure. C, Go, Java, TypeScript.">
+    <meta property="og:image" content="https://0mattias.github.io/hero-poster.jpg">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Mattias Rask — Systems Engineer">
+    <meta name="twitter:description" content="Low-level systems, AI tooling, and data infrastructure.">
+    <meta name="twitter:image" content="https://0mattias.github.io/hero-poster.jpg">
+
+    <!-- Favicon (SVG, inline) -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23050505'/%3E%3Ctext x='50%25' y='55%25' font-family='monospace' font-size='18' font-weight='700' fill='%23ffffff' text-anchor='middle' dominant-baseline='middle'%3EM%3C/text%3E%3C/svg%3E">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="style.css">
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "Mattias Rask",
+        "url": "https://0mattias.github.io/",
+        "jobTitle": "Systems Engineer",
+        "description": "Low-level systems, AI tooling, and data infrastructure.",
+        "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Boston",
+            "addressRegion": "MA",
+            "addressCountry": "US"
+        },
+        "sameAs": [
+            "https://github.com/0Mattias",
+            "https://www.linkedin.com/in/mattias-r-3373453a1",
+            "https://huggingface.co/MrPibb"
+        ]
+    }
+    </script>
 </head>
 
 <body>
+    <a href="#work" class="skip-link">Skip to content</a>
     <div class="grain" aria-hidden="true"></div>
     <div class="cursor-glow" aria-hidden="true"></div>
 
@@ -37,7 +81,7 @@
 
     <!-- Hero -->
     <header class="hero" id="home">
-        <video autoplay loop muted playsinline class="hero-video">
+        <video autoplay loop muted playsinline preload="metadata" poster="hero-poster.jpg" class="hero-video" aria-hidden="true">
             <source src="hero.mp4" type="video/mp4">
         </video>
         <div class="hero-overlay"></div>
@@ -49,7 +93,7 @@
             </div>
             <h1 class="hero-title" data-scramble>ENGINEERING<br>SECURE<br>SYSTEMS.</h1>
             <p class="hero-subtitle reveal" data-delay="400">
-                Full-stack developer working across C, Go, Java, and TypeScript —
+                Systems engineer working across C, Go, Java, and TypeScript —
                 from encrypted DNS tunneling to real-time data pipelines.
             </p>
             <div class="hero-actions reveal" data-delay="600">
@@ -101,7 +145,7 @@
             </div>
 
             <a href="https://github.com/0Mattias/DNS-CLAW" target="_blank" rel="noopener" class="featured-card reveal">
-                <img src="dnsclaw.png" alt="DNS-CLAW client and server terminals" class="featured-img featured-img--side">
+                <img src="dnsclaw.png" alt="DNS-CLAW client and server terminals" class="featured-img featured-img--side" loading="lazy" decoding="async">
                 <div class="featured-body">
                     <div class="featured-meta">
                         <span class="tag">C</span>
@@ -118,7 +162,7 @@
                         tool-use capabilities with approval prompts for destructive operations, multi-turn
                         session management, and support for four LLM providers.
                     </p>
-                    <img src="dnsclaw.png" alt="DNS-CLAW client and server terminals" class="featured-img featured-img--inline">
+                    <img src="dnsclaw.png" alt="DNS-CLAW client and server terminals" class="featured-img featured-img--inline" loading="lazy" decoding="async">
                     <span class="featured-link">VIEW ON GITHUB <span class="arrow">&nearr;</span></span>
                 </div>
             </a>
@@ -137,6 +181,7 @@
                         <span class="tag">QWEN3-8B</span>
                         <span class="tag">AXOLOTL</span>
                         <span class="tag">4xH200</span>
+                        <span class="year">2026</span>
                     </div>
                     <h3 class="project-name">KILLCHAIN-8B</h3>
                     <p class="project-desc">Fully fine-tuned 8B parameter language model based on Qwen3-8B, trained on offensive red-team data using Axolotl across 4x NVIDIA H200 GPUs. Built for red-team simulation, adversarial LLM evaluation, and studying failure modes of aligned models.</p>
@@ -148,6 +193,7 @@
                         <span class="tag">GO</span>
                         <span class="tag">POSTGRESQL</span>
                         <span class="tag">CLOUD RUN</span>
+                        <span class="year">2026</span>
                     </div>
                     <h3 class="project-name">EARTHMC SCRAPER</h3>
                     <p class="project-desc">High-throughput Go data pipeline that ingests game server APIs at 3-second intervals. Dual-loop architecture with hourly range-partitioned tables, BRIN indexes, and batch inserts for sub-second historical queries.</p>
@@ -159,6 +205,7 @@
                         <span class="tag">TYPESCRIPT</span>
                         <span class="tag">NEXT.JS 16</span>
                         <span class="tag">GEMINI</span>
+                        <span class="year">2026</span>
                     </div>
                     <h3 class="project-name">EARTHMC TRACKER BETA</h3>
                     <p class="project-desc">Extended version of the tracker with an agentic AI chatbot powered by Gemini. The agent queries the time-series database to analyze player movements, track behavioral patterns, and surface intelligence through a conversational interface.</p>
@@ -170,6 +217,7 @@
                         <span class="tag">JAVA 21</span>
                         <span class="tag">FABRIC</span>
                         <span class="tag">GEMINI</span>
+                        <span class="year">2026</span>
                     </div>
                     <h3 class="project-name">NOXIOUS</h3>
                     <p class="project-desc">Minecraft Fabric 1.21 client mod that integrates an AI agent directly into the game via Gemini API. Uses Fabric's mixin system for bytecode injection into Minecraft internals.</p>
@@ -181,6 +229,7 @@
                         <span class="tag">JAVA 21</span>
                         <span class="tag">FABRIC</span>
                         <span class="tag">BARITONE</span>
+                        <span class="year">2026</span>
                     </div>
                     <h3 class="project-name">CHEESECAKE</h3>
                     <p class="project-desc">Port of the Baritone pathfinding engine from Minecraft 1.19.4 to Fabric 1.21. Remapped thousands of Minecraft internals across a two-version gap using Fabric Loom and Yarn mappings. Powers autonomous navigation in Noxious.</p>
@@ -192,6 +241,7 @@
                         <span class="tag">JAVA 21</span>
                         <span class="tag">PAPER</span>
                         <span class="tag">OPENCLAW</span>
+                        <span class="year">2026</span>
                     </div>
                     <h3 class="project-name">MINEAI</h3>
                     <p class="project-desc">Minecraft Paper server plugin where an LLM acts as an in-game entity with 38 executable powers. Built on Java 21 records, the Adventure text API, and NIO WatchService for event-driven response handling.</p>
