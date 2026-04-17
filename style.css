@@ -51,6 +51,31 @@ body {
 a { color: inherit; text-decoration: none; }
 button { background: none; border: none; color: inherit; cursor: pointer; font: inherit; }
 
+/* Accessible focus ring for keyboard users */
+:focus-visible {
+    outline: 1px solid var(--fg);
+    outline-offset: 3px;
+}
+
+/* Skip link — hidden until focused */
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: 1rem;
+    z-index: 10000;
+    padding: 0.6rem 1rem;
+    background: var(--fg);
+    color: var(--bg);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    transition: top 0.2s var(--ease);
+}
+
+.skip-link:focus {
+    top: 1rem;
+}
+
 /* ── Grain ── */
 
 .grain {
@@ -776,4 +801,33 @@ body:hover .cursor-glow { opacity: 1; }
     }
 
     .year { margin-left: 0; }
+
+    /* Mobile: don't eat 23MB on cellular — show the poster frame instead */
+    .hero-video { display: none; }
+    .hero {
+        background: #050505 url("hero-poster.jpg") center / cover no-repeat;
+    }
+}
+
+/* ── Reduced motion ── */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .hero-title .char { opacity: 1; transform: none; }
+    .reveal { opacity: 1; transform: none; }
+    .marquee-track { animation: none; }
+    .scroll-line::after { animation: none; }
+    .cursor-glow { display: none; }
+    .hero-video { display: none; }
+    .hero {
+        background: #050505 url("hero-poster.jpg") center / cover no-repeat;
+    }
 }

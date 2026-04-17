@@ -1,5 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
 
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     // ── Dynamic Year ──
     const yearEl = document.getElementById('year');
     if (yearEl) yearEl.textContent = new Date().getFullYear();
@@ -8,7 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$&";
     const heroTitle = document.querySelector("[data-scramble]");
 
-    if (heroTitle) {
+    if (heroTitle && !prefersReducedMotion) {
         const lines = heroTitle.innerHTML.split(/<br\s*\/?>/i);
         let charIndex = 0;
 
@@ -82,7 +84,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // ── Cursor Glow ──
     const glow = document.querySelector('.cursor-glow');
-    if (glow && window.matchMedia('(pointer: fine)').matches) {
+    if (glow && window.matchMedia('(pointer: fine)').matches && !prefersReducedMotion) {
         document.addEventListener('mousemove', e => {
             glow.style.left = e.clientX + 'px';
             glow.style.top = e.clientY + 'px';
