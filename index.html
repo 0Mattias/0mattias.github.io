@@ -4,311 +4,297 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#050505">
+    <meta name="theme-color" content="#0c0b09">
     <meta name="color-scheme" content="dark">
-    <meta name="description" content="Mattias Rask — Systems Engineer. Low-level systems, AI tooling, and data infrastructure. Boston, MA.">
+    <meta name="description" content="Mattias Rask — Systems engineer. Low-level systems, AI tooling, and data infrastructure. Boston, MA.">
     <meta name="author" content="Mattias Rask">
-    <title>Mattias Rask — Systems Engineer</title>
+    <title>Mattias Rask — Systems engineer</title>
 
     <link rel="canonical" href="https://0mattias.github.io/">
 
-    <!-- Open Graph / Twitter -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://0mattias.github.io/">
-    <meta property="og:title" content="Mattias Rask — Systems Engineer">
-    <meta property="og:description" content="Low-level systems, AI tooling, and data infrastructure. C, Go, Java, TypeScript.">
+    <meta property="og:title" content="Mattias Rask — Systems engineer">
+    <meta property="og:description" content="Low-level systems, AI tooling, and data infrastructure.">
     <meta property="og:image" content="https://0mattias.github.io/hero-poster.jpg">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Mattias Rask — Systems Engineer">
+    <meta name="twitter:title" content="Mattias Rask — Systems engineer">
     <meta name="twitter:description" content="Low-level systems, AI tooling, and data infrastructure.">
     <meta name="twitter:image" content="https://0mattias.github.io/hero-poster.jpg">
 
-    <!-- Favicon (SVG, inline) -->
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23050505'/%3E%3Ctext x='50%25' y='55%25' font-family='monospace' font-size='18' font-weight='700' fill='%23ffffff' text-anchor='middle' dominant-baseline='middle'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230c0b09'/%3E%3Ctext x='50%25' y='62%25' font-family='Georgia,serif' font-style='italic' font-size='20' font-weight='400' fill='%23ece6d9' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..600,0..100;1,9..144,300..600,0..100&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="style.css">
 
-    <!-- Structured data -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "Person",
         "name": "Mattias Rask",
         "url": "https://0mattias.github.io/",
-        "jobTitle": "Systems Engineer",
+        "jobTitle": "Systems engineer",
         "description": "Low-level systems, AI tooling, and data infrastructure.",
-        "address": {
-            "@type": "PostalAddress",
-            "addressLocality": "Boston",
-            "addressRegion": "MA",
-            "addressCountry": "US"
-        },
-        "sameAs": [
-            "https://github.com/0Mattias",
-            "https://www.linkedin.com/in/mattias-r-3373453a1",
-            "https://huggingface.co/MrPibb"
-        ]
+        "address": {"@type": "PostalAddress", "addressLocality": "Boston", "addressRegion": "MA", "addressCountry": "US"},
+        "sameAs": ["https://github.com/0Mattias", "https://www.linkedin.com/in/mattias-r-3373453a1", "https://huggingface.co/MrPibb"]
     }
     </script>
 </head>
 
 <body>
-    <a href="#work" class="skip-link">Skip to content</a>
-    <div class="grain" aria-hidden="true"></div>
-    <div class="cursor-glow" aria-hidden="true"></div>
+    <a href="#main" class="skip-link">Skip to content</a>
 
-    <!-- Navigation -->
     <nav class="nav" id="nav">
-        <div class="nav-content">
-            <a href="#home" class="nav-logo">MATTIAS R.</a>
-            <div class="nav-links">
-                <a href="#work">WORK</a>
-                <a href="#about">ABOUT</a>
-                <a href="#contact">CONTACT</a>
-                <a href="https://github.com/0Mattias" target="_blank" rel="noopener" class="nav-gh">GITHUB</a>
-            </div>
-            <button class="nav-toggle" aria-label="Toggle menu">
-                <span></span>
-                <span></span>
-            </button>
+        <a href="#home" class="nav-mark">Mattias <em>Rask</em></a>
+        <div class="nav-links" id="nav-links">
+            <a href="#now">Now</a>
+            <a href="#archive">Archive</a>
+            <a href="#about">About</a>
+            <a href="#contact">Contact</a>
         </div>
+        <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+            <span></span><span></span>
+        </button>
     </nav>
 
-    <!-- Hero -->
-    <header class="hero" id="home">
-        <video autoplay loop muted playsinline preload="metadata" poster="hero-poster.jpg" class="hero-video" aria-hidden="true">
-            <source src="hero.mp4" type="video/mp4">
-        </video>
-        <div class="hero-overlay"></div>
+    <main id="main">
 
-        <div class="hero-content">
-            <div class="hero-badge reveal" data-delay="0">
-                <span class="pulse"></span>
-                OPEN TO WORK
-            </div>
-            <h1 class="hero-title" data-scramble>ENGINEERING<br>SECURE<br>SYSTEMS.</h1>
-            <p class="hero-subtitle reveal" data-delay="400">
-                Systems engineer working across C, Go, Java, and TypeScript —
-                from encrypted DNS tunneling to real-time data pipelines.
+        <!-- ═══ HERO ═══ -->
+        <section class="hero" id="home">
+            <aside class="hero-meta">
+                <div>
+                    <span class="label">Location</span>
+                    Boston, Massachusetts
+                </div>
+                <div>
+                    <span class="label">Role</span>
+                    Systems engineer
+                </div>
+                <div>
+                    <span class="label">Status</span>
+                    <span class="status"><i aria-hidden="true"></i>Open to work</span>
+                </div>
+            </aside>
+
+            <h1 class="hero-name">
+                Mattias<br><em>Rask</em><span class="period">.</span>
+            </h1>
+
+            <p class="hero-lede reveal">
+                I work in the places most people avoid — encrypted DNS tunnels written in pure C, real-time data pipelines in Go, fine-tuned adversarial language models, and Minecraft internals injected at the bytecode level.
             </p>
-            <div class="hero-actions reveal" data-delay="600">
-                <a href="#work" class="btn-primary">VIEW WORK</a>
-                <a href="https://github.com/0Mattias" target="_blank" rel="noopener" class="btn-secondary">GITHUB</a>
+
+            <div class="hero-actions reveal">
+                <a href="#now" class="btn">See the work</a>
+                <a href="mailto:rask@duck.com" class="ghost">rask@duck.com <span aria-hidden="true">→</span></a>
             </div>
-        </div>
+        </section>
 
-        <div class="hero-scroll" aria-hidden="true">
-            <div class="scroll-line"></div>
-        </div>
-    </header>
+        <!-- ═══ NOW ═══ -->
+        <section class="section" id="now">
+            <header class="section-head reveal">
+                <span class="kicker">Now</span>
+                <h2>DNS, <em>over everything</em><span class="period">.</span></h2>
+            </header>
 
-    <!-- Marquee -->
-    <div class="marquee" aria-hidden="true">
-        <div class="marquee-track">
-            <span>C</span><span class="marquee-dot"></span>
-            <span>GO</span><span class="marquee-dot"></span>
-            <span>JAVA</span><span class="marquee-dot"></span>
-            <span>TYPESCRIPT</span><span class="marquee-dot"></span>
-            <span>NEXT.JS</span><span class="marquee-dot"></span>
-            <span>REACT</span><span class="marquee-dot"></span>
-            <span>POSTGRESQL</span><span class="marquee-dot"></span>
-            <span>DNS / TLS / HTTPS</span><span class="marquee-dot"></span>
-            <span>AES-256-GCM</span><span class="marquee-dot"></span>
-            <span>FABRIC MODDING</span><span class="marquee-dot"></span>
-            <span>LEAFLET</span><span class="marquee-dot"></span>
-            <span>GEMINI API</span><span class="marquee-dot"></span>
-            <span>C</span><span class="marquee-dot"></span>
-            <span>GO</span><span class="marquee-dot"></span>
-            <span>JAVA</span><span class="marquee-dot"></span>
-            <span>TYPESCRIPT</span><span class="marquee-dot"></span>
-            <span>NEXT.JS</span><span class="marquee-dot"></span>
-            <span>REACT</span><span class="marquee-dot"></span>
-            <span>POSTGRESQL</span><span class="marquee-dot"></span>
-            <span>DNS / TLS / HTTPS</span><span class="marquee-dot"></span>
-            <span>AES-256-GCM</span><span class="marquee-dot"></span>
-            <span>FABRIC MODDING</span><span class="marquee-dot"></span>
-            <span>LEAFLET</span><span class="marquee-dot"></span>
-            <span>GEMINI API</span><span class="marquee-dot"></span>
-        </div>
-    </div>
-
-    <main class="main-content">
-        <!-- Featured -->
-        <section class="section" id="work">
-            <div class="section-header reveal">
-                <h2 class="section-label">01 / FEATURED</h2>
-            </div>
-
-            <a href="https://github.com/0Mattias/DNS-CLAW" target="_blank" rel="noopener" class="featured-card reveal">
-                <img src="dnsclaw.png" alt="DNS-CLAW client and server terminals" class="featured-img featured-img--side" loading="lazy" decoding="async">
+            <a href="https://github.com/0Mattias/DNS-CLAW" target="_blank" rel="noopener" class="featured reveal">
+                <div class="featured-frame">
+                    <img src="dnsclaw.png" alt="DNS-CLAW client and server terminals" loading="lazy" decoding="async">
+                </div>
                 <div class="featured-body">
-                    <div class="featured-meta">
-                        <span class="tag">C</span>
-                        <span class="tag">DNS</span>
-                        <span class="tag">AES-256-GCM</span>
-                        <span class="tag">CMAKE</span>
-                        <span class="year">2026</span>
-                    </div>
-                    <h3 class="featured-name">DNS-CLAW</h3>
-                    <p class="featured-desc">
-                        Agentic AI coding assistant built in pure C that operates entirely over DNS.
-                        Encodes LLM conversations as Base32 TXT record lookups with AES-256-GCM encryption,
-                        supporting plain UDP, DNS-over-TLS, and DNS-over-HTTPS transports. Includes 7
-                        tool-use capabilities with approval prompts for destructive operations, multi-turn
-                        session management, and support for four LLM providers.
+                    <h3>DNS-CLAW<span class="period">.</span></h3>
+                    <p>
+                        Agentic AI coding assistant built in pure C that operates entirely over DNS. Encodes LLM conversations as Base32 TXT record lookups with AES-256-GCM encryption, supporting plain UDP, DNS-over-TLS, and DNS-over-HTTPS transports. Seven tool-use capabilities, approval prompts for destructive ops, multi-turn sessions, four provider backends.
                     </p>
-                    <img src="dnsclaw.png" alt="DNS-CLAW client and server terminals" class="featured-img featured-img--inline" loading="lazy" decoding="async">
-                    <span class="featured-link">VIEW ON GITHUB <span class="arrow">&nearr;</span></span>
+                    <dl class="spec">
+                        <div><dt>Stack</dt><dd>C · DNS · AES-256-GCM · CMake</dd></div>
+                        <div><dt>Year</dt><dd>2026</dd></div>
+                        <div><dt>Source</dt><dd>github.com/0Mattias/DNS-CLAW <span class="arrow" aria-hidden="true">↗</span></dd></div>
+                    </dl>
                 </div>
             </a>
         </section>
 
-        <!-- Projects -->
-        <section class="section">
-            <div class="section-header reveal">
-                <h2 class="section-label">02 / SELECTED WORK</h2>
-            </div>
+        <!-- ═══ ARCHIVE ═══ -->
+        <section class="section" id="archive">
+            <header class="section-head reveal">
+                <span class="kicker">Archive</span>
+                <h2>Selected <em>projects</em><span class="period">.</span></h2>
+            </header>
 
-            <div class="work-grid">
-                <a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener" class="project-card reveal">
-                    <div class="project-meta">
-                        <span class="tag">PYTHON</span>
-                        <span class="tag">QWEN3-8B</span>
-                        <span class="tag">AXOLOTL</span>
-                        <span class="tag">4xH200</span>
-                        <span class="year">2026</span>
-                    </div>
-                    <h3 class="project-name">KILLCHAIN-8B</h3>
-                    <p class="project-desc">Fully fine-tuned 8B parameter language model based on Qwen3-8B, trained on offensive red-team data using Axolotl across 4x NVIDIA H200 GPUs. Built for red-team simulation, adversarial LLM evaluation, and studying failure modes of aligned models.</p>
-                    <span class="project-link">VIEW ON HUGGING FACE <span class="arrow">&nearr;</span></span>
-                </a>
+            <ol class="archive">
+                <li class="reveal">
+                    <a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener">
+                        <span class="num">01</span>
+                        <div class="item-body">
+                            <h3>KillChain-8B</h3>
+                            <p>Fully fine-tuned 8B-parameter language model on Qwen3-8B, trained on offensive red-team data using Axolotl across 4× NVIDIA H200 GPUs. Built for red-team simulation, adversarial LLM evaluation, and studying failure modes of aligned models.</p>
+                        </div>
+                        <div class="item-meta">
+                            <span class="stack">Python · Qwen3 · Axolotl · 4×H200</span>
+                            <span class="year">2026</span>
+                        </div>
+                        <span class="arrow" aria-hidden="true">→</span>
+                    </a>
+                </li>
 
-                <a href="https://github.com/0Mattias/earthmc-scraper" target="_blank" rel="noopener" class="project-card reveal">
-                    <div class="project-meta">
-                        <span class="tag">GO</span>
-                        <span class="tag">POSTGRESQL</span>
-                        <span class="tag">CLOUD RUN</span>
-                        <span class="year">2026</span>
-                    </div>
-                    <h3 class="project-name">EARTHMC SCRAPER</h3>
-                    <p class="project-desc">High-throughput Go data pipeline that ingests game server APIs at 3-second intervals. Dual-loop architecture with hourly range-partitioned tables, BRIN indexes, and batch inserts for sub-second historical queries.</p>
-                    <span class="project-link">VIEW PROJECT <span class="arrow">&nearr;</span></span>
-                </a>
+                <li class="reveal">
+                    <a href="https://github.com/0Mattias/earthmc-scraper" target="_blank" rel="noopener">
+                        <span class="num">02</span>
+                        <div class="item-body">
+                            <h3>EarthMC Scraper</h3>
+                            <p>High-throughput Go data pipeline ingesting game server APIs at three-second intervals. Dual-loop architecture with hourly range-partitioned tables, BRIN indexes, and batch inserts for sub-second historical queries.</p>
+                        </div>
+                        <div class="item-meta">
+                            <span class="stack">Go · PostgreSQL · Cloud Run</span>
+                            <span class="year">2026</span>
+                        </div>
+                        <span class="arrow" aria-hidden="true">→</span>
+                    </a>
+                </li>
 
-                <a href="https://github.com/0Mattias/earthmc-beta" target="_blank" rel="noopener" class="project-card reveal">
-                    <div class="project-meta">
-                        <span class="tag">TYPESCRIPT</span>
-                        <span class="tag">NEXT.JS 16</span>
-                        <span class="tag">GEMINI</span>
-                        <span class="year">2026</span>
-                    </div>
-                    <h3 class="project-name">EARTHMC TRACKER BETA</h3>
-                    <p class="project-desc">Extended version of the tracker with an agentic AI chatbot powered by Gemini. The agent queries the time-series database to analyze player movements, track behavioral patterns, and surface intelligence through a conversational interface.</p>
-                    <span class="project-link">VIEW PROJECT <span class="arrow">&nearr;</span></span>
-                </a>
+                <li class="reveal">
+                    <a href="https://github.com/0Mattias/earthmc-beta" target="_blank" rel="noopener">
+                        <span class="num">03</span>
+                        <div class="item-body">
+                            <h3>EarthMC Tracker, beta</h3>
+                            <p>Extended tracker with an agentic AI chatbot powered by Gemini. The agent queries the time-series database to analyze player movements, track behavioral patterns, and surface intelligence through a conversational interface.</p>
+                        </div>
+                        <div class="item-meta">
+                            <span class="stack">TypeScript · Next.js 16 · Gemini</span>
+                            <span class="year">2026</span>
+                        </div>
+                        <span class="arrow" aria-hidden="true">→</span>
+                    </a>
+                </li>
 
-                <a href="https://github.com/0Mattias/noxious" target="_blank" rel="noopener" class="project-card reveal">
-                    <div class="project-meta">
-                        <span class="tag">JAVA 21</span>
-                        <span class="tag">FABRIC</span>
-                        <span class="tag">GEMINI</span>
-                        <span class="year">2026</span>
-                    </div>
-                    <h3 class="project-name">NOXIOUS</h3>
-                    <p class="project-desc">Minecraft Fabric 1.21 client mod that integrates an AI agent directly into the game via Gemini API. Uses Fabric's mixin system for bytecode injection into Minecraft internals.</p>
-                    <span class="project-link">VIEW PROJECT <span class="arrow">&nearr;</span></span>
-                </a>
+                <li class="reveal">
+                    <a href="https://github.com/0Mattias/noxious" target="_blank" rel="noopener">
+                        <span class="num">04</span>
+                        <div class="item-body">
+                            <h3>Noxious</h3>
+                            <p>Minecraft Fabric 1.21 client mod integrating an AI agent directly into the game via Gemini API. Uses Fabric's mixin system for runtime bytecode injection into Minecraft internals.</p>
+                        </div>
+                        <div class="item-meta">
+                            <span class="stack">Java 21 · Fabric · Gemini</span>
+                            <span class="year">2026</span>
+                        </div>
+                        <span class="arrow" aria-hidden="true">→</span>
+                    </a>
+                </li>
 
-                <a href="https://github.com/0Mattias/cheesecake" target="_blank" rel="noopener" class="project-card reveal">
-                    <div class="project-meta">
-                        <span class="tag">JAVA 21</span>
-                        <span class="tag">FABRIC</span>
-                        <span class="tag">BARITONE</span>
-                        <span class="year">2026</span>
-                    </div>
-                    <h3 class="project-name">CHEESECAKE</h3>
-                    <p class="project-desc">Port of the Baritone pathfinding engine from Minecraft 1.19.4 to Fabric 1.21. Remapped thousands of Minecraft internals across a two-version gap using Fabric Loom and Yarn mappings. Powers autonomous navigation in Noxious.</p>
-                    <span class="project-link">VIEW PROJECT <span class="arrow">&nearr;</span></span>
-                </a>
+                <li class="reveal">
+                    <a href="https://github.com/0Mattias/cheesecake" target="_blank" rel="noopener">
+                        <span class="num">05</span>
+                        <div class="item-body">
+                            <h3>Cheesecake</h3>
+                            <p>Port of the Baritone pathfinding engine from Minecraft 1.19.4 to Fabric 1.21. Remapped thousands of Minecraft internals across a two-version gap using Fabric Loom and Yarn mappings. Powers autonomous navigation inside Noxious.</p>
+                        </div>
+                        <div class="item-meta">
+                            <span class="stack">Java 21 · Fabric · Baritone</span>
+                            <span class="year">2026</span>
+                        </div>
+                        <span class="arrow" aria-hidden="true">→</span>
+                    </a>
+                </li>
 
-                <a href="https://github.com/0Mattias/MineAI" target="_blank" rel="noopener" class="project-card reveal">
-                    <div class="project-meta">
-                        <span class="tag">JAVA 21</span>
-                        <span class="tag">PAPER</span>
-                        <span class="tag">OPENCLAW</span>
-                        <span class="year">2026</span>
-                    </div>
-                    <h3 class="project-name">MINEAI</h3>
-                    <p class="project-desc">Minecraft Paper server plugin where an LLM acts as an in-game entity with 38 executable powers. Built on Java 21 records, the Adventure text API, and NIO WatchService for event-driven response handling.</p>
-                    <span class="project-link">VIEW PROJECT <span class="arrow">&nearr;</span></span>
-                </a>
-            </div>
+                <li class="reveal">
+                    <a href="https://github.com/0Mattias/MineAI" target="_blank" rel="noopener">
+                        <span class="num">06</span>
+                        <div class="item-body">
+                            <h3>MineAI</h3>
+                            <p>Minecraft Paper server plugin where an LLM acts as an in-game entity with 38 executable powers. Built on Java 21 records, the Adventure text API, and NIO WatchService for event-driven response handling.</p>
+                        </div>
+                        <div class="item-meta">
+                            <span class="stack">Java 21 · Paper · OpenClaw</span>
+                            <span class="year">2026</span>
+                        </div>
+                        <span class="arrow" aria-hidden="true">→</span>
+                    </a>
+                </li>
+            </ol>
         </section>
 
-        <!-- About -->
-        <section id="about" class="section border-top">
-            <div class="section-header reveal">
-                <h2 class="section-label">03 / ABOUT</h2>
-            </div>
-            <div class="about-layout reveal">
+        <!-- ═══ ABOUT ═══ -->
+        <section class="section" id="about">
+            <header class="section-head reveal">
+                <span class="kicker">About</span>
+                <h2>Low level, <em>by default</em><span class="period">.</span></h2>
+            </header>
+
+            <div class="about reveal">
                 <div class="about-text">
-                    <p class="about-large">
-                        I build things that don't exist yet.
-                    </p>
-                    <p class="about-body">
+                    <p class="lede">
                         My work sits at the intersection of low-level systems programming and modern AI.
-                        I've built encrypted agentic tools that tunnel through DNS in pure C, high-throughput
-                        data pipelines in Go that ingest at 3-second intervals, and AI-integrated Minecraft
-                        mods using bytecode injection. I'm drawn to hard problems in unconventional domains.
+                    </p>
+                    <p>
+                        I've built encrypted agentic tools that tunnel through DNS in pure C, high-throughput data pipelines in Go that ingest at three-second intervals, and AI-integrated Minecraft mods using runtime bytecode injection. I gravitate toward hard problems in unconventional domains — the kind of work that doesn't have a Stack Overflow answer yet.
                     </p>
                 </div>
-                <div class="about-stack">
-                    <h3 class="stack-title">STACK</h3>
-                    <ul class="stack-list">
-                        <li>C / GO</li>
-                        <li>JAVA 21 / TYPESCRIPT</li>
-                        <li>NEXT.JS / REACT</li>
-                        <li>POSTGRESQL</li>
-                        <li>GEMINI / OPENAI / CLAUDE</li>
-                    </ul>
-                </div>
+
+                <aside class="about-stack">
+                    <dl>
+                        <dt>Systems</dt>
+                        <dd>C, Go, Java 21</dd>
+                        <dt>Web</dt>
+                        <dd>TypeScript, Next.js, React, PostgreSQL</dd>
+                        <dt>AI</dt>
+                        <dd>Gemini, OpenAI, Claude, Axolotl</dd>
+                        <dt>Ops</dt>
+                        <dd>Cloud Run, Docker, GCP</dd>
+                    </dl>
+                </aside>
             </div>
         </section>
 
-        <!-- Contact -->
-        <section id="contact" class="section border-top">
-            <div class="section-header reveal">
-                <h2 class="section-label">04 / CONTACT</h2>
-            </div>
-            <div class="contact-layout reveal">
-                <p class="contact-text">
-                    Currently exploring roles that involve serious engineering challenges.
-                    Open to discussing systems work and hard problems.
+        <!-- ═══ CONTACT ═══ -->
+        <section class="section" id="contact">
+            <header class="section-head reveal">
+                <span class="kicker">Contact</span>
+                <h2>Let's build something <em>difficult</em><span class="period">.</span></h2>
+            </header>
+
+            <div class="contact reveal">
+                <p class="contact-lede">
+                    Currently exploring roles that involve serious engineering challenges. Open to conversations about systems work and hard problems.
                 </p>
-                <div class="contact-buttons">
-                    <a href="mailto:rask@duck.com" class="btn-primary">GET IN TOUCH</a>
-                    <a href="https://github.com/0Mattias" target="_blank" rel="noopener" class="btn-secondary">GITHUB</a>
-                    <a href="https://www.linkedin.com/in/mattias-r-3373453a1" target="_blank" rel="noopener" class="btn-secondary">LINKEDIN</a>
-                </div>
+
+                <ul class="contact-list">
+                    <li>
+                        <span class="label">Email</span>
+                        <a href="mailto:rask@duck.com">rask@duck.com <span class="arrow" aria-hidden="true">→</span></a>
+                    </li>
+                    <li>
+                        <span class="label">GitHub</span>
+                        <a href="https://github.com/0Mattias" target="_blank" rel="noopener">github.com/0Mattias <span class="arrow" aria-hidden="true">↗</span></a>
+                    </li>
+                    <li>
+                        <span class="label">LinkedIn</span>
+                        <a href="https://www.linkedin.com/in/mattias-r-3373453a1" target="_blank" rel="noopener">linkedin.com/in/mattias-r <span class="arrow" aria-hidden="true">↗</span></a>
+                    </li>
+                    <li>
+                        <span class="label">Hugging Face</span>
+                        <a href="https://huggingface.co/MrPibb" target="_blank" rel="noopener">huggingface.co/MrPibb <span class="arrow" aria-hidden="true">↗</span></a>
+                    </li>
+                </ul>
             </div>
         </section>
+
     </main>
 
     <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-left">
-                <span>&copy; <span id="year">2026</span> MATTIAS R.</span>
-                <span class="footer-sep">/</span>
-                <span>SYSTEMS ENGINEER</span>
-            </div>
-            <div class="footer-right">
-                <span>BOSTON, MA</span>
-            </div>
+        <div>
+            <span>&copy; <span id="year">2026</span> Mattias Rask</span>
+        </div>
+        <div>
+            <span>Boston, Massachusetts</span>
+        </div>
+        <div>
+            <span>Built by hand &middot; no frameworks</span>
         </div>
     </footer>
 
