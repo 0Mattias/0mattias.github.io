@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0c0b09">
     <meta name="color-scheme" content="dark">
     <meta name="description" content="Mattias Rask — Systems engineer. Low-level systems, AI tooling, and data infrastructure. Boston, MA.">
@@ -40,6 +40,11 @@
         "jobTitle": "Systems engineer",
         "description": "Low-level systems, AI tooling, and data infrastructure.",
         "address": {"@type": "PostalAddress", "addressLocality": "Boston", "addressRegion": "MA", "addressCountry": "US"},
+        "hasCredential": [
+            {"@type": "EducationalOccupationalCredential", "name": "Cisco Certified Support Technician — Cybersecurity", "credentialCategory": "certification"},
+            {"@type": "EducationalOccupationalCredential", "name": "Cisco Certified Support Technician — Networking", "credentialCategory": "certification"},
+            {"@type": "EducationalOccupationalCredential", "name": "Cisco Certified Support Technician — IT Support", "credentialCategory": "certification"}
+        ],
         "sameAs": ["https://github.com/0Mattias", "https://www.linkedin.com/in/mattias-r-3373453a1", "https://huggingface.co/MrPibb"]
     }
     </script>
@@ -68,11 +73,11 @@
             <aside class="hero-meta">
                 <div>
                     <span class="label">Location</span>
-                    Boston, Massachusetts
+                    Boston, MA
                 </div>
                 <div>
-                    <span class="label">Role</span>
-                    Systems engineer
+                    <span class="label">Focus</span>
+                    Low-level systems · AI · Security
                 </div>
                 <div>
                     <span class="label">Status</span>
@@ -85,7 +90,7 @@
             </h1>
 
             <p class="hero-lede reveal">
-                I work in the places most people avoid — encrypted DNS tunnels written in pure C, real-time data pipelines in Go, fine-tuned adversarial language models, and Minecraft internals injected at the bytecode level.
+                Systems engineer. I work in the places most people avoid — encrypted DNS tunnels in pure C, real-time data pipelines in Go, fine-tuned adversarial language models, Minecraft internals injected at the bytecode level.
             </p>
 
             <div class="hero-actions reveal">
@@ -97,7 +102,7 @@
         <!-- ═══ NOW ═══ -->
         <section class="section" id="now">
             <header class="section-head reveal">
-                <span class="kicker">Now</span>
+                <span class="kicker">Now · 2026</span>
                 <h2>DNS, <em>over everything</em><span class="period">.</span></h2>
             </header>
 
@@ -107,8 +112,9 @@
                 </div>
                 <div class="featured-body">
                     <h3>DNS-CLAW<span class="period">.</span></h3>
-                    <p>
-                        Agentic AI coding assistant built in pure C that operates entirely over DNS. Encodes LLM conversations as Base32 TXT record lookups with AES-256-GCM encryption, supporting plain UDP, DNS-over-TLS, and DNS-over-HTTPS transports. Seven tool-use capabilities, approval prompts for destructive ops, multi-turn sessions, four provider backends.
+                    <p class="featured-punch">An agentic coding assistant that runs entirely over DNS. Written in pure C.</p>
+                    <p class="featured-desc">
+                        Encodes LLM conversations as Base32 TXT record lookups with AES-256-GCM encryption. Speaks plain UDP, DNS-over-TLS, and DNS-over-HTTPS. Seven tool-use primitives with approval gates for destructive ops. Multi-turn sessions. Four provider backends.
                     </p>
                     <dl class="spec">
                         <div><dt>Stack</dt><dd>C · DNS · AES-256-GCM · CMake</dd></div>
@@ -122,98 +128,111 @@
         <!-- ═══ ARCHIVE ═══ -->
         <section class="section" id="archive">
             <header class="section-head reveal">
-                <span class="kicker">Archive</span>
+                <span class="kicker">Archive · 06 entries</span>
                 <h2>Selected <em>projects</em><span class="period">.</span></h2>
             </header>
 
             <ol class="archive">
                 <li class="reveal">
                     <a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener">
-                        <span class="num">01</span>
-                        <div class="item-body">
-                            <h3>KillChain-8B</h3>
-                            <p>Fully fine-tuned 8B-parameter language model on Qwen3-8B, trained on offensive red-team data using Axolotl across 4× NVIDIA H200 GPUs. Built for red-team simulation, adversarial LLM evaluation, and studying failure modes of aligned models.</p>
+                        <div class="row-top">
+                            <span class="num">№ 01 <span class="sep">/</span> 2026</span>
+                            <span class="arrow" aria-hidden="true">↗</span>
                         </div>
-                        <div class="item-meta">
-                            <span class="stack">Python · Qwen3 · Axolotl · 4×H200</span>
-                            <span class="year">2026</span>
-                        </div>
-                        <span class="arrow" aria-hidden="true">→</span>
+                        <h3>KillChain-8B</h3>
+                        <p class="punch">Fully fine-tuned Qwen3-8B on offensive red-team data. Four H200s. Axolotl. Published.</p>
+                        <ul class="stack-tags">
+                            <li>Python</li>
+                            <li>Qwen3-8B</li>
+                            <li>Axolotl</li>
+                            <li>4×H200</li>
+                            <li>LLM fine-tuning</li>
+                        </ul>
                     </a>
                 </li>
 
                 <li class="reveal">
                     <a href="https://github.com/0Mattias/earthmc-scraper" target="_blank" rel="noopener">
-                        <span class="num">02</span>
-                        <div class="item-body">
-                            <h3>EarthMC Scraper</h3>
-                            <p>High-throughput Go data pipeline ingesting game server APIs at three-second intervals. Dual-loop architecture with hourly range-partitioned tables, BRIN indexes, and batch inserts for sub-second historical queries.</p>
+                        <div class="row-top">
+                            <span class="num">№ 02 <span class="sep">/</span> 2026</span>
+                            <span class="arrow" aria-hidden="true">↗</span>
                         </div>
-                        <div class="item-meta">
-                            <span class="stack">Go · PostgreSQL · Cloud Run</span>
-                            <span class="year">2026</span>
-                        </div>
-                        <span class="arrow" aria-hidden="true">→</span>
+                        <h3>EarthMC Scraper</h3>
+                        <p class="punch">Three-second ingestion. BRIN-indexed, range-partitioned Postgres. Sub-second historical queries.</p>
+                        <ul class="stack-tags">
+                            <li>Go</li>
+                            <li>PostgreSQL</li>
+                            <li>Cloud Run</li>
+                            <li>Time-series</li>
+                        </ul>
                     </a>
                 </li>
 
                 <li class="reveal">
                     <a href="https://github.com/0Mattias/earthmc-beta" target="_blank" rel="noopener">
-                        <span class="num">03</span>
-                        <div class="item-body">
-                            <h3>EarthMC Tracker, beta</h3>
-                            <p>Extended tracker with an agentic AI chatbot powered by Gemini. The agent queries the time-series database to analyze player movements, track behavioral patterns, and surface intelligence through a conversational interface.</p>
+                        <div class="row-top">
+                            <span class="num">№ 03 <span class="sep">/</span> 2026</span>
+                            <span class="arrow" aria-hidden="true">↗</span>
                         </div>
-                        <div class="item-meta">
-                            <span class="stack">TypeScript · Next.js 16 · Gemini</span>
-                            <span class="year">2026</span>
-                        </div>
-                        <span class="arrow" aria-hidden="true">→</span>
+                        <h3>EarthMC Tracker, beta</h3>
+                        <p class="punch">Conversational agent over a time-series player database. Natural-language intelligence at a server-wide scale.</p>
+                        <ul class="stack-tags">
+                            <li>TypeScript</li>
+                            <li>Next.js 16</li>
+                            <li>Gemini</li>
+                            <li>PostgreSQL</li>
+                        </ul>
                     </a>
                 </li>
 
                 <li class="reveal">
                     <a href="https://github.com/0Mattias/noxious" target="_blank" rel="noopener">
-                        <span class="num">04</span>
-                        <div class="item-body">
-                            <h3>Noxious</h3>
-                            <p>Minecraft Fabric 1.21 client mod integrating an AI agent directly into the game via Gemini API. Uses Fabric's mixin system for runtime bytecode injection into Minecraft internals.</p>
+                        <div class="row-top">
+                            <span class="num">№ 04 <span class="sep">/</span> 2026</span>
+                            <span class="arrow" aria-hidden="true">↗</span>
                         </div>
-                        <div class="item-meta">
-                            <span class="stack">Java 21 · Fabric · Gemini</span>
-                            <span class="year">2026</span>
-                        </div>
-                        <span class="arrow" aria-hidden="true">→</span>
+                        <h3>Noxious</h3>
+                        <p class="punch">Runtime bytecode injection into Minecraft 1.21. An AI agent plays through the mixin loader.</p>
+                        <ul class="stack-tags">
+                            <li>Java 21</li>
+                            <li>Fabric</li>
+                            <li>Mixins</li>
+                            <li>Gemini</li>
+                        </ul>
                     </a>
                 </li>
 
                 <li class="reveal">
                     <a href="https://github.com/0Mattias/cheesecake" target="_blank" rel="noopener">
-                        <span class="num">05</span>
-                        <div class="item-body">
-                            <h3>Cheesecake</h3>
-                            <p>Port of the Baritone pathfinding engine from Minecraft 1.19.4 to Fabric 1.21. Remapped thousands of Minecraft internals across a two-version gap using Fabric Loom and Yarn mappings. Powers autonomous navigation inside Noxious.</p>
+                        <div class="row-top">
+                            <span class="num">№ 05 <span class="sep">/</span> 2026</span>
+                            <span class="arrow" aria-hidden="true">↗</span>
                         </div>
-                        <div class="item-meta">
-                            <span class="stack">Java 21 · Fabric · Baritone</span>
-                            <span class="year">2026</span>
-                        </div>
-                        <span class="arrow" aria-hidden="true">→</span>
+                        <h3>Cheesecake</h3>
+                        <p class="punch">Ported Baritone across a two-version gap. Thousands of Minecraft internals remapped with Loom and Yarn.</p>
+                        <ul class="stack-tags">
+                            <li>Java 21</li>
+                            <li>Fabric</li>
+                            <li>Baritone</li>
+                            <li>Pathfinding</li>
+                        </ul>
                     </a>
                 </li>
 
                 <li class="reveal">
                     <a href="https://github.com/0Mattias/MineAI" target="_blank" rel="noopener">
-                        <span class="num">06</span>
-                        <div class="item-body">
-                            <h3>MineAI</h3>
-                            <p>Minecraft Paper server plugin where an LLM acts as an in-game entity with 38 executable powers. Built on Java 21 records, the Adventure text API, and NIO WatchService for event-driven response handling.</p>
+                        <div class="row-top">
+                            <span class="num">№ 06 <span class="sep">/</span> 2026</span>
+                            <span class="arrow" aria-hidden="true">↗</span>
                         </div>
-                        <div class="item-meta">
-                            <span class="stack">Java 21 · Paper · OpenClaw</span>
-                            <span class="year">2026</span>
-                        </div>
-                        <span class="arrow" aria-hidden="true">→</span>
+                        <h3>MineAI</h3>
+                        <p class="punch">LLM as an in-game entity with 38 executable powers. Event-driven on NIO WatchService.</p>
+                        <ul class="stack-tags">
+                            <li>Java 21</li>
+                            <li>Paper</li>
+                            <li>Adventure</li>
+                            <li>OpenClaw</li>
+                        </ul>
                     </a>
                 </li>
             </ol>
@@ -229,10 +248,10 @@
             <div class="about reveal">
                 <div class="about-text">
                     <p class="lede">
-                        My work sits at the intersection of low-level systems programming and modern AI.
+                        I build systems that don't have a Stack Overflow answer yet.
                     </p>
                     <p>
-                        I've built encrypted agentic tools that tunnel through DNS in pure C, high-throughput data pipelines in Go that ingest at three-second intervals, and AI-integrated Minecraft mods using runtime bytecode injection. I gravitate toward hard problems in unconventional domains — the kind of work that doesn't have a Stack Overflow answer yet.
+                        My work sits at the intersection of low-level systems programming and modern AI. Encrypted agentic tools that tunnel through DNS in pure C. High-throughput data pipelines in Go that ingest at three-second intervals. AI-integrated Minecraft mods using runtime bytecode injection. I gravitate toward hard problems in unconventional domains.
                     </p>
                 </div>
 
@@ -240,12 +259,27 @@
                     <dl>
                         <dt>Systems</dt>
                         <dd>C, Go, Java 21</dd>
+
                         <dt>Web</dt>
                         <dd>TypeScript, Next.js, React, PostgreSQL</dd>
+
                         <dt>AI</dt>
                         <dd>Gemini, OpenAI, Claude, Axolotl</dd>
+
                         <dt>Ops</dt>
                         <dd>Cloud Run, Docker, GCP</dd>
+                    </dl>
+
+                    <dl class="certs">
+                        <dt>Certified</dt>
+                        <dd>
+                            <span>Cisco CCST</span>
+                            <ul>
+                                <li>Cybersecurity</li>
+                                <li>Networking</li>
+                                <li>IT Support</li>
+                            </ul>
+                        </dd>
                     </dl>
                 </aside>
             </div>
@@ -260,7 +294,7 @@
 
             <div class="contact reveal">
                 <p class="contact-lede">
-                    Currently exploring roles that involve serious engineering challenges. Open to conversations about systems work and hard problems.
+                    Currently exploring roles with serious engineering challenges. Open to conversations about systems work, security, and hard problems.
                 </p>
 
                 <ul class="contact-list">
@@ -287,15 +321,9 @@
     </main>
 
     <footer class="footer">
-        <div>
-            <span>&copy; <span id="year">2026</span> Mattias Rask</span>
-        </div>
-        <div>
-            <span>Boston, Massachusetts</span>
-        </div>
-        <div>
-            <span>Built by hand &middot; no frameworks</span>
-        </div>
+        <div>&copy; <span id="year">2026</span> Mattias Rask</div>
+        <div>Boston, Massachusetts</div>
+        <div>Built by hand &middot; no frameworks</div>
     </footer>
 
     <script src="script.js"></script>
