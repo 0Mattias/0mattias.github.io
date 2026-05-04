@@ -480,6 +480,23 @@ ol, ul { list-style: none; }
     color: var(--accent);
 }
 
+/* ─── Private projects (no public link) ─── */
+
+.private { cursor: default; }
+.archive .private:hover { padding-left: 0; }
+.archive .private:hover::before { opacity: 0; }
+.archive .private .arrow { display: none; }
+.archive .private .num::after {
+    content: ' / Private';
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    margin-left: 0.25rem;
+}
+.archive .private:hover h3 { color: var(--fg); }
+.featured.private:hover .featured-frame::before { opacity: 0; }
+.featured.private:hover .featured-frame img { transform: none; }
+.featured.private:hover .spec .arrow { transform: none; color: var(--muted); }
+
 /* ─── Archive (editorial posters) ─── */
 
 .archive li {

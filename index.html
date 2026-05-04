@@ -6,21 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0c0b09">
     <meta name="color-scheme" content="dark">
-    <meta name="description" content="Mattias Rask — Systems engineer. Low-level systems, AI tooling, and data infrastructure. Boston, MA.">
+    <meta name="description" content="Mattias Rask — self-taught engineer in Boston. Security tools, AI agents, low-level systems, and the homelab to run them.">
     <meta name="author" content="Mattias Rask">
-    <title>Mattias Rask — Systems engineer</title>
+    <title>Mattias Rask</title>
 
     <link rel="canonical" href="https://0mattias.github.io/">
 
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://0mattias.github.io/">
-    <meta property="og:title" content="Mattias Rask — Systems engineer">
-    <meta property="og:description" content="Low-level systems, AI tooling, and data infrastructure.">
+    <meta property="og:title" content="Mattias Rask">
+    <meta property="og:description" content="Security tools, AI agents, low-level systems. Self-taught, Boston.">
     <meta property="og:image" content="https://0mattias.github.io/hero-poster.jpg">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Mattias Rask — Systems engineer">
-    <meta name="twitter:description" content="Low-level systems, AI tooling, and data infrastructure.">
+    <meta name="twitter:title" content="Mattias Rask">
+    <meta name="twitter:description" content="Security tools, AI agents, low-level systems. Self-taught, Boston.">
     <meta name="twitter:image" content="https://0mattias.github.io/hero-poster.jpg">
 
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230c0b09'/%3E%3Ctext x='50%25' y='62%25' font-family='Georgia,serif' font-style='italic' font-size='20' font-weight='400' fill='%23ece6d9' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
@@ -37,13 +37,14 @@
         "@type": "Person",
         "name": "Mattias Rask",
         "url": "https://0mattias.github.io/",
-        "jobTitle": "Systems engineer",
-        "description": "Low-level systems, AI tooling, and data infrastructure.",
+        "jobTitle": "Engineer",
+        "description": "Self-taught engineer building security tools, AI agents, and low-level systems.",
         "address": {"@type": "PostalAddress", "addressLocality": "Boston", "addressRegion": "MA", "addressCountry": "US"},
         "hasCredential": [
             {"@type": "EducationalOccupationalCredential", "name": "Cisco Certified Support Technician — Cybersecurity", "credentialCategory": "certification"},
             {"@type": "EducationalOccupationalCredential", "name": "Cisco Certified Support Technician — Networking", "credentialCategory": "certification"},
-            {"@type": "EducationalOccupationalCredential", "name": "Cisco Certified Support Technician — IT Support", "credentialCategory": "certification"}
+            {"@type": "EducationalOccupationalCredential", "name": "Cisco Certified Support Technician — IT Support", "credentialCategory": "certification"},
+            {"@type": "EducationalOccupationalCredential", "name": "Anthropic Cyber Verification Program", "credentialCategory": "verification"}
         ],
         "sameAs": ["https://github.com/0Mattias", "https://www.linkedin.com/in/mattias-r-3373453a1", "https://huggingface.co/MrPibb"]
     }
@@ -86,11 +87,11 @@
             </aside>
 
             <h1 class="hero-name">
-                Mattias<br><em>Rask</em><span class="period">.</span>
+                Mattias<br><em>Rask</em>
             </h1>
 
             <p class="hero-lede reveal">
-                Systems engineer. Encrypted DNS tunnels in pure C. Real-time data pipelines in Go. Adversarial LLMs fine-tuned on four H200s. Minecraft internals at the bytecode level.
+                Self-taught engineer in Boston. I build security tools, AI agents, and the low-level pieces underneath — covert-channel transports, traffic mimicry, x86 emulation, fine-tuned LLMs — and run most of it on a homelab I host myself.
             </p>
 
             <div class="hero-actions reveal">
@@ -102,24 +103,24 @@
         <!-- ═══ NOW ═══ -->
         <section class="section" id="now">
             <header class="section-head reveal">
-                <span class="kicker">Now · 2026</span>
-                <h2>DNS, <em>over everything</em><span class="period">.</span></h2>
+                <span class="kicker">Currently shipping</span>
+                <h2>Anaphase</h2>
             </header>
 
-            <a href="https://github.com/0Mattias/DNS-CLAW" target="_blank" rel="noopener" class="featured reveal">
+            <a class="featured reveal private" aria-disabled="true">
                 <div class="featured-frame">
-                    <img src="dnsclaw.png" alt="DNS-CLAW client and server terminals" loading="lazy" decoding="async">
+                    <img src="dnsclaw.png" alt="Anaphase client and server terminals" loading="lazy" decoding="async">
                 </div>
                 <div class="featured-body">
-                    <h3>DNS-CLAW<span class="period">.</span></h3>
-                    <p class="featured-punch">An agentic coding assistant that runs entirely over DNS. Written in pure C.</p>
+                    <h3>Anaphase</h3>
+                    <p class="featured-punch">A covert-channel AI agent that runs over whatever protocol still gets out.</p>
                     <p class="featured-desc">
-                        Base32-encoded TXT lookups over UDP, DoT, or DoH. AES-256-GCM on the payload. Seven tool-use primitives with approval gates for destructive ops. Multi-turn sessions across four provider backends.
+                        A pluggable transport layer hides agent traffic in DNS (UDP, DoT, DoH), ICMP echo, or NTP extension fields — whatever the network in front of you doesn't block. AES-256-GCM on the payload, HKDF-SHA256 per-session keys. The agent itself runs shell commands, edits files, searches code, and fetches URLs, gated by approval prompts on anything destructive. Multi-turn sessions across Anthropic, Gemini, OpenAI, and OpenRouter. Pure C, no runtime dependencies.
                     </p>
                     <dl class="spec">
-                        <div><dt>Stack</dt><dd>C · DNS · AES-256-GCM · CMake</dd></div>
+                        <div><dt>Stack</dt><dd>C · DNS / ICMP / NTP · AES-256-GCM · CMake</dd></div>
                         <div><dt>Year</dt><dd>2026</dd></div>
-                        <div><dt>Source</dt><dd>github.com/0Mattias/DNS-CLAW <span class="arrow" aria-hidden="true">↗</span></dd></div>
+                        <div><dt>Source</dt><dd>Private · Forgejo <span class="arrow" aria-hidden="true">↗</span></dd></div>
                     </dl>
                 </div>
             </a>
@@ -128,42 +129,127 @@
         <!-- ═══ ARCHIVE ═══ -->
         <section class="section" id="archive">
             <header class="section-head reveal">
-                <span class="kicker">Archive · 06 entries</span>
-                <h2>Selected <em>projects</em><span class="period">.</span></h2>
+                <span class="kicker">Archive · 09 entries</span>
+                <h2>Selected projects</h2>
             </header>
 
             <ol class="archive">
                 <li class="reveal">
-                    <a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener">
+                    <a class="private" aria-disabled="true">
                         <div class="row-top">
                             <span class="num">№ 01 <span class="sep">/</span> 2026</span>
                             <span class="arrow" aria-hidden="true">↗</span>
                         </div>
-                        <h3>KillChain-8B</h3>
-                        <p class="punch">Fully fine-tuned Qwen3-8B on offensive red-team data. Four H200s. Axolotl. Published.</p>
+                        <h3>Chromatophore</h3>
+                        <p class="punch">A traffic-mimicry suite. Reshapes TCP/UDP streams to look like fifteen well-known protocols on the wire.</p>
                         <ul class="stack-tags">
-                            <li>Python</li>
-                            <li>Qwen3-8B</li>
-                            <li>Axolotl</li>
-                            <li>4×H200</li>
-                            <li>LLM fine-tuning</li>
+                            <li>Rust</li>
+                            <li>Tokio</li>
+                            <li>AES-256-GCM</li>
+                            <li>HKDF-SHA256</li>
+                            <li>15 protocol skins</li>
                         </ul>
                     </a>
                 </li>
 
                 <li class="reveal">
-                    <a href="https://github.com/0Mattias/earthmc-scraper" target="_blank" rel="noopener">
+                    <a class="private" aria-disabled="true">
                         <div class="row-top">
                             <span class="num">№ 02 <span class="sep">/</span> 2026</span>
                             <span class="arrow" aria-hidden="true">↗</span>
                         </div>
-                        <h3>EarthMC Scraper</h3>
-                        <p class="punch">Three-second ingestion. BRIN-indexed, range-partitioned Postgres. Sub-second historical queries.</p>
+                        <h3>PineappleGPT</h3>
+                        <p class="punch">Claude-driven passive wireless recon agent for the Hak5 WiFi Pineapple Mk7. Pineapple as sensor, Claude as the reasoning loop.</p>
                         <ul class="stack-tags">
-                            <li>Go</li>
-                            <li>PostgreSQL</li>
+                            <li>Python</li>
+                            <li>Anthropic SDK</li>
+                            <li>Hak5 Pineapple Mk7</li>
+                            <li>Wireless recon</li>
+                        </ul>
+                    </a>
+                </li>
+
+                <li class="reveal">
+                    <a class="private" aria-disabled="true">
+                        <div class="row-top">
+                            <span class="num">№ 03 <span class="sep">/</span> 2026</span>
+                            <span class="arrow" aria-hidden="true">↗</span>
+                        </div>
+                        <h3>Trollface.ai</h3>
+                        <p class="punch">A high-interaction honeypot disguised as a WordPress AI blog. Single Docker container on Cloud Run behind Cloudflare.</p>
+                        <ul class="stack-tags">
+                            <li>Rust · Actix</li>
+                            <li>nginx</li>
                             <li>Cloud Run</li>
-                            <li>Time-series</li>
+                            <li>WordPress / git / AWS / k8s traps</li>
+                        </ul>
+                    </a>
+                </li>
+
+                <li class="reveal">
+                    <a class="private" aria-disabled="true">
+                        <div class="row-top">
+                            <span class="num">№ 04 <span class="sep">/</span> 2026</span>
+                            <span class="arrow" aria-hidden="true">↗</span>
+                        </div>
+                        <h3>WhalEmu</h3>
+                        <p class="punch">A real-mode x86 CPU emulator with a browser-based step debugger. Write assembly, assemble it, walk through it instruction by instruction.</p>
+                        <ul class="stack-tags">
+                            <li>Rust</li>
+                            <li>Axum</li>
+                            <li>Vanilla JS frontend</li>
+                            <li>16-bit x86 / 1 MB flat memory</li>
+                        </ul>
+                    </a>
+                </li>
+
+                <li class="reveal">
+                    <a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener">
+                        <div class="row-top">
+                            <span class="num">№ 05 <span class="sep">/</span> 2026</span>
+                            <span class="arrow" aria-hidden="true">↗</span>
+                        </div>
+                        <h3>KillChain-8B</h3>
+                        <p class="punch">Fully fine-tuned Qwen3-8B on offensive red-team data. Four H200s, Axolotl, published to Hugging Face.</p>
+                        <ul class="stack-tags">
+                            <li>Python</li>
+                            <li>Qwen3-8B</li>
+                            <li>Axolotl</li>
+                            <li>4×H200</li>
+                        </ul>
+                    </a>
+                </li>
+
+                <li class="reveal">
+                    <a class="private" aria-disabled="true">
+                        <div class="row-top">
+                            <span class="num">№ 06 <span class="sep">/</span> 2026</span>
+                            <span class="arrow" aria-hidden="true">↗</span>
+                        </div>
+                        <h3>Homelab</h3>
+                        <p class="punch">Three ZimaBoards on Tailscale running my own Forgejo, Sliver C2, Velociraptor DFIR, Caldera, BloodHound, and a cross-board restic backup ring.</p>
+                        <ul class="stack-tags">
+                            <li>Debian 13</li>
+                            <li>Tailscale Serve</li>
+                            <li>Docker Compose</li>
+                            <li>systemd / UFW</li>
+                            <li>restic</li>
+                        </ul>
+                    </a>
+                </li>
+
+                <li class="reveal">
+                    <a class="private" aria-disabled="true">
+                        <div class="row-top">
+                            <span class="num">№ 07 <span class="sep">/</span> 2026</span>
+                            <span class="arrow" aria-hidden="true">↗</span>
+                        </div>
+                        <h3>Engine</h3>
+                        <p class="punch">An AI goal reconciler for everyday digital state. Declare what you want; the agent diffs reality against it and closes the gap.</p>
+                        <ul class="stack-tags">
+                            <li>Rust</li>
+                            <li>Tokio</li>
+                            <li>Desired-state automation</li>
                         </ul>
                     </a>
                 </li>
@@ -171,10 +257,10 @@
                 <li class="reveal">
                     <a href="https://github.com/0Mattias/earthmc-beta" target="_blank" rel="noopener">
                         <div class="row-top">
-                            <span class="num">№ 03 <span class="sep">/</span> 2026</span>
+                            <span class="num">№ 08 <span class="sep">/</span> 2026</span>
                             <span class="arrow" aria-hidden="true">↗</span>
                         </div>
-                        <h3>EarthMC Tracker, beta</h3>
+                        <h3>EarthMC Tracker</h3>
                         <p class="punch">Conversational agent over a live, time-series player database. English in, paginated SQL out.</p>
                         <ul class="stack-tags">
                             <li>TypeScript</li>
@@ -186,52 +272,18 @@
                 </li>
 
                 <li class="reveal">
-                    <a href="https://github.com/0Mattias/noxious" target="_blank" rel="noopener">
+                    <a href="https://github.com/0Mattias/earthmc-scraper" target="_blank" rel="noopener">
                         <div class="row-top">
-                            <span class="num">№ 04 <span class="sep">/</span> 2026</span>
+                            <span class="num">№ 09 <span class="sep">/</span> 2026</span>
                             <span class="arrow" aria-hidden="true">↗</span>
                         </div>
-                        <h3>Noxious</h3>
-                        <p class="punch">Runtime bytecode injection into Minecraft 1.21. An AI agent plays through the mixin loader.</p>
+                        <h3>EarthMC Scraper</h3>
+                        <p class="punch">Three-second ingestion feeding a BRIN-indexed, range-partitioned Postgres. Sub-second historical queries.</p>
                         <ul class="stack-tags">
-                            <li>Java 21</li>
-                            <li>Fabric</li>
-                            <li>Mixins</li>
-                            <li>Gemini</li>
-                        </ul>
-                    </a>
-                </li>
-
-                <li class="reveal">
-                    <a href="https://github.com/0Mattias/cheesecake" target="_blank" rel="noopener">
-                        <div class="row-top">
-                            <span class="num">№ 05 <span class="sep">/</span> 2026</span>
-                            <span class="arrow" aria-hidden="true">↗</span>
-                        </div>
-                        <h3>Cheesecake</h3>
-                        <p class="punch">Ported Baritone across a two-version gap. Thousands of Minecraft internals remapped with Loom and Yarn.</p>
-                        <ul class="stack-tags">
-                            <li>Java 21</li>
-                            <li>Fabric</li>
-                            <li>Baritone</li>
-                            <li>Pathfinding</li>
-                        </ul>
-                    </a>
-                </li>
-
-                <li class="reveal">
-                    <a href="https://github.com/0Mattias/MineAI" target="_blank" rel="noopener">
-                        <div class="row-top">
-                            <span class="num">№ 06 <span class="sep">/</span> 2026</span>
-                            <span class="arrow" aria-hidden="true">↗</span>
-                        </div>
-                        <h3>MineAI</h3>
-                        <p class="punch">LLM as an in-game entity with 38 executable powers. Event-driven on NIO WatchService.</p>
-                        <ul class="stack-tags">
-                            <li>Java 21</li>
-                            <li>Paper</li>
-                            <li>Adventure</li>
-                            <li>OpenClaw</li>
+                            <li>Go</li>
+                            <li>PostgreSQL</li>
+                            <li>Cloud Run</li>
+                            <li>Time-series</li>
                         </ul>
                     </a>
                 </li>
@@ -242,32 +294,35 @@
         <section class="section" id="about">
             <header class="section-head reveal">
                 <span class="kicker">About</span>
-                <h2>Low level, <em>by default</em><span class="period">.</span></h2>
+                <h2>About</h2>
             </header>
 
             <div class="about reveal">
                 <div class="about-text">
                     <p class="lede">
-                        I build systems that don't have a Stack Overflow answer yet.
+                        Self-taught. Boston-based. I learn by building the thing.
                     </p>
                     <p>
-                        Self-taught. Boston-based. I reach for C, Go, and Java 21 where most would default to Python or TypeScript — not because the stack is exotic, but because the problem demands it. The language follows the problem, never the other way around.
+                        Most of what's on this page was written this spring. I pick the language each project actually needs — C for transport-level work, Rust where async and memory safety matter, Java for game internals, Go where Postgres needs a fast feeder, TypeScript when there has to be a UI. The stack follows the problem.
+                    </p>
+                    <p>
+                        I run my own infrastructure on a three-node Tailscale homelab — Forgejo, a Sliver C2, Velociraptor for DFIR, the usual self-hosted stack — so the security work has somewhere real to live.
                     </p>
                 </div>
 
                 <aside class="about-stack">
                     <dl>
                         <dt>Systems</dt>
-                        <dd>C, Go, Java 21</dd>
+                        <dd>C, Rust, Go, Java 21</dd>
 
                         <dt>Web</dt>
                         <dd>TypeScript, Next.js, React, PostgreSQL</dd>
 
                         <dt>AI</dt>
-                        <dd>Gemini, OpenAI, Claude, Axolotl</dd>
+                        <dd>Anthropic, Gemini, OpenAI, Axolotl</dd>
 
                         <dt>Ops</dt>
-                        <dd>Cloud Run, Docker, GCP</dd>
+                        <dd>Tailscale, Docker, Cloud Run, GCP</dd>
                     </dl>
 
                     <dl class="certs">
@@ -280,6 +335,14 @@
                                 <li>IT Support</li>
                             </ul>
                         </dd>
+
+                        <dt>Verified</dt>
+                        <dd>
+                            <span>Anthropic</span>
+                            <ul>
+                                <li>Cyber Verification Program</li>
+                            </ul>
+                        </dd>
                     </dl>
                 </aside>
             </div>
@@ -289,12 +352,12 @@
         <section class="section" id="contact">
             <header class="section-head reveal">
                 <span class="kicker">Contact</span>
-                <h2>Let's build something <em>difficult</em><span class="period">.</span></h2>
+                <h2>Get in touch</h2>
             </header>
 
             <div class="contact reveal">
                 <p class="contact-lede">
-                    Looking for roles with real engineering depth. Systems, security, infrastructure, applied AI.
+                    Open to roles in systems, security, infrastructure, and applied AI. Happy to talk about any of the work above.
                 </p>
 
                 <ul class="contact-list">
@@ -304,7 +367,7 @@
                     </li>
                     <li>
                         <span class="label">GitHub</span>
-                        <a href="https://github.com/0Mattias" target="_blank" rel="noopener">github.com/0Mattias <span class="arrow" aria-hidden="true">↗</span></a>
+                        <a class="private" aria-disabled="true">github.com/0Mattias <span class="arrow" aria-hidden="true">↗</span></a>
                     </li>
                     <li>
                         <span class="label">LinkedIn</span>
