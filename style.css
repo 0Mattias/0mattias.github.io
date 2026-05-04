@@ -480,39 +480,80 @@ ol, ul { list-style: none; }
     color: var(--accent);
 }
 
-/* ─── Private projects (no public link) ─── */
+/* ─── Featured (private state) ─── */
 
-.private { cursor: default; }
-.archive .private:hover { padding-left: 0; }
-.archive .private:hover::before { opacity: 0; }
-.archive .private .arrow { display: none; }
-.archive .private .num::after {
-    content: ' / Private';
-    color: var(--muted);
-    letter-spacing: 0.08em;
-    margin-left: 0.25rem;
+.featured-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    margin-bottom: 1.25rem;
 }
-.archive .private:hover h3 { color: var(--fg); }
+
+.featured-top h3 { margin-bottom: 0; }
+
+.featured.private {
+    cursor: default;
+}
+
 .featured.private:hover .featured-frame::before { opacity: 0; }
 .featured.private:hover .featured-frame img { transform: none; }
-.featured.private:hover .spec .arrow { transform: none; color: var(--muted); }
 
-/* ─── Archive (editorial posters) ─── */
+/* ─── Archive groups ─── */
+
+.archive-group + .archive-group {
+    margin-top: 4.5rem;
+}
+
+.group-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    margin-bottom: 0;
+    border-bottom: 1px solid var(--line-strong);
+}
+
+.group-label {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    color: var(--fg);
+    text-transform: uppercase;
+}
+
+.group-count {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+}
+
+.group-note {
+    font-family: var(--sans);
+    font-size: 0.92rem;
+    color: var(--muted);
+    line-height: 1.55;
+    max-width: 38rem;
+    padding: 1rem 0 0;
+    margin-bottom: -0.5rem;
+}
+
+/* ─── Archive entries ─── */
 
 .archive li {
     border-bottom: 1px solid var(--line);
 }
 
-.archive li:first-child { border-top: 1px solid var(--line); }
-
-.archive a {
+.archive .entry {
     display: block;
-    padding: 2.75rem 0;
-    transition: padding 0.4s var(--ease), background 0.4s var(--ease);
+    padding: 2.25rem 0;
+    transition: padding 0.4s var(--ease);
     position: relative;
 }
 
-.archive a::before {
+a.entry::before {
     content: '';
     position: absolute;
     left: calc(-1 * var(--pad));
@@ -524,71 +565,65 @@ ol, ul { list-style: none; }
     transition: opacity 0.4s var(--ease);
 }
 
-.archive a:hover {
-    padding-left: 1.5rem;
-}
+a.entry:hover { padding-left: 1.25rem; }
+a.entry:hover::before { opacity: 1; }
+a.entry:hover .arrow { color: var(--accent); transform: translate(3px, -3px); }
+a.entry:hover h3 { color: var(--fg); }
 
-.archive a:hover::before { opacity: 1; }
+.entry.private { cursor: default; }
 
-.row-top {
+.entry-top {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.25rem;
-}
-
-.archive .num {
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    color: var(--muted);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-}
-
-.archive .num .sep {
-    color: var(--dim);
-    margin: 0 0.4rem;
+    align-items: baseline;
+    gap: 1.25rem;
+    margin-bottom: 0.85rem;
 }
 
 .archive h3 {
     font-family: var(--serif);
     font-weight: 350;
-    font-size: clamp(2rem, 5.5vw, 3.85rem);
-    line-height: 0.95;
-    letter-spacing: -0.035em;
+    font-size: clamp(1.85rem, 4.5vw, 2.85rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
     color: var(--fg);
-    margin-bottom: 1.25rem;
     font-variation-settings: "opsz" 144, "SOFT" 55;
     transition: color 0.3s;
+    margin-bottom: 0;
 }
 
-.archive .punch {
-    font-family: var(--serif);
-    font-weight: 400;
-    font-style: italic;
-    font-size: clamp(1.1rem, 1.8vw, 1.45rem);
-    line-height: 1.4;
+.archive .desc {
+    font-family: var(--sans);
+    font-size: clamp(0.95rem, 1.2vw, 1.025rem);
+    line-height: 1.55;
     color: var(--fg-body);
     max-width: 48rem;
-    margin-bottom: 1.75rem;
-    font-variation-settings: "opsz" 72, "SOFT" 85;
+    margin-bottom: 1.25rem;
 }
 
 .archive .arrow {
     font-family: var(--serif);
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     color: var(--dim);
     transition: color 0.3s var(--ease), transform 0.3s var(--ease);
     display: inline-block;
+    flex-shrink: 0;
 }
 
-.archive a:hover .arrow {
-    color: var(--accent);
-    transform: translate(3px, -3px);
-}
+/* "Private" pill — shared by featured + archive */
 
-.archive a:hover h3 {
-    color: var(--fg);
+.badge {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 0.32rem 0.6rem;
+    border: 1px solid var(--line-strong);
+    color: var(--muted);
+    flex-shrink: 0;
+    line-height: 1;
+    align-self: center;
+    white-space: nowrap;
 }
 
 .stack-tags {
