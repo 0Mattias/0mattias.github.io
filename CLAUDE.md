@@ -30,5 +30,4 @@ Three source files:
 - Fonts: Inter (headings/body) + JetBrains Mono (UI/labels) via Google Fonts CDN
 - All transitions use `cubic-bezier(0.16, 1, 0.3, 1)` easing
 - Film grain overlay via inline SVG noise filter
-- `hero.mp4` is a ~23MB background video rendered grayscale via CSS filter
 - No external JS dependencies
