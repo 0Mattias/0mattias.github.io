@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0c0b09">
     <meta name="color-scheme" content="dark">
-    <meta name="description" content="Mattias Rask — self-taught engineer in Boston. Security tools, AI agents, low-level systems, and the homelab to run them.">
+    <meta name="description" content="Mattias Rask. Self-taught engineer in Boston. Security tools, AI agents, low-level systems, and the homelab to run them.">
     <meta name="author" content="Mattias Rask">
     <title>Mattias Rask</title>
 
@@ -41,9 +41,9 @@
         "description": "Self-taught engineer building security tools, AI agents, and low-level systems.",
         "address": {"@type": "PostalAddress", "addressLocality": "Boston", "addressRegion": "MA", "addressCountry": "US"},
         "hasCredential": [
-            {"@type": "EducationalOccupationalCredential", "name": "Cisco Certified Support Technician — Cybersecurity", "credentialCategory": "certification"},
-            {"@type": "EducationalOccupationalCredential", "name": "Cisco Certified Support Technician — Networking", "credentialCategory": "certification"},
-            {"@type": "EducationalOccupationalCredential", "name": "Cisco Certified Support Technician — IT Support", "credentialCategory": "certification"},
+            {"@type": "EducationalOccupationalCredential", "name": "Cisco Certified Support Technician: Cybersecurity", "credentialCategory": "certification"},
+            {"@type": "EducationalOccupationalCredential", "name": "Cisco Certified Support Technician: Networking", "credentialCategory": "certification"},
+            {"@type": "EducationalOccupationalCredential", "name": "Cisco Certified Support Technician: IT Support", "credentialCategory": "certification"},
             {"@type": "EducationalOccupationalCredential", "name": "Anthropic Cyber Verification Program", "credentialCategory": "verification"}
         ],
         "sameAs": ["https://github.com/0Mattias", "https://www.linkedin.com/in/mattias-r-3373453a1", "https://huggingface.co/MrPibb"]
@@ -57,9 +57,9 @@
     <nav class="nav" id="nav">
         <a href="#home" class="nav-mark">Mattias <em>Rask</em></a>
         <div class="nav-links" id="nav-links">
+            <a href="#about">About</a>
             <a href="#now">Now</a>
             <a href="#archive">Archive</a>
-            <a href="#about">About</a>
             <a href="#contact">Contact</a>
         </div>
         <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
@@ -91,12 +91,117 @@
             </h1>
 
             <p class="hero-lede reveal">
-                Self-taught engineer in Boston. I build security tools, AI agents, and the low-level pieces underneath — covert-channel transports, traffic mimicry, x86 emulation, fine-tuned LLMs — and run most of it on a homelab I host myself.
+                Self-taught engineer in Boston. I build security tools, AI agents, and the low-level pieces underneath: covert-channel transports, traffic mimicry, x86 emulation, fine-tuned LLMs. I run most of it on a homelab I host myself.
             </p>
 
             <div class="hero-actions reveal">
-                <a href="#now" class="btn">See the work</a>
+                <a href="#about" class="btn">Read on</a>
                 <a href="mailto:rask@duck.com" class="ghost">rask@duck.com <span aria-hidden="true">→</span></a>
+            </div>
+        </section>
+
+        <!-- ═══ ABOUT ═══ -->
+        <section class="section" id="about">
+            <header class="section-head reveal">
+                <span class="kicker">About</span>
+                <h2>About</h2>
+            </header>
+
+            <div class="about reveal">
+                <div class="about-text">
+                    <p class="lede">
+                        Self-taught. Boston-based. I learn by building the thing.
+                    </p>
+                    <p>
+                        Most of what's on this page was written this spring. I pick the language each project actually needs. C for transport-level work, Rust where async and memory safety matter, Java for game internals, Go where Postgres needs a fast feeder, TypeScript when there has to be a UI. The stack follows the problem.
+                    </p>
+                    <p>
+                        A lot of the recent work is wiring frontier models to something with real-world constraints. A transport that has to survive packet loss, a Postgres that has to return a paginated answer, a Hak5 Pineapple that only sees what's on the air. Multi-provider by default: Anaphase, the EarthMC tracker, and PineappleGPT all swap between Anthropic, Gemini, OpenAI, and OpenRouter at runtime. The interesting parts are usually below the model. Approval gates on destructive tool calls, partial-failure handling, covert transports.
+                    </p>
+                    <p>
+                        I run my own infrastructure on a three-node Tailscale homelab. Forgejo, a Sliver C2, Velociraptor for DFIR, the usual self-hosted stack. The security and AI work has somewhere real to live. When something breaks at 2 AM, I'd rather read the systemd journal than open a vendor dashboard.
+                    </p>
+                    <p>
+                        I write things down. This site is hand-rolled. Vanilla HTML, CSS, JS, no framework, no build step. Most projects ship with a writeup so a teammate can pick them up cold.
+                    </p>
+                </div>
+
+                <aside class="about-stack">
+                    <dl>
+                        <dt>Systems</dt>
+                        <dd>C, Rust, Go, Java 21</dd>
+
+                        <dt>Web</dt>
+                        <dd>TypeScript, Next.js, React, PostgreSQL</dd>
+
+                        <dt>AI</dt>
+                        <dd>Anthropic, Gemini, OpenAI, Axolotl</dd>
+
+                        <dt>Ops</dt>
+                        <dd>Tailscale, Docker, Cloud Run, GCP</dd>
+                    </dl>
+
+                    <dl class="certs">
+                        <dt>Certified</dt>
+                        <dd>
+                            <span>Cisco CCST</span>
+                            <ul>
+                                <li>Cybersecurity</li>
+                                <li>Networking</li>
+                                <li>IT Support</li>
+                            </ul>
+                        </dd>
+
+                        <dt>Verified</dt>
+                        <dd>
+                            <span>Anthropic</span>
+                            <ul>
+                                <li>Cyber Verification Program</li>
+                            </ul>
+                        </dd>
+                    </dl>
+                </aside>
+            </div>
+
+            <div class="reel reveal" aria-label="Photos from the bench">
+                <ol class="reel-track">
+                    <li class="reel-card">
+                        <figure>
+                            <img src="photos/photo-rack.jpg" alt="A black networking rack on a hardwood floor with a Cisco switch, patch panel, and StarTech PDU mounted on the front." width="1400" height="1866" decoding="async">
+                            <figcaption>Networking rack, pre-boards.</figcaption>
+                        </figure>
+                    </li>
+                    <li class="reel-card">
+                        <figure>
+                            <img src="photos/photo-homelab.jpg" alt="Three silver ZimaBoard SBCs sitting side-by-side in a rack with cables routed across them." width="1866" height="1400" decoding="async">
+                            <figcaption>Homelab. Three ZimaBoards on Tailscale.</figcaption>
+                        </figure>
+                    </li>
+                    <li class="reel-card">
+                        <figure>
+                            <img src="photos/photo-marauder-flash.jpg" alt="A custom Dual C5 ESP32 Marauder board in a translucent red case held in front of a monitor showing a flasher script and pink ASCII art output." width="1400" height="1866" decoding="async">
+                            <figcaption>Custom Dual C5 board, mid-flash.</figcaption>
+                        </figure>
+                    </li>
+                    <li class="reel-card">
+                        <figure>
+                            <img src="photos/photo-arduino.jpg" alt="An Arduino UNO wired up on a breadboard with jumper wires running off-frame in front of a laptop." width="1866" height="1400" decoding="async">
+                            <figcaption>Arduino on the bench.</figcaption>
+                        </figure>
+                    </li>
+                    <li class="reel-card">
+                        <figure>
+                            <img src="photos/photo-marauder-dark.jpg" alt="A Marauder pointed at antennas in low light, screen reading 'Detect Pineapple'." width="1400" height="1866" decoding="async">
+                            <figcaption>After anti-detection.</figcaption>
+                        </figure>
+                    </li>
+                    <li class="reel-card">
+                        <figure>
+                            <img src="photos/photo-marauder-laptop.jpg" alt="A Marauder held over a desk, a sticker reading 'lookin?' visible on a laptop in the background." width="1400" height="1866" decoding="async">
+                            <figcaption>Before anti-detection.</figcaption>
+                        </figure>
+                    </li>
+                </ol>
             </div>
         </section>
 
@@ -109,7 +214,7 @@
 
             <article class="featured reveal private">
                 <div class="featured-frame">
-                    <img src="dnsclaw.png" alt="Anaphase client and server terminals" loading="lazy" decoding="async">
+                    <img src="dnsclaw.png" alt="Anaphase client and server terminals" decoding="async">
                 </div>
                 <div class="featured-body">
                     <div class="featured-top">
@@ -118,7 +223,7 @@
                     </div>
                     <p class="featured-punch">A covert-channel AI agent that runs over whatever protocol still gets out.</p>
                     <p class="featured-desc">
-                        A pluggable transport layer hides agent traffic in DNS (UDP, DoT, DoH), ICMP echo, or NTP extension fields — whatever the network in front of you doesn't block. AES-256-GCM on the payload, HKDF-SHA256 per-session keys. The agent itself runs shell commands, edits files, searches code, and fetches URLs, gated by approval prompts on anything destructive. Multi-turn sessions across Anthropic, Gemini, OpenAI, and OpenRouter. Pure C, no runtime dependencies.
+                        A pluggable transport layer hides agent traffic in DNS (UDP, DoT, DoH), ICMP echo, or NTP extension fields. Whatever the network in front of you doesn't block. AES-256-GCM on the payload, HKDF-SHA256 per-session keys. The agent itself runs shell commands, edits files, searches code, and fetches URLs, gated by approval prompts on anything destructive. Multi-turn sessions across Anthropic, Gemini, OpenAI, and OpenRouter. Pure C, no runtime dependencies.
                     </p>
                     <dl class="spec">
                         <div><dt>Stack</dt><dd>C · DNS / ICMP / NTP · AES-256-GCM · CMake</dd></div>
@@ -301,64 +406,6 @@
             </div>
         </section>
 
-        <!-- ═══ ABOUT ═══ -->
-        <section class="section" id="about">
-            <header class="section-head reveal">
-                <span class="kicker">About</span>
-                <h2>About</h2>
-            </header>
-
-            <div class="about reveal">
-                <div class="about-text">
-                    <p class="lede">
-                        Self-taught. Boston-based. I learn by building the thing.
-                    </p>
-                    <p>
-                        Most of what's on this page was written this spring. I pick the language each project actually needs — C for transport-level work, Rust where async and memory safety matter, Java for game internals, Go where Postgres needs a fast feeder, TypeScript when there has to be a UI. The stack follows the problem.
-                    </p>
-                    <p>
-                        I run my own infrastructure on a three-node Tailscale homelab — Forgejo, a Sliver C2, Velociraptor for DFIR, the usual self-hosted stack — so the security work has somewhere real to live.
-                    </p>
-                </div>
-
-                <aside class="about-stack">
-                    <dl>
-                        <dt>Systems</dt>
-                        <dd>C, Rust, Go, Java 21</dd>
-
-                        <dt>Web</dt>
-                        <dd>TypeScript, Next.js, React, PostgreSQL</dd>
-
-                        <dt>AI</dt>
-                        <dd>Anthropic, Gemini, OpenAI, Axolotl</dd>
-
-                        <dt>Ops</dt>
-                        <dd>Tailscale, Docker, Cloud Run, GCP</dd>
-                    </dl>
-
-                    <dl class="certs">
-                        <dt>Certified</dt>
-                        <dd>
-                            <span>Cisco CCST</span>
-                            <ul>
-                                <li>Cybersecurity</li>
-                                <li>Networking</li>
-                                <li>IT Support</li>
-                            </ul>
-                        </dd>
-
-                        <dt>Verified</dt>
-                        <dd>
-                            <span>Anthropic</span>
-                            <ul>
-                                <li>Cyber Verification Program</li>
-                            </ul>
-                        </dd>
-                    </dl>
-                </aside>
-            </div>
-        </section>
-
         <!-- ═══ CONTACT ═══ -->
         <section class="section" id="contact">
             <header class="section-head reveal">
@@ -378,7 +425,7 @@
                     </li>
                     <li>
                         <span class="label">GitHub</span>
-                        <a class="private" aria-disabled="true">github.com/0Mattias <span class="arrow" aria-hidden="true">↗</span></a>
+                        <a href="https://github.com/0Mattias" target="_blank" rel="noopener">github.com/0Mattias <span class="arrow" aria-hidden="true">↗</span></a>
                     </li>
                     <li>
                         <span class="label">LinkedIn</span>
