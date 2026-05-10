@@ -499,6 +499,129 @@ ol, ul { list-style: none; }
 .featured.private:hover .featured-frame::before { opacity: 0; }
 .featured.private:hover .featured-frame img { transform: none; }
 
+.featured-desc code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    color: var(--fg);
+    background: var(--bg-soft);
+    padding: 0.1em 0.4em;
+    border: 1px solid var(--line);
+}
+
+/* ─── Featured (install terminal variant) ─── */
+
+.featured-install {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    min-height: 19rem;
+}
+
+.terminal-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.018);
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+}
+
+.terminal-title {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    color: var(--fg);
+    text-transform: uppercase;
+}
+
+.terminal-meta {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+}
+
+.terminal-body {
+    flex: 1;
+    padding: 1.65rem 1.25rem 1.4rem;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.85;
+    color: var(--fg);
+    overflow-x: auto;
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.1rem;
+}
+
+.terminal-line {
+    white-space: nowrap;
+    color: var(--fg);
+}
+
+.terminal-slash {
+    color: var(--accent);
+    font-weight: 500;
+}
+
+.terminal-cursor {
+    margin-top: 1.1rem;
+    line-height: 1;
+    color: var(--fg);
+    font-size: 0.92rem;
+}
+
+.terminal-cursor .cursor {
+    display: inline-block;
+    animation: terminal-blink 1.1s steps(2, end) infinite;
+}
+
+@keyframes terminal-blink {
+    0%, 49%   { opacity: 1; }
+    50%, 100% { opacity: 0; }
+}
+
+.terminal-foot {
+    padding: 0.85rem 1.1rem;
+    border-top: 1px solid var(--line);
+    background: rgba(0, 0, 0, 0.18);
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    color: var(--muted);
+    line-height: 1.55;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.55rem 0.7rem;
+    position: relative;
+    z-index: 2;
+    flex-shrink: 0;
+}
+
+.terminal-foot-label {
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.6rem;
+    flex-shrink: 0;
+}
+
+.terminal-foot code {
+    font-family: inherit;
+    font-size: 1em;
+    color: var(--fg-body);
+    background: none;
+    border: none;
+    padding: 0;
+}
+
 /* ─── Archive groups ─── */
 
 .archive-group + .archive-group {
@@ -1211,6 +1334,13 @@ a.entry:hover h3 { color: var(--fg); }
     }
 
     .spec dd { overflow-wrap: anywhere; }
+
+    .featured-install { min-height: 16rem; }
+    .terminal-body { font-size: 0.74rem; padding: 1.4rem 1.1rem 1.2rem; }
+    .terminal-bar { padding: 0.75rem 1rem; }
+    .terminal-title { font-size: 0.66rem; }
+    .terminal-meta { font-size: 0.62rem; }
+    .terminal-foot { padding: 0.8rem 1rem; font-size: 0.62rem; }
 
     /* ── Archive ── */
     .archive a {
