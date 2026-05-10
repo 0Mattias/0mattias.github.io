@@ -985,14 +985,14 @@ a.entry:hover h3 { color: var(--fg); }
     color: var(--accent);
 }
 
-/* ─── Notes ─── */
+/* ─── Blog ─── */
 
-.notes-list {
+.blog-list {
     display: flex;
     flex-direction: column;
 }
 
-.note {
+.post {
     display: grid;
     grid-template-columns: 1fr 3.5fr;
     gap: 4rem;
@@ -1000,10 +1000,10 @@ a.entry:hover h3 { color: var(--fg); }
     border-bottom: 1px solid var(--line);
 }
 
-.note:first-child { border-top: 1px solid var(--line-strong); }
-.note:last-child  { border-bottom: none; }
+.post:first-child { border-top: 1px solid var(--line-strong); }
+.post:last-child  { border-bottom: none; }
 
-.note-meta {
+.post-meta {
     font-family: var(--mono);
     font-size: 0.72rem;
     color: var(--muted);
@@ -1014,28 +1014,37 @@ a.entry:hover h3 { color: var(--fg); }
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    position: sticky;
+    top: 5rem;
 }
 
-.note-meta time {
+.post-meta time {
     color: var(--fg);
     display: block;
 }
 
-.note-tag {
+.post-tag {
     color: var(--dim);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-size: 0.66rem;
 }
 
-.note-body {
-    max-width: 42rem;
+.post-read {
+    color: var(--dim);
+    font-size: 0.66rem;
+    letter-spacing: 0.04em;
 }
 
-.note-title {
+.post-body {
+    max-width: 42rem;
+    min-width: 0;
+}
+
+.post-title {
     font-family: var(--serif);
     font-weight: 350;
-    font-size: clamp(1.7rem, 3.5vw, 2.4rem);
+    font-size: clamp(1.85rem, 3.8vw, 2.65rem);
     line-height: 1.05;
     letter-spacing: -0.025em;
     color: var(--fg);
@@ -1043,38 +1052,54 @@ a.entry:hover h3 { color: var(--fg); }
     font-variation-settings: "opsz" 144, "SOFT" 55;
 }
 
-.note-dek {
+.post-dek {
     font-family: var(--serif);
     font-weight: 400;
     font-style: italic;
-    font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+    font-size: clamp(1.1rem, 1.5vw, 1.25rem);
     line-height: 1.4;
     color: var(--fg);
-    margin-bottom: 2rem;
+    margin-bottom: 2.25rem;
     font-variation-settings: "opsz" 36, "SOFT" 90;
+    max-width: 36rem;
 }
 
-.note-prose p {
+.post-prose p {
     color: var(--fg-body);
     font-size: 1rem;
-    line-height: 1.65;
+    line-height: 1.7;
     margin-bottom: 1.15rem;
     max-width: 38rem;
 }
 
-.note-prose p:last-child { margin-bottom: 0; }
+.post-prose p:last-child { margin-bottom: 0; }
 
-.note-prose strong {
+.post-prose h4 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(1.2rem, 1.7vw, 1.4rem);
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+    color: var(--fg);
+    margin-top: 2.75rem;
+    margin-bottom: 1rem;
+    font-variation-settings: "opsz" 48, "SOFT" 60;
+    max-width: 38rem;
+}
+
+.post-prose h4:first-child { margin-top: 0; }
+
+.post-prose strong {
     color: var(--fg);
     font-weight: 500;
 }
 
-.note-prose em {
+.post-prose em {
     font-style: italic;
     color: var(--fg);
 }
 
-.note-prose code {
+.post-prose code {
     font-family: var(--mono);
     font-size: 0.86em;
     color: var(--fg);
@@ -1084,13 +1109,82 @@ a.entry:hover h3 { color: var(--fg); }
     overflow-wrap: anywhere;
 }
 
-.note-prose a {
+.post-prose pre {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: var(--fg);
+    background: var(--bg-soft);
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--accent);
+    padding: 1.05rem 1.15rem;
+    margin: 1.5rem 0 1.65rem;
+    overflow-x: auto;
+    max-width: 38rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+.post-prose pre code {
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: inherit;
+    color: inherit;
+    overflow-wrap: normal;
+    white-space: pre;
+}
+
+.post-prose blockquote {
+    border-left: 2px solid var(--line-strong);
+    padding: 0.15rem 0 0.15rem 1.25rem;
+    margin: 1.5rem 0 1.65rem;
+    max-width: 38rem;
+}
+
+.post-prose blockquote p {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-style: italic;
+    font-size: 1.075rem;
+    line-height: 1.55;
+    color: var(--fg);
+    margin-bottom: 0;
+    font-variation-settings: "opsz" 48, "SOFT" 90;
+}
+
+.post-prose blockquote code {
+    font-style: normal;
+    font-size: 0.84em;
+}
+
+.post-prose ul,
+.post-prose ol {
+    margin: 0 0 1.15rem 0;
+    padding-left: 1.4rem;
+    max-width: 38rem;
+    color: var(--fg-body);
+    line-height: 1.7;
+    list-style-position: outside;
+}
+
+.post-prose ul { list-style-type: disc; }
+.post-prose ol { list-style-type: decimal; }
+
+.post-prose li {
+    margin-bottom: 0.4rem;
+}
+
+.post-prose li::marker {
+    color: var(--muted);
+}
+
+.post-prose a {
     color: var(--fg);
     border-bottom: 1px solid var(--dim);
     transition: color 0.3s, border-color 0.3s var(--ease);
 }
 
-.note-prose a:hover {
+.post-prose a:hover {
     color: var(--accent);
     border-bottom-color: var(--accent);
 }
@@ -1192,20 +1286,26 @@ a.entry:hover h3 { color: var(--fg); }
     .reel { margin-top: 4rem; }
     .reel-card img { height: 26rem; }
 
-    .note {
+    .post {
         grid-template-columns: 1fr;
         gap: 1.25rem;
         padding: 2.5rem 0;
     }
 
-    .note-meta {
+    .post-meta {
         flex-direction: row;
         flex-wrap: wrap;
+        align-items: baseline;
         gap: 1.25rem;
         padding-top: 0;
+        position: static;
+        top: auto;
     }
 
-    .note-meta time { display: inline; }
+    .post-meta time { display: inline; }
+
+    .post-prose pre,
+    .post-prose blockquote { max-width: 100%; }
 }
 
 /* Phone */
@@ -1431,17 +1531,32 @@ a.entry:hover h3 { color: var(--fg); }
         font-size: 1.2rem;
     }
 
-    /* ── Notes ── */
-    .note { padding: 2rem 0; gap: 1rem; }
-    .note-title {
-        font-size: clamp(1.55rem, 7vw, 2rem);
+    /* ── Blog ── */
+    .post { padding: 2rem 0; gap: 1rem; }
+    .post-title {
+        font-size: clamp(1.7rem, 8vw, 2.15rem);
         margin-bottom: 0.65rem;
     }
-    .note-dek {
-        font-size: 1.05rem;
-        margin-bottom: 1.5rem;
+    .post-dek {
+        font-size: 1.075rem;
+        margin-bottom: 1.65rem;
     }
-    .note-prose p { font-size: 0.98rem; }
+    .post-prose p { font-size: 0.98rem; }
+    .post-prose h4 {
+        font-size: 1.2rem;
+        margin-top: 2.25rem;
+        margin-bottom: 0.85rem;
+    }
+    .post-prose pre {
+        font-size: 0.74rem;
+        padding: 0.95rem 1rem;
+        margin: 1.25rem 0 1.4rem;
+    }
+    .post-prose blockquote {
+        padding-left: 1rem;
+        margin: 1.25rem 0 1.4rem;
+    }
+    .post-prose blockquote p { font-size: 1.025rem; }
 
     /* ── Footer ── */
     .footer {
@@ -1459,7 +1574,7 @@ a.entry:hover h3 { color: var(--fg); }
     .hero-name { font-size: 4rem; }
     .section-head h2 { font-size: 2.15rem; }
     .archive h3, .featured-body h3 { font-size: 2rem; }
-    .note-title { font-size: 1.7rem; }
+    .post-title { font-size: 1.75rem; }
 }
 
 /* ─── Reduced motion ─── */
