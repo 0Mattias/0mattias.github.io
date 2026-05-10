@@ -70,31 +70,22 @@
 
         <!-- ═══ HERO ═══ -->
         <section class="hero" id="home">
-            <aside class="hero-meta">
-                <div>
-                    <span class="label">Location</span>
-                    Boston, MA
-                </div>
-                <div>
-                    <span class="label">Focus</span>
-                    Low-level systems · AI · Security
-                </div>
-                <div>
-                    <span class="label">Status</span>
-                    <span class="status">Shipping bettermemory</span>
-                </div>
-            </aside>
+            <header class="hero-bar">
+                <span class="hero-bar-status"><i aria-hidden="true"></i>Shipping bettermemory</span>
+                <span>Boston, MA</span>
+                <span>Systems · Security · AI</span>
+            </header>
 
             <h1 class="hero-name">
                 Mattias<br><em>Rask</em>
             </h1>
 
             <p class="hero-lede reveal">
-                Self-taught engineer in Boston. I build security tools, AI agents, and the low-level pieces underneath: covert-channel transports, traffic mimicry, x86 emulation, fine-tuned LLMs. I run most of it on a homelab I host myself.
+                Self-taught engineer building security tools, AI agents, and the low-level pieces underneath: covert-channel transports, traffic mimicry, x86 emulation, fine-tuned LLMs. I run most of it on a homelab I host myself.
             </p>
 
             <div class="hero-actions reveal">
-                <a href="#about" class="btn">Read on</a>
+                <a href="#about" class="btn">Read on <span aria-hidden="true">↓</span></a>
                 <a href="mailto:rask@duck.com" class="ghost">rask@duck.com <span aria-hidden="true">→</span></a>
             </div>
         </section>
@@ -102,7 +93,7 @@
         <!-- ═══ ABOUT ═══ -->
         <section class="section" id="about">
             <header class="section-head reveal">
-                <span class="kicker">About</span>
+                <span class="kicker"><span class="kicker-num">01</span>About</span>
                 <h2>About</h2>
             </header>
 
@@ -204,7 +195,7 @@
         <!-- ═══ NOW ═══ -->
         <section class="section" id="now">
             <header class="section-head reveal">
-                <span class="kicker">Currently shipping</span>
+                <span class="kicker"><span class="kicker-num">02</span>Currently shipping</span>
                 <h2>bettermemory</h2>
             </header>
 
@@ -250,14 +241,13 @@
         <!-- ═══ ARCHIVE ═══ -->
         <section class="section" id="archive">
             <header class="section-head reveal">
-                <span class="kicker">Selected work</span>
+                <span class="kicker"><span class="kicker-num">03</span>Selected work</span>
                 <h2>Projects</h2>
             </header>
 
             <div class="archive-group reveal">
                 <header class="group-head">
                     <span class="group-label">Open source</span>
-                    <span class="group-count">3 projects</span>
                 </header>
 
                 <ol class="archive">
@@ -268,12 +258,6 @@
                                 <span class="arrow" aria-hidden="true">↗</span>
                             </div>
                             <p class="desc">Fully fine-tuned Qwen3-8B on offensive red-team data. Four H200s, Axolotl, published to Hugging Face.</p>
-                            <ul class="stack-tags">
-                                <li>Python</li>
-                                <li>Qwen3-8B</li>
-                                <li>Axolotl</li>
-                                <li>4×H200</li>
-                            </ul>
                         </a>
                     </li>
 
@@ -284,28 +268,6 @@
                                 <span class="arrow" aria-hidden="true">↗</span>
                             </div>
                             <p class="desc">Conversational agent over a live, time-series player database. English in, paginated SQL out.</p>
-                            <ul class="stack-tags">
-                                <li>TypeScript</li>
-                                <li>Next.js 16</li>
-                                <li>Gemini</li>
-                                <li>PostgreSQL</li>
-                            </ul>
-                        </a>
-                    </li>
-
-                    <li>
-                        <a href="https://github.com/0Mattias/earthmc-scraper" target="_blank" rel="noopener" class="entry">
-                            <div class="entry-top">
-                                <h3>EarthMC Scraper</h3>
-                                <span class="arrow" aria-hidden="true">↗</span>
-                            </div>
-                            <p class="desc">Three-second ingestion feeding a BRIN-indexed, range-partitioned Postgres. Sub-second historical queries.</p>
-                            <ul class="stack-tags">
-                                <li>Go</li>
-                                <li>PostgreSQL</li>
-                                <li>Cloud Run</li>
-                                <li>Time-series</li>
-                            </ul>
                         </a>
                     </li>
                 </ol>
@@ -314,7 +276,6 @@
             <div class="archive-group reveal">
                 <header class="group-head">
                     <span class="group-label">Private</span>
-                    <span class="group-count">7 projects</span>
                 </header>
                 <p class="group-note">Source isn't public. Happy to walk through any of these on a call.</p>
 
@@ -326,12 +287,6 @@
                                 <span class="badge">Private</span>
                             </div>
                             <p class="desc">Covert-channel AI agent. Pluggable transport layer hides traffic in DNS (UDP / DoT / DoH), ICMP echo, or NTP extension fields, whatever the network in front of you does not block. AES-256-GCM payload, HKDF-SHA256 per-session keys, pure C with no runtime dependencies.</p>
-                            <ul class="stack-tags">
-                                <li>C</li>
-                                <li>DNS / ICMP / NTP</li>
-                                <li>AES-256-GCM</li>
-                                <li>CMake</li>
-                            </ul>
                         </div>
                     </li>
 
@@ -342,13 +297,6 @@
                                 <span class="badge">Private</span>
                             </div>
                             <p class="desc">A traffic-mimicry suite. Reshapes TCP/UDP streams to look like fifteen well-known protocols on the wire.</p>
-                            <ul class="stack-tags">
-                                <li>Rust</li>
-                                <li>Tokio</li>
-                                <li>AES-256-GCM</li>
-                                <li>HKDF-SHA256</li>
-                                <li>15 protocol skins</li>
-                            </ul>
                         </div>
                     </li>
 
@@ -359,12 +307,6 @@
                                 <span class="badge">Private</span>
                             </div>
                             <p class="desc">Claude-driven passive wireless recon agent for the Hak5 WiFi Pineapple Mk7. Pineapple as sensor, Claude as the reasoning loop.</p>
-                            <ul class="stack-tags">
-                                <li>Python</li>
-                                <li>Anthropic SDK</li>
-                                <li>Hak5 Pineapple Mk7</li>
-                                <li>Wireless recon</li>
-                            </ul>
                         </div>
                     </li>
 
@@ -375,12 +317,6 @@
                                 <span class="badge">Private</span>
                             </div>
                             <p class="desc">A high-interaction honeypot disguised as a WordPress AI blog. Single Docker container on Cloud Run behind Cloudflare.</p>
-                            <ul class="stack-tags">
-                                <li>Rust · Actix</li>
-                                <li>nginx</li>
-                                <li>Cloud Run</li>
-                                <li>WordPress / git / AWS / k8s traps</li>
-                            </ul>
                         </div>
                     </li>
 
@@ -391,44 +327,16 @@
                                 <span class="badge">Private</span>
                             </div>
                             <p class="desc">A real-mode x86 CPU emulator with a browser-based step debugger. Write assembly, assemble it, walk through it instruction by instruction.</p>
-                            <ul class="stack-tags">
-                                <li>Rust</li>
-                                <li>Axum</li>
-                                <li>Vanilla JS frontend</li>
-                                <li>16-bit x86 / 1 MB flat memory</li>
-                            </ul>
                         </div>
                     </li>
 
                     <li>
                         <div class="entry private">
                             <div class="entry-top">
-                                <h3>Homelab</h3>
+                                <h3>Homelab MCP</h3>
                                 <span class="badge">Private</span>
                             </div>
                             <p class="desc">Three ZimaBoards on Tailscale running my own Forgejo, Sliver C2, Velociraptor DFIR, Caldera, BloodHound, and a cross-board restic backup ring.</p>
-                            <ul class="stack-tags">
-                                <li>Debian 13</li>
-                                <li>Tailscale Serve</li>
-                                <li>Docker Compose</li>
-                                <li>systemd / UFW</li>
-                                <li>restic</li>
-                            </ul>
-                        </div>
-                    </li>
-
-                    <li>
-                        <div class="entry private">
-                            <div class="entry-top">
-                                <h3>Engine</h3>
-                                <span class="badge">Private</span>
-                            </div>
-                            <p class="desc">An AI goal reconciler for everyday digital state. Declare what you want; the agent diffs reality against it and closes the gap.</p>
-                            <ul class="stack-tags">
-                                <li>Rust</li>
-                                <li>Tokio</li>
-                                <li>Desired-state automation</li>
-                            </ul>
                         </div>
                     </li>
                 </ol>
@@ -438,7 +346,7 @@
         <!-- ═══ BLOG ═══ -->
         <section class="section" id="blog">
             <header class="section-head reveal">
-                <span class="kicker">Writing</span>
+                <span class="kicker"><span class="kicker-num">04</span>Writing</span>
                 <h2>Blog</h2>
             </header>
 
@@ -589,7 +497,7 @@ bettermemory init --client claude-desktop
         <!-- ═══ CONTACT ═══ -->
         <section class="section" id="contact">
             <header class="section-head reveal">
-                <span class="kicker">Contact</span>
+                <span class="kicker"><span class="kicker-num">05</span>Contact</span>
                 <h2>Get in touch</h2>
             </header>
 
