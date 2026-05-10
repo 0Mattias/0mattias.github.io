@@ -862,6 +862,116 @@ a.entry:hover h3 { color: var(--fg); }
     color: var(--accent);
 }
 
+/* ─── Notes ─── */
+
+.notes-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.note {
+    display: grid;
+    grid-template-columns: 1fr 3.5fr;
+    gap: 4rem;
+    padding: 3rem 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.note:first-child { border-top: 1px solid var(--line-strong); }
+.note:last-child  { border-bottom: none; }
+
+.note-meta {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    line-height: 1.5;
+    align-self: start;
+    padding-top: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.note-meta time {
+    color: var(--fg);
+    display: block;
+}
+
+.note-tag {
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.66rem;
+}
+
+.note-body {
+    max-width: 42rem;
+}
+
+.note-title {
+    font-family: var(--serif);
+    font-weight: 350;
+    font-size: clamp(1.7rem, 3.5vw, 2.4rem);
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    color: var(--fg);
+    margin-bottom: 0.75rem;
+    font-variation-settings: "opsz" 144, "SOFT" 55;
+}
+
+.note-dek {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-style: italic;
+    font-size: clamp(1.05rem, 1.4vw, 1.2rem);
+    line-height: 1.4;
+    color: var(--fg);
+    margin-bottom: 2rem;
+    font-variation-settings: "opsz" 36, "SOFT" 90;
+}
+
+.note-prose p {
+    color: var(--fg-body);
+    font-size: 1rem;
+    line-height: 1.65;
+    margin-bottom: 1.15rem;
+    max-width: 38rem;
+}
+
+.note-prose p:last-child { margin-bottom: 0; }
+
+.note-prose strong {
+    color: var(--fg);
+    font-weight: 500;
+}
+
+.note-prose em {
+    font-style: italic;
+    color: var(--fg);
+}
+
+.note-prose code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    color: var(--fg);
+    background: var(--bg-soft);
+    padding: 0.12em 0.42em;
+    border: 1px solid var(--line);
+    overflow-wrap: anywhere;
+}
+
+.note-prose a {
+    color: var(--fg);
+    border-bottom: 1px solid var(--dim);
+    transition: color 0.3s, border-color 0.3s var(--ease);
+}
+
+.note-prose a:hover {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
 /* ─── Footer ─── */
 
 .footer {
@@ -958,6 +1068,21 @@ a.entry:hover h3 { color: var(--fg); }
 
     .reel { margin-top: 4rem; }
     .reel-card img { height: 26rem; }
+
+    .note {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+        padding: 2.5rem 0;
+    }
+
+    .note-meta {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 1.25rem;
+        padding-top: 0;
+    }
+
+    .note-meta time { display: inline; }
 }
 
 /* Phone */
@@ -1176,6 +1301,18 @@ a.entry:hover h3 { color: var(--fg); }
         font-size: 1.2rem;
     }
 
+    /* ── Notes ── */
+    .note { padding: 2rem 0; gap: 1rem; }
+    .note-title {
+        font-size: clamp(1.55rem, 7vw, 2rem);
+        margin-bottom: 0.65rem;
+    }
+    .note-dek {
+        font-size: 1.05rem;
+        margin-bottom: 1.5rem;
+    }
+    .note-prose p { font-size: 0.98rem; }
+
     /* ── Footer ── */
     .footer {
         flex-direction: column;
@@ -1192,6 +1329,7 @@ a.entry:hover h3 { color: var(--fg); }
     .hero-name { font-size: 4rem; }
     .section-head h2 { font-size: 2.15rem; }
     .archive h3, .featured-body h3 { font-size: 2rem; }
+    .note-title { font-size: 1.7rem; }
 }
 
 /* ─── Reduced motion ─── */
