@@ -58,6 +58,7 @@
             <a href="#about">About</a>
             <a href="#now">Now</a>
             <a href="#archive">Archive</a>
+            <a href="#notes">Notes</a>
             <a href="#contact">Contact</a>
         </div>
         <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
@@ -239,10 +240,26 @@
             <div class="archive-group reveal">
                 <header class="group-head">
                     <span class="group-label">Open source</span>
-                    <span class="group-count">3 projects</span>
+                    <span class="group-count">4 projects</span>
                 </header>
 
                 <ol class="archive">
+                    <li>
+                        <a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener" class="entry">
+                            <div class="entry-top">
+                                <h3>bettermemory</h3>
+                                <span class="arrow" aria-hidden="true">↗</span>
+                            </div>
+                            <p class="desc">Persistent memory for LLMs as an MCP server. Retrieves on demand instead of force-feeding every stored fact into every prompt &mdash; three staleness signals on every hit, plain markdown on disk, tombstones for deletes.</p>
+                            <ul class="stack-tags">
+                                <li>Python</li>
+                                <li>MCP</li>
+                                <li>Claude Code plugin</li>
+                                <li>PyPI</li>
+                            </ul>
+                        </a>
+                    </li>
+
                     <li>
                         <a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener" class="entry">
                             <div class="entry-top">
@@ -398,6 +415,42 @@
                         </div>
                     </li>
                 </ol>
+            </div>
+        </section>
+
+        <!-- ═══ NOTES ═══ -->
+        <section class="section" id="notes">
+            <header class="section-head reveal">
+                <span class="kicker">Writing</span>
+                <h2>Notes</h2>
+            </header>
+
+            <div class="notes-list">
+                <article class="note reveal" id="opt-in-memory">
+                    <header class="note-meta">
+                        <time datetime="2026-05-09">May 9, 2026</time>
+                        <span class="note-tag">Tools</span>
+                    </header>
+
+                    <div class="note-body">
+                        <h3 class="note-title">Memory should be opt-in.</h3>
+                        <p class="note-dek">Why <em>bettermemory</em> inverts the contract every other LLM-memory tool ships with.</p>
+
+                        <div class="note-prose">
+                            <p>Most LLM memory tools auto-inject everything they think might be relevant into every prompt. The pitch is nice &mdash; <em>the model just remembers</em> &mdash; but the failure mode is brutal. Ask for a Python tutorial; get answers tinted by your home-lab notes. Ask a generic shell question; get advice coloured by a preference you stated months ago. Stale facts get dispensed confidently because nothing tells the model they might no longer be true.</p>
+
+                            <p>The asymmetry matters. False negatives &mdash; <em>forgot, asks once</em> &mdash; are recoverable in a follow-up turn. False positives &mdash; <em>invented a context you didn&rsquo;t want</em> &mdash; cascade. The model anchors on a stale fact, steers the conversation around it, and you don&rsquo;t see it happen. You just notice the answers got worse.</p>
+
+                            <p><strong>bettermemory</strong> inverts the contract. It&rsquo;s a local, file-backed MCP server that exposes <code>memory_search</code> as an opt-in tool. The model calls it when context could resolve ambiguity, and skips it on generic questions. Memories are markdown plus YAML frontmatter in <code>~/.claude-memory/</code> &mdash; <code>grep</code> it, <code>git log</code> it, hand-edit it. Removals are tombstones, not hard deletes. Inferences about <em>you</em> go through a structural confirmation tier: the write stays pending until you say yes.</p>
+
+                            <p>Every retrieval ships with three staleness signals. A <code>verification</code> block carries calendar age. A <code>path_drift</code> count flags filesystem paths in the body that no longer exist on disk. A <code>commit_drift</code> count, when the caller is in the matching repo, flags how many commits have landed since the last verify &mdash; because <em>fresh-on-the-calendar</em> doesn&rsquo;t mean <em>the project hasn&rsquo;t moved</em>.</p>
+
+                            <p>A separate <code>memory_health</code> surface tells <em>me</em> what&rsquo;s dead weight and what&rsquo;s contradicted, so the store doesn&rsquo;t grow into a haunted closet of half-true notes.</p>
+
+                            <p><a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener">Source on GitHub</a>. MIT, Python 3.11+.</p>
+                        </div>
+                    </div>
+                </article>
             </div>
         </section>
 
