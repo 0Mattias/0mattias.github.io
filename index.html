@@ -81,7 +81,7 @@
                 </div>
                 <div>
                     <span class="label">Status</span>
-                    <span class="status">Studying for CCNA</span>
+                    <span class="status">Shipping bettermemory</span>
                 </div>
             </aside>
 
@@ -112,10 +112,10 @@
                         Professionally and self-taught, I learn by building the thing.
                     </p>
                     <p>
-                        Most of what is written on this website was made in the Spring. Over the past two years, I have been building, learning, and researching software development, cybersecurity, and embedded systems. Currently, I am being sponsored by MassAbility for my work and am also pursuing my CCNA and PT1 in June.
+                        Most of what&rsquo;s on this site shipped this past Spring. Two years deep into software, cybersecurity, and embedded systems, mostly building rather than reading about it. Currently sponsored by MassAbility, with CCNA and PT1 sittings booked for June.
                     </p>
                     <p>
-                        My hobbies include drawing, video/photo editing, HAM radio, the outdoors, and hanging out with my cat.
+                        Off-keyboard: drawing, video / photo editing, HAM radio, the outdoors, and hanging out with my cat.
                     </p>
                 </div>
 
@@ -205,26 +205,42 @@
         <section class="section" id="now">
             <header class="section-head reveal">
                 <span class="kicker">Currently shipping</span>
-                <h2>Anaphase</h2>
+                <h2>bettermemory</h2>
             </header>
 
-            <article class="featured reveal private">
-                <div class="featured-frame">
-                    <img src="dnsclaw.png" alt="Anaphase client and server terminals" decoding="async">
+            <article class="featured reveal">
+                <div class="featured-frame featured-install" aria-label="Install bettermemory in Claude Code">
+                    <header class="terminal-bar">
+                        <span class="terminal-title">install</span>
+                        <span class="terminal-meta">claude code plugin</span>
+                    </header>
+                    <div class="terminal-body">
+                        <div class="terminal-line">
+                            <span class="terminal-slash">/plugin</span> marketplace add 0Mattias/bettermemory
+                        </div>
+                        <div class="terminal-line">
+                            <span class="terminal-slash">/plugin</span> install bettermemory@bettermemory
+                        </div>
+                        <div class="terminal-cursor" aria-hidden="true"><span class="cursor">▌</span></div>
+                    </div>
+                    <footer class="terminal-foot">
+                        <span class="terminal-foot-label">Anything else</span>
+                        <code>uv tool install bettermemory</code> &middot; <code>bettermemory init</code>
+                    </footer>
                 </div>
                 <div class="featured-body">
                     <div class="featured-top">
-                        <h3>Anaphase</h3>
-                        <span class="badge">Private</span>
+                        <h3>bettermemory</h3>
+                        <span class="badge">Open source</span>
                     </div>
-                    <p class="featured-punch">A covert-channel AI agent that runs over whatever protocol still gets out.</p>
+                    <p class="featured-punch">Persistent memory for Claude Code &mdash; retrieved on demand, never force-fed into every prompt.</p>
                     <p class="featured-desc">
-                        A pluggable transport layer hides agent traffic in DNS (UDP, DoT, DoH), ICMP echo, or NTP extension fields. Whatever the network in front of you doesn't block. AES-256-GCM on the payload, HKDF-SHA256 per-session keys. The agent itself runs shell commands, edits files, searches code, and fetches URLs, gated by approval prompts on anything destructive. Multi-turn sessions across Anthropic, Gemini, OpenAI, and OpenRouter. Pure C, no runtime dependencies.
+                        A local MCP server (and Claude Code plugin) that fixes the failure mode every other LLM-memory tool ships with: auto-injecting every stored fact into every conversation. The model calls <code>memory_search</code> only when context could resolve ambiguity &mdash; and every retrieval carries three structured staleness signals so stale facts can&rsquo;t be dispensed confidently. Markdown plus YAML on disk, tombstones over deletes, project-scoped by git repo.
                     </p>
                     <dl class="spec">
-                        <div><dt>Stack</dt><dd>C · DNS / ICMP / NTP · AES-256-GCM · CMake</dd></div>
-                        <div><dt>Year</dt><dd>2026</dd></div>
-                        <div><dt>Source</dt><dd>Available on request</dd></div>
+                        <div><dt>Stack</dt><dd>Python &middot; MCP &middot; Markdown on disk &middot; 17 tools</dd></div>
+                        <div><dt>License</dt><dd>MIT &middot; Python 3.11+</dd></div>
+                        <div><dt>Source</dt><dd><a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener">github.com/0Mattias/bettermemory <span class="arrow" aria-hidden="true">↗</span></a></dd></div>
                     </dl>
                 </div>
             </article>
@@ -240,26 +256,10 @@
             <div class="archive-group reveal">
                 <header class="group-head">
                     <span class="group-label">Open source</span>
-                    <span class="group-count">4 projects</span>
+                    <span class="group-count">3 projects</span>
                 </header>
 
                 <ol class="archive">
-                    <li>
-                        <a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener" class="entry">
-                            <div class="entry-top">
-                                <h3>bettermemory</h3>
-                                <span class="arrow" aria-hidden="true">↗</span>
-                            </div>
-                            <p class="desc">Persistent memory for LLMs as an MCP server. Retrieves on demand instead of force-feeding every stored fact into every prompt &mdash; three staleness signals on every hit, plain markdown on disk, tombstones for deletes.</p>
-                            <ul class="stack-tags">
-                                <li>Python</li>
-                                <li>MCP</li>
-                                <li>Claude Code plugin</li>
-                                <li>PyPI</li>
-                            </ul>
-                        </a>
-                    </li>
-
                     <li>
                         <a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener" class="entry">
                             <div class="entry-top">
@@ -313,11 +313,27 @@
             <div class="archive-group reveal">
                 <header class="group-head">
                     <span class="group-label">Private</span>
-                    <span class="group-count">6 projects</span>
+                    <span class="group-count">7 projects</span>
                 </header>
                 <p class="group-note">Source isn't public. Happy to walk through any of these on a call.</p>
 
                 <ol class="archive">
+                    <li>
+                        <div class="entry private">
+                            <div class="entry-top">
+                                <h3>Anaphase</h3>
+                                <span class="badge">Private</span>
+                            </div>
+                            <p class="desc">Covert-channel AI agent. Pluggable transport layer hides traffic in DNS (UDP / DoT / DoH), ICMP echo, or NTP extension fields &mdash; whatever the network in front of you doesn&rsquo;t block. AES-256-GCM payload, HKDF-SHA256 per-session keys, pure C with no runtime dependencies.</p>
+                            <ul class="stack-tags">
+                                <li>C</li>
+                                <li>DNS / ICMP / NTP</li>
+                                <li>AES-256-GCM</li>
+                                <li>CMake</li>
+                            </ul>
+                        </div>
+                    </li>
+
                     <li>
                         <div class="entry private">
                             <div class="entry-top">
