@@ -52,4 +52,34 @@ document.addEventListener("DOMContentLoaded", () => {
             a.addEventListener('click', () => setOpen(false));
         });
     }
+
+    // ── Copy-to-clipboard on install terminal lines ──
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const line = btn.closest('.terminal-line');
+            const text = line && line.dataset.copy;
+            if (!text) return;
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                try { document.execCommand('copy'); } catch {}
+                document.body.removeChild(ta);
+            }
+            const prev = btn.textContent;
+            btn.textContent = 'Copied';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.textContent = prev;
+                btn.classList.remove('copied');
+            }, 1400);
+        });
+    });
 });
