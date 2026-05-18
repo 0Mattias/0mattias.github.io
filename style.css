@@ -966,18 +966,9 @@ a.entry:hover h3 { color: var(--fg); }
     letter-spacing: 0.04em;
 }
 
-/* ─── Reveal ─── */
-
-.reveal {
-    opacity: 0;
-    transform: translateY(14px);
-    transition: opacity 0.8s var(--ease), transform 0.9s var(--ease);
-}
-
-.reveal.visible {
-    opacity: 1;
-    transform: translateY(0);
-}
+/* Reveal animation removed. The class is preserved as a hook in markup
+   but no longer hides content — preventing any JS hiccup from leaving the
+   page invisible. */
 
 /* ─── Writing index page ─── */
 
@@ -1640,6 +1631,4 @@ a.entry:hover h3 { color: var(--fg); }
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
-
-    .reveal { opacity: 1; transform: none; }
 }
