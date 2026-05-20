@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0c0b09">
     <meta name="color-scheme" content="dark">
-    <meta name="description" content="Building bettermemory. Why I rebuilt persistent memory for Claude Code from the ground up, and what shipped in 2.0.">
+    <meta name="description" content="Building bettermemory. Persistent memory for Claude Code, retrieved on demand rather than pre-loaded. Notes on the design and what shipped in 2.0.">
     <meta name="author" content="Mattias Rask">
     <title>Building bettermemory &mdash; Mattias Rask</title>
 
@@ -15,7 +15,7 @@
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://0mattias.github.io/blog/building-bettermemory/">
     <meta property="og:title" content="Building bettermemory">
-    <meta property="og:description" content="Why I rebuilt persistent memory for Claude Code from the ground up, and what shipped in 2.0.">
+    <meta property="og:description" content="Persistent memory for Claude Code, retrieved on demand rather than pre-loaded. Notes on the design and what shipped in 2.0.">
     <meta property="og:image" content="https://0mattias.github.io/og.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
@@ -24,7 +24,7 @@
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Building bettermemory">
-    <meta name="twitter:description" content="Why I rebuilt persistent memory for Claude Code from the ground up, and what shipped in 2.0.">
+    <meta name="twitter:description" content="Persistent memory for Claude Code, retrieved on demand rather than pre-loaded. Notes on the design and what shipped in 2.0.">
     <meta name="twitter:image" content="https://0mattias.github.io/og.png">
 
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230c0b09'/%3E%3Ctext x='50%25' y='62%25' font-family='Georgia,serif' font-style='italic' font-size='20' font-weight='400' fill='%23ece6d9' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
@@ -41,7 +41,7 @@
         "@context": "https://schema.org",
         "@type": "BlogPosting",
         "headline": "Building bettermemory",
-        "description": "Why I rebuilt persistent memory for Claude Code from the ground up, and what shipped in 2.0.",
+        "description": "Persistent memory for Claude Code, retrieved on demand rather than pre-loaded. Notes on the design and what shipped in 2.0.",
         "datePublished": "2026-05-18",
         "author": {"@type": "Person", "name": "Mattias Rask", "url": "https://0mattias.github.io/"},
         "url": "https://0mattias.github.io/blog/building-bettermemory/",
@@ -73,54 +73,48 @@
             <header class="article-head">
                 <p class="article-eyebrow"><a href="../">Blog</a> &middot; Tools</p>
                 <h1 class="article-title">Building bettermemory.</h1>
-                <p class="article-dek">Why I rebuilt persistent memory for Claude Code from the ground up &mdash; and what shipped in 2.0.</p>
+                <p class="article-dek">Persistent memory for Claude Code, retrieved on demand rather than pre-loaded. Notes on the design and what shipped in 2.0.</p>
                 <div class="article-meta">
                     <time datetime="2026-05-18">May 18, 2026</time>
-                    <span>9 min read</span>
+                    <span>6 min read</span>
                 </div>
             </header>
 
             <div class="article-body">
 
-                <p>Most AI assistants ship a memory feature now. The pitch is appealing. You tell it something once, and it remembers next time. In practice, every implementation I have used makes the same mistake. They take every stored fact and inject it into every prompt, regardless of whether the fact is relevant to what you asked.</p>
-
-                <p>The result is subtle but corrosive. Ask for a Python tutorial and the answer comes coloured by your home-lab notes. Ask a basic shell question and stored preferences from months ago shape the response. Stale facts get dispensed with full confidence. The longer you use the tool, the less reliable any individual answer becomes.</p>
-
-                <p>I built <strong>bettermemory</strong> to fix this. It is a local MCP server (and a Claude Code plugin) that flips the contract. Instead of pushing memory at the model, the model pulls memory only when it actually needs it. The 2.0 release this month layered on the rest of the discipline: claim-level provenance, write-time hallucination checks, hybrid retrieval, an FTS5 index, cross-host sync, and a local web UI for curation. The contract stayed the same; the surfaces got sharper.</p>
+                <p>bettermemory is a local MCP server (and a Claude Code plugin). Memory lives as plain markdown on disk and gets exposed through MCP tools the model calls when it actually needs context. There is no automatic injection per turn. When the model does pull a memory in, the contract is to say so in the reply.</p>
 
                 <h2>The failure mode</h2>
 
-                <p>Auto-injection looks fine in demos. You set a preference, ask a related question, and get a contextual answer. After a few weeks of real use, two patterns emerge.</p>
+                <p>The shape most memory features ship with is the same: stored facts get pre-loaded into every conversation. After a few weeks of real use, two patterns show up.</p>
 
-                <p>The first is bleed-through. Memory pulled in for an unrelated topic still influences tone, framing, and assumptions. This is not a bug in the model. The model is doing exactly what you would expect when you put irrelevant context into the prompt. The bug is the design choice that puts it there.</p>
+                <p>The first is bleed-through. Memory pulled in for an unrelated topic still tints tone, framing, and assumptions. The model is doing what you would expect when irrelevant context lands in the prompt &mdash; the bug is the design choice that puts it there.</p>
 
-                <p>The second is silent staleness. A fact you stored in March is still in the prompt in November, even after the project moved on, the file paths changed, or your preferences shifted. The model has no way to know whether what it is being told is current. It treats every memory as fresh, and you only notice when an answer is wrong.</p>
+                <p>The second is silent staleness. A fact stored in March still sits in the prompt in November, after the file paths moved or the project changed direction. The model treats every memory as fresh.</p>
 
-                <p>False negatives are recoverable. If the model forgets and asks once, you tell it again. False positives cascade. The model anchors on a stale fact, builds the rest of its reasoning on top, and you never see the moment the conversation went off course. mem0&rsquo;s own audit (<a href="https://github.com/mem0ai/mem0/issues/4573" target="_blank" rel="noopener noreferrer">issue #4573</a>) reported a 97.8% junk rate in production extractions. That number is what a hallucination-amplifier looks like in the wild.</p>
+                <p>False negatives are recoverable. The model forgets, you tell it again. False positives cascade: the model anchors on a stale fact, builds reasoning on top, and you don&rsquo;t see the moment the conversation went off.</p>
 
-                <h2>The opt-in contract</h2>
+                <h2>Opt-in retrieval</h2>
 
-                <p>bettermemory exposes memory as a set of MCP tools that the model calls when it needs them. There is no automatic injection. At the start of a session, the model can call <code>memory_scope_overview</code>, which returns counts per scope without any bodies. If the total is zero, the model knows there is nothing to fetch. Otherwise, the model calls <code>memory_search</code> only when a request is ambiguous in a way stored context could resolve.</p>
+                <p>bettermemory exposes memory as a set of MCP tools the model calls when it needs them. At session start, <code>memory_scope_overview</code> returns counts per scope without bodies &mdash; total zero means nothing to fetch. Otherwise <code>memory_search</code> runs only when a request is ambiguous in a way stored context could resolve.</p>
 
-                <p>The separation matters in practice. A request like <em>&ldquo;walk me through pandas&rdquo;</em> hits the search tool, because that phrasing is the kind of thing a learning-style preference might shape. A request like <em>&ldquo;how do I write a Python list comprehension&rdquo;</em> does not. The reply comes back as clean generic prose, untainted by months of accumulated personal context.</p>
-
-                <p>When the model does retrieve memory and use it, the policy requires it to say so out loud. <em>&ldquo;Using your stored preference for code-driven tutorials&hellip;&rdquo;</em> is the audit trail. You see what shaped the answer.</p>
+                <p><em>&ldquo;Walk me through pandas from zero to hero&rdquo;</em> hits the search tool, because that phrasing is the kind a learning-style preference might shape. <em>&ldquo;How do I write a Python list comprehension&rdquo;</em> does not. When the model does retrieve and use a memory, it has to say so in the reply: <em>&ldquo;Using your stored preference for code-driven tutorials&hellip;&rdquo;</em></p>
 
                 <h2>Three staleness signals, one verdict</h2>
 
-                <p>Memory is a snapshot. It does not refresh itself. To stop the model from confidently dispensing stale facts, every retrieval carries three structured signals plus a rollup verdict.</p>
+                <p>Memory is a snapshot &mdash; it does not refresh itself. Every retrieval carries three structured signals folded into a single <code>staleness_verdict</code> &isin; {<code>fresh</code>, <code>spot_check_recommended</code>, <code>spot_check_required</code>}.</p>
 
-                <p>The first is a calendar block. Each memory has a <code>last_verified_at</code> timestamp and a status of <code>never</code>, <code>stale</code>, or <code>fresh</code> against a configurable threshold. When the status is not fresh, the model is expected to spot-check at least one verifiable claim before relying on the body.</p>
+                <p><strong>Calendar.</strong> Each memory has a <code>last_verified_at</code> timestamp against a configurable threshold (default 30 days).</p>
 
-                <p>The second is path drift. The retrieval reports how many file paths cited in the body still exist on disk. If a memory says <em>&ldquo;see <code>src/foo.py</code> for the routing logic&rdquo;</em> and that file is gone, the count of missing paths shows up immediately, without needing a follow-up call.</p>
+                <p><strong>Path drift.</strong> The retrieval reports how many file paths cited in the body still exist on disk. If a memory says <em>&ldquo;see <code>src/foo.py</code> for the routing logic&rdquo;</em> and that file is gone, the missing-path count surfaces immediately.</p>
 
-                <p>The third is commit drift. When the caller is in a git repository whose memories live in this store, the retrieval reports how many commits have landed since the last verification. A memory verified three months and two hundred commits ago is technically still fresh on the calendar but should be spot-checked anyway. The commit count surfaces this.</p>
+                <p><strong>Commit drift.</strong> When the caller is in a git repo that owns the memory, the retrieval reports how many commits have landed since the last verification. A memory verified three months and two hundred commits ago is fresh on the calendar but should be spot-checked anyway.</p>
 
-                <p>All three fold into a single <code>staleness_verdict</code> &mdash; <code>fresh</code>, <code>spot_check_recommended</code>, or <code>spot_check_required</code>. After a successful spot-check, the model calls <code>memory_verify</code> to refresh the timestamp and log what it confirmed, with structured <code>verified_paths</code> attestation. If a claim has drifted, the model fixes it via <code>memory_update</code> first, then verifies the corrected version.</p>
+                <p>After a successful spot-check, the model calls <code>memory_verify</code> to refresh the timestamp and log a structured <code>verified_paths</code> attestation. If a claim drifted, the fix lands first via <code>memory_update</code>, then verify against the corrected body.</p>
 
                 <h2>Plain files on disk</h2>
 
-                <p>There is no database. Every memory is a markdown file with YAML frontmatter, stored in <code>~/.claude-memory/</code> (or <code>./.claude-memory/</code> for project-scoped, or wherever <code>BETTERMEMORY_DIR</code> points).</p>
+                <p>No database. Every memory is a markdown file with YAML frontmatter in <code>~/.claude-memory/</code> (or <code>./.claude-memory/</code> for project-scoped, or wherever <code>BETTERMEMORY_DIR</code> points).</p>
 
 <pre><code>---
 schema_version: 1
@@ -129,103 +123,81 @@ created: 2026-03-14T10:23:00+00:00
 updated: 2026-03-14T10:23:00+00:00
 scopes: [tools, learning-style]
 confidence: high
-category: user-inference
 source: explicit-statement
 ---
 When I ask for a "zero to hero" tutorial, I want a hands-on
-walkthrough with code I can run, not a tour of the IDE
-or interface chrome.
+walkthrough with code I can run, not a tour of the IDE.
 </code></pre>
 
-                <p>You can grep it. You can git log it. You can hand-edit it. To back up your memories, copy a directory. To migrate to something else, read the format. Your memory is yours, in a shape you can read. 2.0 keeps that invariant: every new feature reads and writes the same files, and the on-disk SCHEMA_VERSION still sits at 1.</p>
+                <p>You can <code>grep</code> it, <code>git log</code> it, hand-edit it. To back up, copy a directory. SCHEMA_VERSION is 1 and stays there &mdash; every new feature reads and writes the same files.</p>
 
-                <h2>What 2.0 brought</h2>
+                <h2>What 2.0 added</h2>
 
-                <p>The 1.x line had the contract right. 2.0 was about closing the gaps the competitive landscape kept pointing at &mdash; provenance, hallucination at write time, retrieval ceilings, sync. Nine features in three tiers, 149 new tests, no breaking changes on disk.</p>
+                <p>Nine additive features, no on-disk breaking changes.</p>
 
-                <h3>Claim-level provenance</h3>
+                <p><strong>Claim-level provenance.</strong> <code>memory_record_use(claim_excerpts=&hellip;)</code> logs the load-bearing phrase the model actually leaned on for each memory. The event log can trace any response back to a specific sentence, not just a memory id.</p>
 
-                <p>Every <code>memory_record_use</code> call after a response now takes an optional <code>claim_excerpts</code> parameter: the load-bearing phrase from each memory the model actually leaned on. Stored in the event log so a later audit can trace any response back to the specific claim, not just the memory id. The mem0 audit that found 97.8% junk could only point at the memory; it had no way to point at the claim. Now you can.</p>
+                <p><strong>Hybrid retrieval.</strong> The original keyword scorer is still the default. <code>memory_search(mode=&hellip;)</code> accepts <code>keyword</code>, <code>bm25</code>, <code>semantic</code>, or <code>hybrid</code>. Hybrid runs Reciprocal Rank Fusion over BM25 plus Jaccard plus sentence-transformers cosine (with the embeddings extra). Opt in per call or via config.</p>
 
-                <h3>Hybrid retrieval</h3>
+                <p><strong>Write-time groundedness gate.</strong> Opt-in via <code>memory_write(groundedness_check=True, source_transcript=&hellip;)</code>. The server walks the body sentence by sentence and flags any sentence whose content tokens overlap the transcript by less than 30%. Returns <code>{status: "ungrounded", claims: [&hellip;]}</code> instead of committing.</p>
 
-                <p>The original keyword scorer (TF + scope-bonus + coverage + recency) is still the default, but <code>memory_search(mode=&hellip;)</code> now accepts <code>keyword</code>, <code>bm25</code>, <code>semantic</code>, or <code>hybrid</code>. Hybrid runs Reciprocal Rank Fusion over BM25 plus Jaccard plus sentence-transformers cosine (when the embeddings extra is installed). The keyword default stays byte-stable for existing users; opt in per call or via config.</p>
+                <p><strong>FTS5 inverted index.</strong> Files on disk stay canonical. The index is a derived cache at <code>&lt;store&gt;/.index.sqlite</code> &mdash; an FTS5 virtual table over body and scope text, kept live by Store hooks. <code>memory_search</code> uses it as a candidate pre-filter once the store crosses 500 memories. Falls back to a linear scan when the index is missing or corrupt; on-disk truth never blocks on the cache.</p>
 
-                <h3>Write-time groundedness gate</h3>
+                <p><strong>Git-based cross-host sync.</strong> Memory is markdown on disk, so git already handles the interesting cases &mdash; history, distributed copies, three-way merge. <code>bettermemory sync init/status/push/pull/auto</code> is a thin wrapper with a sensible <code>.gitignore</code> (excludes derived caches), post-pull index rebuild, and a no-op when nothing changed locally.</p>
 
-                <p>Opt-in via <code>memory_write(groundedness_check=True, source_transcript=&hellip;)</code>. The server walks the proposed body sentence by sentence and flags any sentence whose content tokens overlap the transcript by less than 30%. The kind of <em>&ldquo;fact pulled from thin air&rdquo;</em> failure mode mem0&rsquo;s production junk rate traces back to. Ungrounded claims come back as <code>{status: "ungrounded", claims: [&hellip;]}</code> instead of committing. No other memory system in the May 2026 landscape runs a write-time gate.</p>
+                <p><strong>Local web UI.</strong> <code>bettermemory ui</code> runs a small FastAPI app on <code>127.0.0.1:8765</code>: curation surfaces, searchable memory list, per-memory detail, one-click <em>&ldquo;Mark verified now&rdquo;</em>. Read-mostly &mdash; writes happen in conversation. HTML rendered inline with <code>html.escape</code>, no template engine.</p>
 
-                <h3>FTS5 inverted index</h3>
-
-                <p>Files on disk stay canonical. The index is a derived cache at <code>&lt;store&gt;/.index.sqlite</code> &mdash; an FTS5 virtual table over body and scope text, kept live by Store hooks on every write, update, and tombstone. <code>memory_search</code> uses it as a candidate pre-filter once the store crosses 500 memories. Removes the <code>load_all</code> linear-scan ceiling that starts to bite around 5&ndash;10K memories. Falls back to the linear scan when the index is missing or corrupt &mdash; on-disk truth is never blocked on the cache.</p>
-
-                <h3>Git-based cross-host sync</h3>
-
-                <p>Memory is markdown on disk, so git already handles the interesting cases &mdash; history, distributed copies, three-way merge. <code>bettermemory sync init/status/push/pull/auto</code> is a thin wrapper around it, with a sensible <code>.gitignore</code> (excludes the derived caches), post-pull index rebuild, redacted credentials in error output, and no commit when nothing changed locally. Memories follow you across machines without a cloud service in the middle.</p>
-
-                <h3>Local web UI</h3>
-
-                <p><code>bettermemory ui</code> runs a small FastAPI app on <code>127.0.0.1:8765</code>. Curation surfaces (rollups, dead-weight, contradictions, never-verified, tombstones), a searchable memory list, per-memory detail view, and one-click <em>&ldquo;Mark verified now&rdquo;</em>. Read-mostly by design &mdash; the only state change is verify, since <em>&ldquo;I just spot-checked this&rdquo;</em> is a natural human action. HTML rendered inline with <code>html.escape</code>: no template engine, no JS framework, no XSS via <code>memory_write</code>. Origin-checked on the one POST so a malicious cross-tab page can&rsquo;t forge a verify event.</p>
-
-                <h3>Consolidate, typed links, negative-outcome suppression</h3>
-
-                <p>Three smaller pieces round it out. <code>bettermemory consolidate</code> is an offline pass: near-duplicate dedup, demote-never-applied, cold-scope suggestions, scope-typo pairs. Dry-run by default. Closes the Letta sleep-time gap without a second agent. Typed inter-memory links (<code>supersedes</code>, <code>contradicts</code>, <code>extends</code>, <code>depends_on</code>) give a graph-lite layer without a graph database, surfaced bidirectionally in <code>memory_show</code>. And every search hit now carries <code>recent_negative_outcomes</code> when the memory was ignored or contradicted in the last 30 days and not since applied &mdash; so the model stops re-suggesting the same rejected junk.</p>
+                <p><strong>Consolidate, typed links, negative-outcome suppression.</strong> <code>bettermemory consolidate</code> is an offline pass: near-duplicate dedup, demote-never-applied, cold-scope and scope-typo suggestions. Dry-run by default. Typed inter-memory links (<code>supersedes</code>, <code>contradicts</code>, <code>extends</code>, <code>depends_on</code>) give graph-lite shape without a graph database, surfaced bidirectionally in <code>memory_show</code>. Every search hit carries <code>recent_negative_outcomes</code> when the memory was ignored or contradicted in the last 30 days and not since applied, so the model stops re-suggesting the same rejected memories.</p>
 
                 <h2>Tombstones, not deletes</h2>
 
-                <p>When you remove a memory, the file moves to a <code>.tombstones/</code> subdirectory and gets <code>removed</code> and <code>removed_reason</code> fields appended. The body stays. This costs almost nothing on disk and pays off in three ways.</p>
+                <p>Removing a memory moves the file to <code>.tombstones/</code> with <code>removed</code> and <code>removed_reason</code> appended. The body stays. <code>memory_restore</code> reverses a hasty removal; <code>memory_write</code> runs a tombstone-aware dedup pass, so a paraphrase of a removed memory months later gets flagged before re-introducing the wrong fact.</p>
 
-                <p>First, <code>memory_restore</code> can undo a hasty removal. Second, <code>memory_write</code> runs a tombstone-aware dedup pass &mdash; if a paraphrase of a removed memory shows up six months later, the store flags it before re-introducing the wrong fact. Third, you keep an audit trail of what you decided to forget and why.</p>
+                <h2>Confirmation tier for claims about you</h2>
 
-                <h2>The user-inference confirmation tier</h2>
+                <p>Most memories &mdash; project facts, tooling references, infra notes &mdash; commit immediately on <code>memory_write</code>. Inferences about <em>you</em> are different. <em>&ldquo;The user prefers terse code review feedback&rdquo;</em> sticks if it lands wrong. So <code>memory_write(category="user-inference")</code> always returns <code>status: "pending"</code> regardless of config. The model asks in plain language, then calls <code>memory_write_confirm</code>.</p>
 
-                <p>Most memories are project facts, infrastructure notes, or tooling references. Those commit immediately when the model calls <code>memory_write</code>. The user gets a one-line announcement, and the MCP permission gate is the primary veto point.</p>
+                <h2>Scoping by repo and worktree</h2>
 
-                <p>Inferences about the user are different. A claim like <em>&ldquo;the user prefers terse code review feedback&rdquo;</em> is a claim about <em>you</em>. If the model gets it wrong and saves it silently, the misattribution sticks. So <code>memory_write(category="user-inference")</code> always returns <code>status: "pending"</code> and waits for explicit confirmation. The model is expected to ask in plain language and only then call <code>memory_write_confirm</code>.</p>
+                <p>Every memory written from inside a git checkout records the repo URL and worktree root in its <code>origin</code> block. <code>memory_search</code> filters hits to memories from the caller&rsquo;s current repo and worktree, plus memories with no recorded origin (legacy entries or writes from outside any repo, which behave as global).</p>
 
-                <p>This is structurally enforced. Even if the global config says skip confirmation prompts, the user-inference tier still goes pending. The user always has the veto on claims about themselves.</p>
+                <p>In the bettermemory repo you see bettermemory memories. Switch to the portfolio, those disappear. Sibling <code>git worktree add</code> checkouts stay isolated. Cross-project queries are explicit &mdash; pass <code>auto_scope=false</code>.</p>
 
-                <h2>Project scoping by repo and worktree</h2>
+                <h2>In practice</h2>
 
-                <p>Every memory written from inside a git checkout records the repo URL <em>and</em> the worktree root in its <code>origin</code> block. By default, <code>memory_search</code> filters hits to memories from the caller&rsquo;s current repo and worktree, plus memories with no recorded origin (legacy entries or writes from outside any repo, which behave as global).</p>
-
-                <p>This is the right default for a working developer. When I am in the bettermemory repo, I see memories about bettermemory. When I switch to the portfolio, those bettermemory memories disappear. Sibling <code>git worktree add</code> checkouts of the same repo stay isolated from each other. Cross-project queries are still possible, just explicit &mdash; pass <code>auto_scope=false</code>.</p>
-
-                <h2>What it looks like in practice</h2>
-
-                <p>Day one. You tell Claude something durable about how you like to work.</p>
+                <p>Day one. You say something durable.</p>
 
                 <blockquote><p>When I ask for a tutorial, I want runnable code, not screenshots of an IDE.</p></blockquote>
 
-                <p>Claude calls <code>memory_write</code> with <code>category="user-inference"</code> and <code>scopes=["learning-style"]</code>. The write goes pending. Claude asks: <em>&ldquo;Want me to remember that you prefer hands-on tutorials with runnable code?&rdquo;</em> You confirm. The fact lands as a file you can read and edit.</p>
+                <p>Claude calls <code>memory_write</code> with <code>category="user-inference"</code> and <code>scopes=["learning-style"]</code>. The write goes pending. Claude asks: <em>&ldquo;Want me to remember that?&rdquo;</em> You confirm. A markdown file lands in <code>~/.claude-memory/</code>.</p>
 
-                <p>Week two, in a fresh session, you ask:</p>
+                <p>Week two, fresh session:</p>
 
                 <blockquote><p>Walk me through pandas from zero to hero.</p></blockquote>
 
-                <p>The phrase <em>&ldquo;zero to hero tutorial&rdquo;</em> is the kind of ambiguity stored preferences could resolve. Claude calls <code>memory_search</code>, gets the stored preference back, and tells you up front: <em>&ldquo;Using your stored preference for code-driven tutorials&hellip;&rdquo;</em> before answering. Compare with auto-injection memory, which would have done the same thing silently, even on <em>&ldquo;what is the capital of France?&rdquo;</em></p>
+                <p>That phrasing is ambiguous in a way stored preferences could resolve. Claude calls <code>memory_search</code>, surfaces the preference, and tells you up front: <em>&ldquo;Using your stored preference for code-driven tutorials&hellip;&rdquo;</em></p>
 
-                <p>Month three. You ask about an unrelated tool:</p>
+                <p>Month three:</p>
 
-                <blockquote><p>What is the difference between <code>find</code> and <code>fd</code>?</p></blockquote>
+                <blockquote><p>What&rsquo;s the difference between <code>find</code> and <code>fd</code>?</p></blockquote>
 
-                <p>Generic. Claude does not call <code>memory_search</code>. The reply is pristine generic-shell prose, untainted by months of accumulated context. That is the whole design.</p>
+                <p>Generic. Claude doesn&rsquo;t search. The reply isn&rsquo;t tinted by months of accumulated personal context.</p>
 
                 <h2>Install</h2>
 
-                <p>bettermemory ships as a Claude Code plugin. Two commands in any Claude Code session:</p>
+                <p>For Claude Code:</p>
 
 <pre><code>/plugin marketplace add 0Mattias/bettermemory
 /plugin install bettermemory@bettermemory
 </code></pre>
 
-                <p>For other clients (Claude Desktop, Cursor, Continue, Cline) or manual setup, install the package and run <code>bettermemory init</code>:</p>
+                <p>For any other MCP client (Claude Desktop, Cursor, Continue, Cline):</p>
 
 <pre><code>uv tool install bettermemory
 bettermemory init --client claude-desktop
 </code></pre>
 
-                <p>That idempotently merges the MCP server entry into the right config file. Restart the client and ask: <em>&ldquo;What memory tools do you have?&rdquo;</em> If the answer lists 17 tools starting with <code>memory_</code>, you are set.</p>
+                <p>Idempotently merges the MCP server entry into the right config file. Restart the client and ask <em>&ldquo;what memory tools do you have?&rdquo;</em> &mdash; 17 tools starting with <code>memory_</code> means you&rsquo;re set.</p>
 
                 <p><a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener noreferrer">Source on GitHub <span aria-hidden="true">↗</span></a>. MIT, Python 3.11 to 3.14.</p>
 
