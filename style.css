@@ -967,7 +967,7 @@ a.entry:hover h3 { color: var(--fg); }
 }
 
 /* Reveal animation removed. The class is preserved as a hook in markup
-   but no longer hides content — preventing any JS hiccup from leaving the
+   but no longer hides content, preventing any JS hiccup from leaving the
    page invisible. */
 
 /* ─── Writing index page ─── */
