@@ -6,25 +6,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#0c0b09">
     <meta name="color-scheme" content="dark">
-    <meta name="description" content="Building bettermemory. Persistent memory for Claude Code, retrieved on demand rather than pre-loaded. Notes on the design and what shipped in 2.0.">
+    <meta name="description" content="Building bettermemory. Persistent memory for AI coding agents, retrieved on demand rather than pre-loaded. Notes on the design, and everything added since 2.0.">
     <meta name="author" content="Mattias Rask">
-    <title>Building bettermemory &mdash; Mattias Rask</title>
+    <title>Building bettermemory &middot; Mattias Rask</title>
 
     <link rel="canonical" href="https://0mattias.github.io/blog/building-bettermemory/">
 
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://0mattias.github.io/blog/building-bettermemory/">
     <meta property="og:title" content="Building bettermemory">
-    <meta property="og:description" content="Persistent memory for Claude Code, retrieved on demand rather than pre-loaded. Notes on the design and what shipped in 2.0.">
+    <meta property="og:description" content="Persistent memory for AI coding agents, retrieved on demand rather than pre-loaded. Notes on the design, and everything added since 2.0.">
     <meta property="og:image" content="https://0mattias.github.io/og.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="article:published_time" content="2026-05-18">
+    <meta property="article:modified_time" content="2026-06-02">
     <meta property="article:author" content="Mattias Rask">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Building bettermemory">
-    <meta name="twitter:description" content="Persistent memory for Claude Code, retrieved on demand rather than pre-loaded. Notes on the design and what shipped in 2.0.">
+    <meta name="twitter:description" content="Persistent memory for AI coding agents, retrieved on demand rather than pre-loaded. Notes on the design, and everything added since 2.0.">
     <meta name="twitter:image" content="https://0mattias.github.io/og.png">
 
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230c0b09'/%3E%3Ctext x='50%25' y='62%25' font-family='Georgia,serif' font-style='italic' font-size='20' font-weight='400' fill='%23ece6d9' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
@@ -41,8 +42,9 @@
         "@context": "https://schema.org",
         "@type": "BlogPosting",
         "headline": "Building bettermemory",
-        "description": "Persistent memory for Claude Code, retrieved on demand rather than pre-loaded. Notes on the design and what shipped in 2.0.",
+        "description": "Persistent memory for AI coding agents, retrieved on demand rather than pre-loaded. Notes on the design, and everything added since 2.0.",
         "datePublished": "2026-05-18",
+        "dateModified": "2026-06-02",
         "author": {"@type": "Person", "name": "Mattias Rask", "url": "https://0mattias.github.io/"},
         "url": "https://0mattias.github.io/blog/building-bettermemory/",
         "image": "https://0mattias.github.io/og.png"
@@ -73,10 +75,11 @@
             <header class="article-head">
                 <p class="article-eyebrow"><a href="../">Blog</a> &middot; Tools</p>
                 <h1 class="article-title">Building bettermemory.</h1>
-                <p class="article-dek">Persistent memory for Claude Code, retrieved on demand rather than pre-loaded. Notes on the design and what shipped in 2.0.</p>
+                <p class="article-dek">Persistent memory for AI coding agents, retrieved on demand rather than pre-loaded. Notes on the design, and everything added since 2.0.</p>
                 <div class="article-meta">
                     <time datetime="2026-05-18">May 18, 2026</time>
-                    <span>6 min read</span>
+                    <span>Updated June 2, 2026</span>
+                    <span>8 min read</span>
                 </div>
             </header>
 
@@ -88,7 +91,7 @@
 
                 <p>The shape most memory features ship with is the same: stored facts get pre-loaded into every conversation. After a few weeks of real use, two patterns show up.</p>
 
-                <p>The first is bleed-through. Memory pulled in for an unrelated topic still tints tone, framing, and assumptions. The model is doing what you would expect when irrelevant context lands in the prompt &mdash; the bug is the design choice that puts it there.</p>
+                <p>The first is bleed-through. Memory pulled in for an unrelated topic still tints tone, framing, and assumptions. The model is doing what you would expect when irrelevant context lands in the prompt. The bug is the design choice that puts it there.</p>
 
                 <p>The second is silent staleness. A fact stored in March still sits in the prompt in November, after the file paths moved or the project changed direction. The model treats every memory as fresh.</p>
 
@@ -96,13 +99,13 @@
 
                 <h2>Opt-in retrieval</h2>
 
-                <p>bettermemory exposes memory as a set of MCP tools the model calls when it needs them. At session start, <code>memory_scope_overview</code> returns counts per scope without bodies &mdash; total zero means nothing to fetch. Otherwise <code>memory_search</code> runs only when a request is ambiguous in a way stored context could resolve.</p>
+                <p>bettermemory exposes memory as a set of MCP tools the model calls when it needs them. At session start, <code>memory_scope_overview</code> returns counts per scope without bodies. A total of zero means nothing to fetch. Otherwise <code>memory_search</code> runs only when a request is ambiguous in a way stored context could resolve.</p>
 
                 <p><em>&ldquo;Walk me through pandas from zero to hero&rdquo;</em> hits the search tool, because that phrasing is the kind a learning-style preference might shape. <em>&ldquo;How do I write a Python list comprehension&rdquo;</em> does not. When the model does retrieve and use a memory, it has to say so in the reply: <em>&ldquo;Using your stored preference for code-driven tutorials&hellip;&rdquo;</em></p>
 
                 <h2>Three staleness signals, one verdict</h2>
 
-                <p>Memory is a snapshot &mdash; it does not refresh itself. Every retrieval carries three structured signals folded into a single <code>staleness_verdict</code> &isin; {<code>fresh</code>, <code>spot_check_recommended</code>, <code>spot_check_required</code>}.</p>
+                <p>Memory is a snapshot. It does not refresh itself. Every retrieval carries three structured signals folded into a single <code>staleness_verdict</code> &isin; {<code>fresh</code>, <code>spot_check_recommended</code>, <code>spot_check_required</code>}.</p>
 
                 <p><strong>Calendar.</strong> Each memory has a <code>last_verified_at</code> timestamp against a configurable threshold (default 30 days).</p>
 
@@ -129,7 +132,7 @@ When I ask for a "zero to hero" tutorial, I want a hands-on
 walkthrough with code I can run, not a tour of the IDE.
 </code></pre>
 
-                <p>You can <code>grep</code> it, <code>git log</code> it, hand-edit it. To back up, copy a directory. SCHEMA_VERSION is 1 and stays there &mdash; every new feature reads and writes the same files.</p>
+                <p>You can <code>grep</code> it, <code>git log</code> it, hand-edit it. To back up, copy a directory. SCHEMA_VERSION is 1 and stays there. Every new feature reads and writes the same files.</p>
 
                 <h2>What 2.0 added</h2>
 
@@ -137,15 +140,15 @@ walkthrough with code I can run, not a tour of the IDE.
 
                 <p><strong>Claim-level provenance.</strong> <code>memory_record_use(claim_excerpts=&hellip;)</code> logs the load-bearing phrase the model actually leaned on for each memory. The event log can trace any response back to a specific sentence, not just a memory id.</p>
 
-                <p><strong>Hybrid retrieval.</strong> The original keyword scorer is still the default. <code>memory_search(mode=&hellip;)</code> accepts <code>keyword</code>, <code>bm25</code>, <code>semantic</code>, or <code>hybrid</code>. Hybrid runs Reciprocal Rank Fusion over BM25 plus Jaccard plus sentence-transformers cosine (with the embeddings extra). Opt in per call or via config.</p>
+                <p><strong>Hybrid retrieval.</strong> <code>memory_search(mode=&hellip;)</code> accepts <code>keyword</code>, <code>bm25</code>, <code>semantic</code>, or <code>hybrid</code>. Hybrid runs Reciprocal Rank Fusion over keyword plus BM25, adding a sentence-transformers semantic leg when the embeddings extra is installed and degrading gracefully without it. Keyword was the default at launch; hybrid took over in 2.6.8.</p>
 
                 <p><strong>Write-time groundedness gate.</strong> Opt-in via <code>memory_write(groundedness_check=True, source_transcript=&hellip;)</code>. The server walks the body sentence by sentence and flags any sentence whose content tokens overlap the transcript by less than 30%. Returns <code>{status: "ungrounded", claims: [&hellip;]}</code> instead of committing.</p>
 
-                <p><strong>FTS5 inverted index.</strong> Files on disk stay canonical. The index is a derived cache at <code>&lt;store&gt;/.index.sqlite</code> &mdash; an FTS5 virtual table over body and scope text, kept live by Store hooks. <code>memory_search</code> uses it as a candidate pre-filter once the store crosses 500 memories. Falls back to a linear scan when the index is missing or corrupt; on-disk truth never blocks on the cache.</p>
+                <p><strong>FTS5 inverted index.</strong> Files on disk stay canonical. The index is a derived cache at <code>&lt;store&gt;/.index.sqlite</code>, an FTS5 virtual table over body and scope text, kept live by Store hooks. <code>memory_search</code> uses it as a candidate pre-filter once the store crosses 500 memories. Falls back to a linear scan when the index is missing or corrupt; on-disk truth never blocks on the cache.</p>
 
-                <p><strong>Git-based cross-host sync.</strong> Memory is markdown on disk, so git already handles the interesting cases &mdash; history, distributed copies, three-way merge. <code>bettermemory sync init/status/push/pull/auto</code> is a thin wrapper with a sensible <code>.gitignore</code> (excludes derived caches), post-pull index rebuild, and a no-op when nothing changed locally.</p>
+                <p><strong>Git-based cross-host sync.</strong> Memory is markdown on disk, so git already handles the interesting cases: history, distributed copies, three-way merge. <code>bettermemory sync init/status/push/pull/auto</code> is a thin wrapper with a sensible <code>.gitignore</code> (excludes derived caches), post-pull index rebuild, and a no-op when nothing changed locally.</p>
 
-                <p><strong>Local web UI.</strong> <code>bettermemory ui</code> runs a small FastAPI app on <code>127.0.0.1:8765</code>: curation surfaces, searchable memory list, per-memory detail, one-click <em>&ldquo;Mark verified now&rdquo;</em>. Read-mostly &mdash; writes happen in conversation. HTML rendered inline with <code>html.escape</code>, no template engine.</p>
+                <p><strong>Local web UI.</strong> <code>bettermemory ui</code> runs a small FastAPI app on <code>127.0.0.1:8765</code>: curation surfaces, searchable memory list, per-memory detail, one-click <em>&ldquo;Mark verified now&rdquo;</em>. Read-mostly. Writes happen in conversation. HTML rendered inline with <code>html.escape</code>, no template engine.</p>
 
                 <p><strong>Consolidate, typed links, negative-outcome suppression.</strong> <code>bettermemory consolidate</code> is an offline pass: near-duplicate dedup, demote-never-applied, cold-scope and scope-typo suggestions. Dry-run by default. Typed inter-memory links (<code>supersedes</code>, <code>contradicts</code>, <code>extends</code>, <code>depends_on</code>) give graph-lite shape without a graph database, surfaced bidirectionally in <code>memory_show</code>. Every search hit carries <code>recent_negative_outcomes</code> when the memory was ignored or contradicted in the last 30 days and not since applied, so the model stops re-suggesting the same rejected memories.</p>
 
@@ -155,13 +158,27 @@ walkthrough with code I can run, not a tour of the IDE.
 
                 <h2>Confirmation tier for claims about you</h2>
 
-                <p>Most memories &mdash; project facts, tooling references, infra notes &mdash; commit immediately on <code>memory_write</code>. Inferences about <em>you</em> are different. <em>&ldquo;The user prefers terse code review feedback&rdquo;</em> sticks if it lands wrong. So <code>memory_write(category="user-inference")</code> always returns <code>status: "pending"</code> regardless of config. The model asks in plain language, then calls <code>memory_write_confirm</code>.</p>
+                <p>Most memories (project facts, tooling references, infra notes) commit immediately on <code>memory_write</code>. Inferences about <em>you</em> are different. <em>&ldquo;The user prefers terse code review feedback&rdquo;</em> sticks if it lands wrong. So <code>memory_write(category="user-inference")</code> always returns <code>status: "pending"</code> regardless of config. The model asks in plain language, then calls <code>memory_write_confirm</code>.</p>
 
                 <h2>Scoping by repo and worktree</h2>
 
                 <p>Every memory written from inside a git checkout records the repo URL and worktree root in its <code>origin</code> block. <code>memory_search</code> filters hits to memories from the caller&rsquo;s current repo and worktree, plus memories with no recorded origin (legacy entries or writes from outside any repo, which behave as global).</p>
 
-                <p>In the bettermemory repo you see bettermemory memories. Switch to the portfolio, those disappear. Sibling <code>git worktree add</code> checkouts stay isolated. Cross-project queries are explicit &mdash; pass <code>auto_scope=false</code>.</p>
+                <p>In the bettermemory repo you see bettermemory memories. Switch to the portfolio, those disappear. Sibling <code>git worktree add</code> checkouts stay isolated. Cross-project queries are explicit: pass <code>auto_scope=false</code>.</p>
+
+                <h2>Past 2.0: the 3.x line</h2>
+
+                <p>Everything above is the 2.0 surface. What came after is mostly additive (the on-disk format never broke), and it pulls in one direction: memory that holds up across agents and time, not just across sessions.</p>
+
+                <p><strong>An episodes tier.</strong> Durable memory is for facts that should outlive the session. Loop iterations and subagent run-state (<em>what we tried, what the takeaway was</em>) are a different shape, and they had nowhere clean to live without polluting the durable store. The <code>episode_*</code> family (<code>episode_write</code>, <code>episode_handoff</code>, <code>episode_search</code>, <code>episode_promote</code>) keeps that journal under <code>episodes/&lt;session_id&gt;/</code>, TTL-pruned at 30 days and invisible to <code>memory_search</code>. A takeaway that turns out to matter gets <code>episode_promote</code>d into a real memory.</p>
+
+                <p><strong>Multi-agent fan-in.</strong> The store was hardened for concurrent access and episodes gained a <code>swarm_id</code>, so a fan-out of agents can write run-state into one shared journal and a coordinator can read the whole swarm back. Memory that compounds across agents, not only across time.</p>
+
+                <p><strong>An audit surface.</strong> Two retrieval-contract leaks that are otherwise invisible. <code>memory_audit_turn</code> re-runs the ranker over the turn that just finished and flags high-relevance memories the model <em>didn&rsquo;t</em> retrieve. Silent misses. <code>memory_health</code> surfaces the inverse: memories the ranker keeps returning that the model never <em>deliberately</em> leans on, the search-result equivalent of a dead-letter queue. Both feed a curation rollup you can act on.</p>
+
+                <p><strong>Write-reflex capture.</strong> Opt-in. The Stop hook queues durable statements the model forgot to save, surfaced through <code>memory_proposals</code> for review later, so a good fact mentioned in passing isn&rsquo;t lost just because nobody said <em>&ldquo;remember that.&rdquo;</em> A companion <code>consolidate --llm</code> pass runs conservative dedup and demotion on an interval. Maintenance the store does to itself.</p>
+
+                <p>All of it lands as MCP tools or CLI subcommands: 24 tools now, 18 registered by default and the rest CLI-reachable when you want them. The verification trifecta (calendar, path, commit) is still the part I&rsquo;d point at first. Everything since exists to make depending on it safe.</p>
 
                 <h2>In practice</h2>
 
@@ -197,7 +214,7 @@ walkthrough with code I can run, not a tour of the IDE.
 bettermemory init --client claude-desktop
 </code></pre>
 
-                <p>Idempotently merges the MCP server entry into the right config file. Restart the client and ask <em>&ldquo;what memory tools do you have?&rdquo;</em> &mdash; 17 tools starting with <code>memory_</code> means you&rsquo;re set.</p>
+                <p>Idempotently merges the MCP server entry into the right config file. Restart the client and ask <em>&ldquo;what memory tools do you have?&rdquo;</em> If a batch of <code>memory_</code> and <code>episode_</code> tools shows up, you&rsquo;re set.</p>
 
                 <p><a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener noreferrer">Source on GitHub <span aria-hidden="true">↗</span></a>. MIT, Python 3.11 to 3.14.</p>
 

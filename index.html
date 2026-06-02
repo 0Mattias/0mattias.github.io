@@ -19,7 +19,7 @@
     <meta property="og:image" content="https://0mattias.github.io/og.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Mattias Rask &mdash; Security tools, AI agents, low-level systems.">
+    <meta property="og:image:alt" content="Mattias Rask: security tools, AI agents, low-level systems.">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Mattias Rask">
@@ -86,7 +86,7 @@
             </h1>
 
             <p class="hero-lede reveal">
-                Self-taught engineer. Security tools, AI agents, and the low-level pieces underneath &mdash; covert channels, traffic mimicry, x86 emulation, fine-tuned LLMs. Most of it runs on a homelab I host myself.
+                Self-taught engineer. Security tools, AI agents, and the low-level pieces underneath: covert channels, traffic mimicry, x86 emulation, fine-tuned LLMs. Most of it runs on a homelab I host myself.
             </p>
 
             <div class="hero-actions reveal">
@@ -106,7 +106,7 @@
                         Self-taught. I learn by building the thing.
                     </p>
                     <p>
-                        Most of what&rsquo;s on this site shipped this past Spring. Two years deep into software, cybersecurity, and embedded systems &mdash; mostly building rather than reading about it. Currently sponsored by MassAbility, with CCNA and PT1 sittings booked for June.
+                        Most of what&rsquo;s on this site shipped this past Spring. Two years deep into software, cybersecurity, and embedded systems, mostly building rather than reading about it. CCNA and PT1 are up next.
                     </p>
                     <p>
                         Off-keyboard: drawing, video and photo editing, HAM radio, the outdoors, and hanging out with my cat.
@@ -198,19 +198,20 @@
         <!-- ═══ BUILDING (bettermemory) ═══ -->
         <section class="section section-building" id="building">
             <header class="bm-head reveal">
-                <p class="bm-eyebrow"><span class="bm-dot" aria-hidden="true"></span>Currently building &middot; v2.0 out now</p>
+                <p class="bm-eyebrow"><span class="bm-dot" aria-hidden="true"></span>Currently building &middot; v3.5 out now</p>
                 <h2 class="bm-title">bettermemory</h2>
-                <p class="bm-tagline">Verification-grade memory for Claude Code. Retrieved on demand, with three staleness signals on every hit.</p>
+                <p class="bm-tagline">Verification-grade memory for AI coding agents. Retrieved on demand, with three staleness signals on every hit.</p>
             </header>
 
             <div class="bm-grid reveal">
                 <div class="bm-body">
                     <p class="bm-desc">
-                        Local MCP server (and Claude Code plugin) that fixes the failure mode every other LLM-memory tool ships with: auto-injecting stored facts into every conversation. 2.0 layered on claim-level provenance, hybrid retrieval (BM25 plus semantic via RRF), a write-time groundedness gate, an FTS5 index over the file-backed store, git-based cross-host sync, and a local web UI for curation. Markdown plus YAML on disk &mdash; you can <code>grep</code> it, <code>git log</code> it, hand-edit it.
+                        Local MCP server (and Claude Code plugin) that fixes the failure mode every other LLM-memory tool ships with: auto-injecting stored facts into every conversation. Retrieval is opt-in, and every hit carries a staleness verdict (calendar age, filesystem path drift, and git commit drift), so the model knows when a fact has rotted before it leans on it. Claims about you stage for confirmation, never silently. Past 2.0 it grew an episodes tier for multi-agent and loop run-state, a silent-miss probe and cold-endorsement health surface, and opt-in write-reflex capture. Markdown plus YAML on disk, so you can <code>grep</code> it, <code>git log</code> it, hand-edit it. Works with Claude Code, Cursor, Cline, and any MCP client.
                     </p>
 
                     <dl class="spec">
-                        <div><dt>Stack</dt><dd>Python &middot; MCP &middot; SQLite FTS5 &middot; 17 tools</dd></div>
+                        <div><dt>Stack</dt><dd>Python &middot; MCP &middot; SQLite FTS5 &middot; 24 tools</dd></div>
+                        <div><dt>Clients</dt><dd>Claude Code &middot; Cursor &middot; Cline &middot; any MCP</dd></div>
                         <div><dt>License</dt><dd>MIT &middot; Python 3.11&ndash;3.14</dd></div>
                         <div><dt>Source</dt><dd><a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener noreferrer">github.com/0Mattias/bettermemory <span class="arrow" aria-hidden="true">↗</span></a></dd></div>
                         <div><dt>Write-up</dt><dd><a href="blog/building-bettermemory/">Why I built it <span class="arrow" aria-hidden="true">→</span></a></dd></div>
