@@ -1,6 +1,6 @@
 /*
-    Site scripts: year stamp, nav highlight, gallery lightbox, and the
-    bettermemory verdict demo. Everything degrades to plain HTML without it.
+    Site scripts: year stamp, gallery lightbox, and the bettermemory
+    verdict walkthrough. Everything degrades to plain HTML without it.
 */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -9,44 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const yearEl = document.getElementById('year');
     if (yearEl) yearEl.textContent = new Date().getFullYear();
-
-    /* ── Nav highlight (home page only) ── */
-
-    const navbar = document.getElementById('navbar');
-    const sections = ['home', 'building', 'work', 'about', 'contact']
-        .map(id => document.getElementById(id))
-        .filter(Boolean);
-
-    if (navbar && sections.length > 1) {
-        const links = {};
-        navbar.querySelectorAll('a[href^="#"]').forEach(a => {
-            links[a.hash.slice(1)] = a;
-        });
-
-        let ticking = false;
-        const spy = () => {
-            ticking = false;
-            const line = window.innerHeight * 0.25;
-            const atBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
-            let current = sections[0];
-            if (window.scrollY > 40) {
-                sections.forEach(s => {
-                    if (s.getBoundingClientRect().top <= line) current = s;
-                });
-            }
-            if (atBottom) current = sections[sections.length - 1];
-            sections.forEach(s => {
-                const link = links[s.id];
-                if (!link) return;
-                if (s === current) link.setAttribute('aria-current', 'location');
-                else link.removeAttribute('aria-current');
-            });
-        };
-        window.addEventListener('scroll', () => {
-            if (!ticking) { ticking = true; requestAnimationFrame(spy); }
-        }, { passive: true });
-        spy();
-    }
 
     /* ── Lightbox ── */
 
@@ -132,39 +94,75 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* ── bettermemory verdict demo ── */
+    /* ── bettermemory verdict walkthrough ── */
 
     const demoOut = document.getElementById('bm-demo');
+    const demoSay = document.getElementById('bm-demo-say');
     const demoControls = document.getElementById('bm-demo-controls');
-    if (demoOut && demoControls) {
+    if (demoOut && demoSay && demoControls) {
         demoControls.hidden = false;
-        const state = { commits: 12, moved: true };
+        demoSay.hidden = false;
+
+        const BEATS = [
+            {
+                say: 'An agent saves a fact about the codebase. Today, the fact is true.',
+                fields: [
+                    ['"staleness_verdict"', '"fresh"', 'ok'],
+                    ['"last_verified_at"', '"today"', null]
+                ]
+            },
+            {
+                say: 'Three weeks pass and 28 commits land in the repo. Nothing has re-checked the fact, so the verdict stops vouching for it.',
+                fields: [
+                    ['"staleness_verdict"', '"spot_check_recommended"', 'warn'],
+                    ['"commit_drift_count"', '28', null]
+                ]
+            },
+            {
+                say: 'One of those commits moved the file. The fact is wrong now, and the search hit arrives saying exactly that.',
+                fields: [
+                    ['"staleness_verdict"', '"spot_check_required"', 'hot'],
+                    ['"path_drift"', '{ "missing": ["src/auth/middleware.py"] }', null],
+                    ['"commit_drift_count"', '31', null]
+                ]
+            },
+            {
+                say: 'The agent re-reads the repo, fixes the path, and calls memory_verify. Fresh again, and this time it is earned.',
+                fields: [
+                    ['"staleness_verdict"', '"fresh"', 'ok'],
+                    ['"last_verified_at"', '"just now"', null]
+                ]
+            }
+        ];
+
+        const nextBtn = demoControls.querySelector('[data-act="next"]');
+        const resetBtn = demoControls.querySelector('[data-act="reset"]');
+        let beat = 0;
 
         const render = () => {
-            let verdict, cls;
-            if (state.moved) { verdict = 'spot_check_required'; cls = 'hot'; }
-            else if (state.commits > 0) { verdict = 'spot_check_recommended'; cls = 'hot'; }
-            else { verdict = 'fresh'; cls = 'ok'; }
+            const b = BEATS[beat];
+            demoSay.innerHTML = '<span class="stepnum">step ' + (beat + 1) + ' of ' + BEATS.length + '</span>' + b.say;
 
-            const body = [
-                '  "snippet": "Auth middleware lives in src/auth/middleware.py"',
-                '  "relevance": "high"',
-                '  "staleness_verdict": <b class="' + cls + '">"' + verdict + '"</b>'
-            ];
-            if (state.moved) body.push('  "path_drift": { "missing": ["src/auth/middleware.py"] }');
-            if (state.commits > 0) body.push('  "commit_drift_count": ' + state.commits);
-            if (verdict === 'fresh') body.push('  "last_verified_at": "just now"');
-            demoOut.innerHTML = '{\n' + body.join(',\n') + '\n}';
+            const lines = ['  "snippet": "Auth middleware lives in src/auth/middleware.py"', '  "relevance": "high"'];
+            b.fields.forEach(f => {
+                const value = f[2] ? '<b class="' + f[2] + '">' + f[1] + '</b>' : f[1];
+                lines.push('  ' + f[0] + ': ' + value);
+            });
+            demoOut.innerHTML = '{\n' + lines.join(',\n') + '\n}';
+
+            nextBtn.disabled = beat === BEATS.length - 1;
+            resetBtn.disabled = beat === 0;
         };
 
         demoControls.addEventListener('click', e => {
             const act = e.target.getAttribute('data-act');
             if (!act) return;
-            if (act === 'commits') state.commits += 12;
-            if (act === 'move') state.moved = true;
-            if (act === 'verify') { state.commits = 0; state.moved = false; }
+            if (act === 'next' && beat < BEATS.length - 1) beat += 1;
+            if (act === 'reset') beat = 0;
             render();
         });
+
+        render();
     }
 
 });
