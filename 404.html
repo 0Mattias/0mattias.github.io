@@ -4,54 +4,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#36598f">
+    <meta name="theme-color" content="#faf8f2" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#131311" media="(prefers-color-scheme: dark)">
     <meta name="robots" content="noindex">
     <meta name="author" content="Mattias Rask">
     <title>Page not found &middot; Mattias Rask</title>
 
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2336598f'/%3E%3Crect y='27' width='32' height='5' fill='%23ff6600'/%3E%3Ctext x='50%25' y='66%25' font-family='Georgia,serif' font-size='20' font-weight='bold' fill='%23ffffff' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231d1d1b'/%3E%3Crect y='27' width='32' height='5' fill='%23ff6600'/%3E%3Ctext x='50%25' y='68%25' font-family='Menlo,monospace' font-size='19' font-weight='bold' fill='%23faf8f2' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 
     <link rel="stylesheet" href="/style.css">
-    <link rel="alternate" type="application/atom+xml" title="Mattias Rask" href="/atom.xml">
 </head>
 
 <body>
-    <a href="#main" class="skip-link">Skip to content</a>
 
-    <div id="container">
-
-        <div id="header">
-            <p class="site-title"><a href="/">Mattias Rask</a></p>
-            <p class="site-tagline">Security tools, AI agents, low-level systems &middot; Boston, MA</p>
+    <header id="header">
+        <div class="masthead">
+            <p class="site-title"><a href="/">Mattias Rask<span class="cursor" aria-hidden="true"> &#9646;</span></a></p>
+            <p class="site-mail"><a href="mailto:rask@duck.com">rask@duck.com</a></p>
         </div>
+        <p class="site-tagline">security tools &middot; AI agents &middot; low-level systems &middot; Boston, MA</p>
+        <hr class="rule">
+    </header>
 
-        <nav id="navbar">
-            <a href="/">Home</a><a href="/#building">Building</a><a href="/#work">Projects</a><a href="/#about">About</a><a href="/blog/">Blog</a><a href="/#contact">Contact</a>
-        </nav>
+    <main>
 
-        <div id="content">
+        <h1>404: page not found</h1>
+        <p class="post-meta">there is nothing at this address</p>
 
-            <main id="main">
+        <p>The link may be mistyped, or the page has moved. Try the <a href="/">homepage</a>; everything on this site is one scroll from there.</p>
 
-                <div class="post">
-                    <h1 class="post-title">404: page not found</h1>
-                    <p class="post-meta">There is nothing at this address</p>
+        <p class="small">If something on this site sent you here, <a href="mailto:rask@duck.com">tell me what broke</a>.</p>
 
-                    <p>The link may be mistyped, or the page has moved.</p>
+    </main>
 
-                    <p>Try the <a href="/">homepage</a> or the <a href="/blog/">blog</a>. If something on this site sent you here, <a href="mailto:rask@duck.com">tell me what broke</a>.</p>
-                </div>
-
-            </main>
-
-        </div>
-
-        <div id="footer">
-            <p>&copy; <span id="year">2026</span> Mattias Rask &middot; Boston, MA</p>
-        </div>
-
-    </div>
+    <footer id="footer">
+        <p><a href="/">&larr; home</a> &middot; &copy; <span id="year">2026</span> Mattias Rask &middot; Boston, MA</p>
+    </footer>
 
     <script src="/script.js"></script>
 </body>

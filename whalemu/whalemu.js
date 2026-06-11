@@ -445,8 +445,9 @@
     el('btn-asm').addEventListener('click', doAssemble);
     el('btn-step').addEventListener('click', doStep);
     el('btn-run').addEventListener('click', doRun);
-    sampleSel.addEventListener('change', () => loadSample(sampleSel.value));
+    sampleSel.addEventListener('change', () => { loadSample(sampleSel.value); doAssemble(); });
     asmBox.addEventListener('input', () => { prog = null; });
 
     loadSample(sampleSel.value);
+    if (doAssemble()) setStatus('Fibonacci is loaded and assembled. Press Step to run the highlighted line.');
 })();
