@@ -61,9 +61,9 @@
     <nav class="nav" id="nav">
         <a href="#home" class="nav-mark">Mattias <em>Rask</em></a>
         <div class="nav-links" id="nav-links">
-            <a href="#about">About</a>
             <a href="#building">Building</a>
             <a href="#work">Work</a>
+            <a href="#about">About</a>
             <a href="blog/">Blog</a>
             <a href="#contact">Contact</a>
         </div>
@@ -79,6 +79,7 @@
             <header class="hero-bar">
                 <span>Boston, MA</span>
                 <span>Systems &middot; Security &middot; AI</span>
+                <a href="#building" class="hero-bar-status">Now: bettermemory v3.10</a>
             </header>
 
             <h1 class="hero-name">
@@ -86,7 +87,7 @@
             </h1>
 
             <p class="hero-lede reveal">
-                Self-taught engineer. Security tools, AI agents, and the low-level pieces underneath: covert channels, traffic mimicry, x86 emulation, fine-tuned LLMs. Most of it runs on a homelab I host myself.
+                Self-taught engineer. I build security tools, AI agents, and the low-level pieces underneath: covert channels, traffic mimicry, x86 emulation, fine-tuned LLMs. Most of it runs on a homelab I host myself.
             </p>
 
             <div class="hero-actions reveal">
@@ -94,9 +95,214 @@
             </div>
         </section>
 
+        <!-- ═══ BUILDING (bettermemory) ═══ -->
+        <section class="section section-building" id="building">
+            <header class="bm-head reveal">
+                <p class="bm-eyebrow">01 &middot; Currently building</p>
+                <h2 class="bm-title">bettermemory</h2>
+                <p class="bm-tagline">A markdown folder and 25 MCP tools that give the model a sense of time.</p>
+            </header>
+
+            <div class="bm-grid reveal">
+                <div class="bm-body">
+                    <p class="bm-desc">
+                        Storing facts is the easy half of agent memory. The hard half is knowing whether a stored fact is still true when it comes back weeks and forty commits later. bettermemory is built around the hard half: every retrieval carries a verdict on whether the fact has held up.
+                    </p>
+                    <p class="bm-desc">
+                        Underneath, it is a local MCP server and a Claude Code plugin keeping plain markdown on disk; you can <code>grep</code> the store, <code>git log</code> it, hand-edit it. But the 3.x releases pushed it past storage. By now it works like an extension of the model that runs it, and it changes how the model behaves:
+                    </p>
+
+                    <ol class="bm-shifts" role="list">
+                        <li class="bm-shift">
+                            <h3>It checks before it trusts</h3>
+                            <p>Every hit comes back with a staleness verdict folding calendar age, cited file paths that have moved, and commits landed since the fact was last confirmed. Anything but fresh and the model spot-checks first. The rot gets caught at retrieval instead of inside a confident wrong answer.</p>
+                        </li>
+                        <li class="bm-shift">
+                            <h3>It asks before it remembers you</h3>
+                            <p>Retrieval is opt-in per turn, so generic questions stay clean of months of accumulated notes. Anything the model infers about you stages for confirmation before it lands on disk; you hold the veto. Write gates refuse transient state and pasted secrets, and an opt-in check flags ungrounded claims.</p>
+                        </li>
+                        <li class="bm-shift">
+                            <h3>Every use leaves a record</h3>
+                            <p>When a memory shapes a reply, the server logs which sentence it shaped, down to the claim. An audit pass catches the failures that used to be invisible: searches the model should have run but skipped, and memories the ranker keeps serving that never get used. Cleanup runs dry-run by default.</p>
+                        </li>
+                        <li class="bm-shift">
+                            <h3>It carries state across agents</h3>
+                            <p>An episodes tier journals what a loop tried and what the takeaway was, pruned after thirty days and invisible to durable search. A swarm of subagents writes into one journal; the next session calls <code>episode_handoff</code> and picks up mid-thought instead of cold. Takeaways worth keeping graduate into durable memory. The rest ages out.</p>
+                        </li>
+                    </ol>
+
+                    <figure class="bm-verdict" aria-label="One bettermemory search hit, as the model sees it">
+                        <header class="terminal-bar">
+                            <span class="terminal-title">retrieval</span>
+                            <span class="terminal-meta">one search hit, as the model sees it</span>
+                        </header>
+<pre>{
+  <span class="k">"snippet"</span>: <span class="v">"Auth middleware lives in src/auth/middleware.py"</span>,
+  <span class="k">"relevance"</span>: <span class="v">"high"</span>,
+  <span class="k">"staleness_verdict"</span>: <span class="hot">"spot_check_recommended"</span>,<sup aria-hidden="true">1</sup>
+  <span class="k">"path_drift"</span>: { <span class="k">"missing"</span>: [<span class="v">"src/auth/middleware.py"</span>] },<sup aria-hidden="true">2</sup>
+  <span class="k">"commit_drift_count"</span>: <span class="v">12</span>
+}</pre>
+                        <figcaption class="bm-verdict-notes">
+                            <span><sup aria-hidden="true">1</sup> <code>staleness_verdict</code> folds calendar age, path drift, and commit drift into one signal</span>
+                            <span><sup aria-hidden="true">2</sup> <code>path_drift</code> means the cited file moved since the fact was last confirmed</span>
+                        </figcaption>
+                    </figure>
+
+                    <dl class="spec">
+                        <div><dt>Release</dt><dd>v3.10.0 &middot; June 2026</dd></div>
+                        <div><dt>Stack</dt><dd>Python &middot; MCP &middot; markdown + YAML on disk</dd></div>
+                        <div><dt>Surface</dt><dd>25 MCP tools &middot; 18 on by default &middot; ~2,540 tests</dd></div>
+                        <div><dt>Clients</dt><dd>Claude Code &middot; Claude Desktop &middot; Cursor &middot; Continue &middot; Cline</dd></div>
+                        <div><dt>License</dt><dd>MIT &middot; Python 3.11&ndash;3.14</dd></div>
+                        <div><dt>Source</dt><dd><a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener noreferrer">github.com/0Mattias/bettermemory <span class="arrow" aria-hidden="true">↗</span></a></dd></div>
+                        <div><dt>Write-up</dt><dd><a href="blog/building-bettermemory/">Why I built it <span class="arrow" aria-hidden="true">→</span></a></dd></div>
+                    </dl>
+                    <p class="bm-metrics">Measured by its own eval: <code>memory_helped_rate</code> &middot; <code>endorsement_rate</code> &middot; <code>silent_miss_rate</code></p>
+                </div>
+
+                <aside class="bm-install featured-frame featured-install" aria-label="Install bettermemory in Claude Code">
+                    <header class="terminal-bar">
+                        <span class="terminal-title">install</span>
+                        <span class="terminal-meta">claude code</span>
+                    </header>
+                    <div class="terminal-body">
+                        <div class="terminal-line" data-copy="/plugin marketplace add 0Mattias/bettermemory">
+                            <span class="terminal-slash">/plugin</span> marketplace add 0Mattias/bettermemory<button type="button" class="copy-btn" aria-label="Copy command">Copy</button>
+                        </div>
+                        <div class="terminal-line" data-copy="/plugin install bettermemory@bettermemory">
+                            <span class="terminal-slash">/plugin</span> install bettermemory@bettermemory<button type="button" class="copy-btn" aria-label="Copy command">Copy</button>
+                        </div>
+                        <div class="terminal-cursor" aria-hidden="true"><span class="cursor">▌</span></div>
+                    </div>
+                    <footer class="terminal-foot">
+                        <span class="terminal-foot-label">Elsewhere</span>
+                        <code>uv tool install bettermemory</code> &middot; <code>bettermemory init --client &lt;name&gt;</code>
+                    </footer>
+                </aside>
+            </div>
+        </section>
+
+        <!-- ═══ WORK / ARCHIVE ═══ -->
+        <section class="section" id="work">
+            <header class="section-head reveal">
+                <span class="kicker">02 &middot; Shipped</span>
+                <h2>Projects</h2>
+            </header>
+
+            <div class="archive-group reveal">
+                <header class="group-head">
+                    <span class="group-label">Open source</span>
+                </header>
+
+                <ol class="archive" role="list">
+                    <li>
+                        <a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener noreferrer" class="entry">
+                            <span class="entry-meta">Fine-tuned LLM</span>
+                            <div class="entry-body">
+                                <div class="entry-top">
+                                    <h3>KillChain-8B</h3>
+                                    <span class="arrow" aria-hidden="true">↗</span>
+                                </div>
+                                <p class="desc">Fully fine-tuned Qwen3-8B on offensive red-team data. Four H200s, Axolotl, published to Hugging Face.</p>
+                            </div>
+                        </a>
+                    </li>
+
+                    <li>
+                        <a href="https://github.com/0Mattias/earthmc-beta" target="_blank" rel="noopener noreferrer" class="entry">
+                            <span class="entry-meta">Agent &middot; SQL</span>
+                            <div class="entry-body">
+                                <div class="entry-top">
+                                    <h3>EarthMC Tracker</h3>
+                                    <span class="arrow" aria-hidden="true">↗</span>
+                                </div>
+                                <p class="desc">Conversational agent over a live, time-series player database. English in, paginated SQL out.</p>
+                            </div>
+                        </a>
+                    </li>
+                </ol>
+            </div>
+
+            <div class="archive-group reveal">
+                <header class="group-head">
+                    <span class="group-label">Private</span>
+                </header>
+                <p class="group-note">Source isn&rsquo;t public. Happy to walk through any of these on a call.</p>
+
+                <ol class="archive" role="list">
+                    <li>
+                        <div class="entry private">
+                            <span class="entry-meta">Traffic mimicry</span>
+                            <div class="entry-body">
+                                <div class="entry-top">
+                                    <h3>Chromatophore</h3>
+                                    <span class="badge">Private</span>
+                                </div>
+                                <p class="desc">A traffic-mimicry suite. Reshapes TCP and UDP streams to look like fifteen well-known protocols on the wire.</p>
+                            </div>
+                        </div>
+                    </li>
+
+                    <li>
+                        <div class="entry private">
+                            <span class="entry-meta">Wireless recon</span>
+                            <div class="entry-body">
+                                <div class="entry-top">
+                                    <h3>PineappleGPT</h3>
+                                    <span class="badge">Private</span>
+                                </div>
+                                <p class="desc">Claude-driven passive wireless recon agent for the Hak5 WiFi Pineapple Mk7. Pineapple as sensor, Claude as the reasoning loop.</p>
+                            </div>
+                        </div>
+                    </li>
+
+                    <li>
+                        <div class="entry private">
+                            <span class="entry-meta">Deception</span>
+                            <div class="entry-body">
+                                <div class="entry-top">
+                                    <h3>Honeypot</h3>
+                                    <span class="badge">Private</span>
+                                </div>
+                                <p class="desc">A high-interaction honeypot disguised as a WordPress AI blog. Single Docker container on Cloud Run behind Cloudflare.</p>
+                            </div>
+                        </div>
+                    </li>
+
+                    <li>
+                        <div class="entry private">
+                            <span class="entry-meta">x86 emulation</span>
+                            <div class="entry-body">
+                                <div class="entry-top">
+                                    <h3>WhalEmu</h3>
+                                    <span class="badge">Private</span>
+                                </div>
+                                <p class="desc">A real-mode x86 CPU emulator with a browser-based step debugger. Write assembly, assemble it, walk through it instruction by instruction.</p>
+                            </div>
+                        </div>
+                    </li>
+
+                    <li>
+                        <div class="entry private">
+                            <span class="entry-meta">Infrastructure</span>
+                            <div class="entry-body">
+                                <div class="entry-top">
+                                    <h3>Homelab MCP</h3>
+                                    <span class="badge">Private</span>
+                                </div>
+                                <p class="desc">Three ZimaBoards on Tailscale running my own Forgejo, Sliver C2, Velociraptor DFIR, Caldera, BloodHound, and a cross-board restic backup ring.</p>
+                            </div>
+                        </div>
+                    </li>
+                </ol>
+            </div>
+        </section>
+
         <!-- ═══ ABOUT ═══ -->
         <section class="section" id="about">
             <header class="section-head reveal">
+                <span class="kicker">03 &middot; The person</span>
                 <h2>About</h2>
             </header>
 
@@ -106,10 +312,10 @@
                         Self-taught. I learn by building the thing.
                     </p>
                     <p>
-                        Most of what&rsquo;s on this site shipped this past Spring. Two years deep into software, cybersecurity, and embedded systems, mostly building rather than reading about it. CCNA and PT1 are up next.
+                        Most of what&rsquo;s on this site shipped this past spring. Two years deep into software, cybersecurity, and embedded systems, mostly building rather than reading about it. CCNA and PT1 are up next.
                     </p>
                     <p>
-                        Off-keyboard: drawing, video and photo editing, HAM radio, the outdoors, and hanging out with my cat.
+                        Off-keyboard: drawing, video and photo editing, ham radio, the outdoors, and hanging out with my cat.
                     </p>
                 </div>
 
@@ -147,8 +353,8 @@
                 </aside>
             </div>
 
-            <div class="reel reveal" aria-label="Photos from the bench">
-                <ol class="reel-track">
+            <div class="reel reveal" role="region" aria-label="Photos from the bench">
+                <ol class="reel-track" role="list">
                     <li class="reel-card">
                         <figure>
                             <img src="photos/photo-rack.jpg" alt="A black networking rack on a hardwood floor with a Cisco switch, patch panel, and StarTech PDU mounted on the front." width="1400" height="1866" decoding="async">
@@ -157,7 +363,7 @@
                     </li>
                     <li class="reel-card">
                         <figure>
-                            <img src="photos/photo-homelab.jpg" alt="Three silver ZimaBoard SBCs sitting side-by-side in a rack with cables routed across them." width="1866" height="1400" loading="lazy" decoding="async">
+                            <img src="photos/photo-homelab.jpg" alt="Three silver ZimaBoard SBCs sitting side by side in a rack with cables routed across them." width="1866" height="1400" loading="lazy" decoding="async">
                             <figcaption>Homelab. Three ZimaBoards on Tailscale.</figcaption>
                         </figure>
                     </li>
@@ -175,14 +381,14 @@
                     </li>
                     <li class="reel-card">
                         <figure>
-                            <img src="photos/photo-marauder-dark.jpg" alt="A Marauder pointed at antennas in low light, screen reading 'Detect Pineapple'." width="1400" height="1866" loading="lazy" decoding="async">
-                            <figcaption>After anti-detection.</figcaption>
+                            <img src="photos/photo-marauder-laptop.jpg" alt="A Marauder held over a desk, a sticker reading 'lookin?' visible on a laptop in the background." width="1400" height="1866" loading="lazy" decoding="async">
+                            <figcaption>Before anti-detection.</figcaption>
                         </figure>
                     </li>
                     <li class="reel-card">
                         <figure>
-                            <img src="photos/photo-marauder-laptop.jpg" alt="A Marauder held over a desk, a sticker reading 'lookin?' visible on a laptop in the background." width="1400" height="1866" loading="lazy" decoding="async">
-                            <figcaption>Before anti-detection.</figcaption>
+                            <img src="photos/photo-marauder-dark.jpg" alt="A Marauder pointed at antennas in low light, screen reading 'Detect Pineapple'." width="1400" height="1866" loading="lazy" decoding="async">
+                            <figcaption>After anti-detection.</figcaption>
                         </figure>
                     </li>
                     <li class="reel-card">
@@ -195,149 +401,10 @@
             </div>
         </section>
 
-        <!-- ═══ BUILDING (bettermemory) ═══ -->
-        <section class="section section-building" id="building">
-            <header class="bm-head reveal">
-                <p class="bm-eyebrow"><span class="bm-dot" aria-hidden="true"></span>Currently building &middot; v3.5 out now</p>
-                <h2 class="bm-title">bettermemory</h2>
-                <p class="bm-tagline">Verification-grade memory for AI coding agents. Retrieved on demand, with three staleness signals on every hit.</p>
-            </header>
-
-            <div class="bm-grid reveal">
-                <div class="bm-body">
-                    <p class="bm-desc">
-                        Local MCP server (and Claude Code plugin) that fixes the failure mode every other LLM-memory tool ships with: auto-injecting stored facts into every conversation. Retrieval is opt-in, and every hit carries a staleness verdict (calendar age, filesystem path drift, and git commit drift), so the model knows when a fact has rotted before it leans on it. Claims about you stage for confirmation, never silently. Past 2.0 it grew an episodes tier for multi-agent and loop run-state, a silent-miss probe and cold-endorsement health surface, and opt-in write-reflex capture. Markdown plus YAML on disk, so you can <code>grep</code> it, <code>git log</code> it, hand-edit it. Works with Claude Code, Cursor, Cline, and any MCP client.
-                    </p>
-
-                    <dl class="spec">
-                        <div><dt>Stack</dt><dd>Python &middot; MCP &middot; SQLite FTS5 &middot; 24 tools</dd></div>
-                        <div><dt>Clients</dt><dd>Claude Code &middot; Cursor &middot; Cline &middot; any MCP</dd></div>
-                        <div><dt>License</dt><dd>MIT &middot; Python 3.11&ndash;3.14</dd></div>
-                        <div><dt>Source</dt><dd><a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener noreferrer">github.com/0Mattias/bettermemory <span class="arrow" aria-hidden="true">↗</span></a></dd></div>
-                        <div><dt>Write-up</dt><dd><a href="blog/building-bettermemory/">Why I built it <span class="arrow" aria-hidden="true">→</span></a></dd></div>
-                    </dl>
-                </div>
-
-                <aside class="bm-install featured-frame featured-install" aria-label="Install bettermemory in Claude Code">
-                    <header class="terminal-bar">
-                        <span class="terminal-title">install</span>
-                        <span class="terminal-meta">claude code</span>
-                    </header>
-                    <div class="terminal-body">
-                        <div class="terminal-line" data-copy="/plugin marketplace add 0Mattias/bettermemory">
-                            <span class="terminal-slash">/plugin</span> marketplace add 0Mattias/bettermemory<button type="button" class="copy-btn" aria-label="Copy command">Copy</button>
-                        </div>
-                        <div class="terminal-line" data-copy="/plugin install bettermemory@bettermemory">
-                            <span class="terminal-slash">/plugin</span> install bettermemory@bettermemory<button type="button" class="copy-btn" aria-label="Copy command">Copy</button>
-                        </div>
-                        <div class="terminal-cursor" aria-hidden="true"><span class="cursor">▌</span></div>
-                    </div>
-                    <footer class="terminal-foot">
-                        <span class="terminal-foot-label">Elsewhere</span>
-                        <code>uv tool install bettermemory</code> &middot; <code>bettermemory init</code>
-                    </footer>
-                </aside>
-            </div>
-        </section>
-
-        <!-- ═══ WORK / ARCHIVE ═══ -->
-        <section class="section" id="work">
-            <header class="section-head reveal">
-                <span class="kicker">Selected work</span>
-                <h2>Projects</h2>
-            </header>
-
-            <div class="archive-group reveal">
-                <header class="group-head">
-                    <span class="group-label">Open source</span>
-                </header>
-
-                <ol class="archive">
-                    <li>
-                        <a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener noreferrer" class="entry">
-                            <div class="entry-top">
-                                <h3>KillChain-8B</h3>
-                                <span class="arrow" aria-hidden="true">↗</span>
-                            </div>
-                            <p class="desc">Fully fine-tuned Qwen3-8B on offensive red-team data. Four H200s, Axolotl, published to Hugging Face.</p>
-                        </a>
-                    </li>
-
-                    <li>
-                        <a href="https://github.com/0Mattias/earthmc-beta" target="_blank" rel="noopener noreferrer" class="entry">
-                            <div class="entry-top">
-                                <h3>EarthMC Tracker</h3>
-                                <span class="arrow" aria-hidden="true">↗</span>
-                            </div>
-                            <p class="desc">Conversational agent over a live, time-series player database. English in, paginated SQL out.</p>
-                        </a>
-                    </li>
-                </ol>
-            </div>
-
-            <div class="archive-group reveal">
-                <header class="group-head">
-                    <span class="group-label">Private</span>
-                </header>
-                <p class="group-note">Source isn&rsquo;t public. Happy to walk through any of these on a call.</p>
-
-                <ol class="archive">
-                    <li>
-                        <div class="entry private">
-                            <div class="entry-top">
-                                <h3>Chromatophore</h3>
-                                <span class="badge">Private</span>
-                            </div>
-                            <p class="desc">A traffic-mimicry suite. Reshapes TCP and UDP streams to look like fifteen well-known protocols on the wire.</p>
-                        </div>
-                    </li>
-
-                    <li>
-                        <div class="entry private">
-                            <div class="entry-top">
-                                <h3>PineappleGPT</h3>
-                                <span class="badge">Private</span>
-                            </div>
-                            <p class="desc">Claude-driven passive wireless recon agent for the Hak5 WiFi Pineapple Mk7. Pineapple as sensor, Claude as the reasoning loop.</p>
-                        </div>
-                    </li>
-
-                    <li>
-                        <div class="entry private">
-                            <div class="entry-top">
-                                <h3>Honeypot</h3>
-                                <span class="badge">Private</span>
-                            </div>
-                            <p class="desc">A high-interaction honeypot disguised as a WordPress AI blog. Single Docker container on Cloud Run behind Cloudflare.</p>
-                        </div>
-                    </li>
-
-                    <li>
-                        <div class="entry private">
-                            <div class="entry-top">
-                                <h3>WhalEmu</h3>
-                                <span class="badge">Private</span>
-                            </div>
-                            <p class="desc">A real-mode x86 CPU emulator with a browser-based step debugger. Write assembly, assemble it, walk through it instruction by instruction.</p>
-                        </div>
-                    </li>
-
-                    <li>
-                        <div class="entry private">
-                            <div class="entry-top">
-                                <h3>Homelab MCP</h3>
-                                <span class="badge">Private</span>
-                            </div>
-                            <p class="desc">Three ZimaBoards on Tailscale running my own Forgejo, Sliver C2, Velociraptor DFIR, Caldera, BloodHound, and a cross-board restic backup ring.</p>
-                        </div>
-                    </li>
-                </ol>
-            </div>
-        </section>
-
         <!-- ═══ CONTACT ═══ -->
         <section class="section" id="contact">
             <header class="section-head reveal">
+                <span class="kicker">04 &middot; Contact</span>
                 <h2>Get in touch</h2>
             </header>
 
@@ -346,7 +413,7 @@
                     Open to roles in systems, security, infrastructure, and applied AI. Happy to talk about any of the work above.
                 </p>
 
-                <ul class="contact-list">
+                <ul class="contact-list" role="list">
                     <li>
                         <span class="label">Email</span>
                         <a href="mailto:rask@duck.com">rask@duck.com <span class="arrow" aria-hidden="true">→</span></a>
@@ -370,8 +437,9 @@
     </main>
 
     <footer class="footer">
-        <div>&copy; <span id="year">2026</span> Mattias Rask</div>
-        <div>Boston, Massachusetts</div>
+        <div>&copy; <span id="year">2026</span> Mattias Rask &middot; Boston, Massachusetts</div>
+        <div>Hand-built: HTML, CSS, and one small script. No framework.</div>
+        <div>Set in Fraunces, Inter, and JetBrains Mono.</div>
     </footer>
 
     <script src="script.js"></script>
