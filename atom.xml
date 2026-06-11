@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Mattias Rask</title>
+  <subtitle>Long-form notes on systems, security, and the tools I build</subtitle>
+  <link href="https://0mattias.github.io/atom.xml" rel="self"/>
+  <link href="https://0mattias.github.io/"/>
+  <id>https://0mattias.github.io/</id>
+  <updated>2026-06-11T00:00:00Z</updated>
+  <author>
+    <name>Mattias Rask</name>
+  </author>
+  <entry>
+    <title>Building bettermemory</title>
+    <link href="https://0mattias.github.io/blog/building-bettermemory/"/>
+    <id>https://0mattias.github.io/blog/building-bettermemory/</id>
+    <published>2026-05-18T00:00:00Z</published>
+    <updated>2026-06-11T00:00:00Z</updated>
+    <summary>Persistent memory for AI coding agents, retrieved on demand rather than pre-loaded. Notes on the design, and everything added since 2.0.</summary>
+  </entry>
+</feed>
