@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#36598f">
+    <meta name="description" content="bettermemory: persistent memory for AI agents that knows when its own facts have gone stale. Live demo of the staleness verdict, install steps, and design notes.">
+    <meta name="author" content="Mattias Rask">
+    <title>bettermemory &middot; Mattias Rask</title>
+
+    <link rel="canonical" href="https://0mattias.github.io/bettermemory/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://0mattias.github.io/bettermemory/">
+    <meta property="og:title" content="bettermemory">
+    <meta property="og:description" content="Memory for AI agents that knows when its own facts have gone stale. Live demo of the staleness verdict and install steps.">
+    <meta property="og:image" content="https://0mattias.github.io/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Mattias Rask: security tools, AI agents, low-level systems.">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="bettermemory">
+    <meta name="twitter:description" content="Memory for AI agents that knows when its own facts have gone stale. Live demo of the staleness verdict and install steps.">
+    <meta name="twitter:image" content="https://0mattias.github.io/og.png">
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2336598f'/%3E%3Crect y='27' width='32' height='5' fill='%23ff6600'/%3E%3Ctext x='50%25' y='66%25' font-family='Georgia,serif' font-size='20' font-weight='bold' fill='%23ffffff' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+
+    <link rel="stylesheet" href="../style.css">
+    <link rel="alternate" type="application/atom+xml" title="Mattias Rask" href="/atom.xml">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "bettermemory",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "macOS, Linux, Windows",
+        "softwareVersion": "3.10.0",
+        "license": "https://opensource.org/licenses/MIT",
+        "url": "https://0mattias.github.io/bettermemory/",
+        "author": {"@type": "Person", "name": "Mattias Rask", "url": "https://0mattias.github.io/"}
+    }
+    </script>
+</head>
+
+<body>
+    <a href="#main" class="skip-link">Skip to content</a>
+
+    <div id="container">
+
+        <div id="header">
+            <p class="site-title"><a href="../">Mattias Rask</a></p>
+            <p class="site-tagline">Security tools, AI agents, low-level systems &middot; Boston, MA</p>
+        </div>
+
+        <nav id="navbar">
+            <a href="../">Home</a><a href="./" aria-current="page">Building</a><a href="../#work">Projects</a><a href="../#about">About</a><a href="../blog/">Blog</a><a href="../#contact">Contact</a>
+        </nav>
+
+        <div id="content">
+
+            <main id="main">
+
+                <div class="post">
+                    <p class="post-meta"><a href="../">&laquo; Home</a> &middot; Currently building</p>
+                    <h1 class="post-title">bettermemory</h1>
+                    <p class="post-meta">v3.10 &middot; updated June 11, 2026 &middot; MIT &middot; works with Claude Code, Cursor, and any MCP client</p>
+
+                    <p>Storing facts is the easy half of agent memory; knowing a fact has held up weeks and forty commits later is the hard half. bettermemory is built around the hard half: plain markdown and a local MCP server underneath, an extension of the model in behavior. A markdown folder and 25 MCP tools that give the model a sense of time.</p>
+
+                    <p>It changes four things about how the model behaves:</p>
+
+                    <ul>
+                        <li><strong>It checks before it trusts.</strong> Every hit carries a staleness verdict: calendar age, moved file paths, and commits landed since the fact was last confirmed.</li>
+                        <li><strong>It asks before it remembers you.</strong> Retrieval is opt-in per turn, claims about you stage for your sign-off, and pasted secrets never reach disk.</li>
+                        <li><strong>Every use leaves a record.</strong> The server logs which sentence a memory shaped, and flags the searches the model should have run but skipped.</li>
+                        <li><strong>It carries state across agents.</strong> Loops and subagent swarms journal into one shared store; the next session picks up mid-thought instead of cold.</li>
+                    </ul>
+
+                    <p>Here is what one search hit looks like to the model. The verdict is the whole point:</p>
+
+<pre class="codebox" id="bm-demo" aria-live="polite">{
+  "snippet": "Auth middleware lives in src/auth/middleware.py",
+  "relevance": "high",
+  "staleness_verdict": <b class="hot">"spot_check_required"</b>,
+  "path_drift": { "missing": ["src/auth/middleware.py"] },
+  "commit_drift_count": 12
+}</pre>
+                    <p class="demo-controls" id="bm-demo-controls" hidden>
+                        <button type="button" data-act="commits">Land 12 commits</button>
+                        <button type="button" data-act="move">Move the file</button>
+                        <button type="button" data-act="verify">memory_verify</button>
+                    </p>
+                    <p class="caption">The verdict tracks what happened since the fact was stored. Move the cited file and it stops trusting it; verify it and it goes back to fresh.</p>
+
+                    <h3>Install</h3>
+
+                    <p><strong>Claude Code:</strong></p>
+
+<pre class="codebox">/plugin marketplace add 0Mattias/bettermemory
+/plugin install bettermemory@bettermemory</pre>
+
+                    <p class="small">Elsewhere: <code>uv tool install bettermemory</code> then <code>bettermemory init --client &lt;name&gt;</code></p>
+
+                    <p><a href="https://github.com/0Mattias/bettermemory">Source on GitHub</a> &middot; <a href="../blog/building-bettermemory/">Why I built it (write-up)</a></p>
+
+                    <footer class="article-foot">
+                        <p><a href="../">&laquo; Home</a> &middot; <a href="#main">back to top &uarr;</a></p>
+                    </footer>
+                </div>
+
+            </main>
+
+            <div id="sidebar">
+
+                <div class="box">
+                    <h3>About me</h3>
+                    <div class="inner">
+                        <p>Self-taught engineer in Boston. I build security tools, AI agents, and the low-level pieces underneath.</p>
+                        <p><a href="../#about">more &raquo;</a></p>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <h3>Also on this site</h3>
+                    <div class="inner">
+                        <ul>
+                            <li><a href="../whalemu/">WhalEmu demo</a></li>
+                            <li><a href="../blog/">Blog</a></li>
+                            <li><a href="../#work">All projects</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <h3>Elsewhere</h3>
+                    <div class="inner">
+                        <ul>
+                            <li><a href="https://github.com/0Mattias" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                            <li><a href="https://www.linkedin.com/in/mattiasrask" target="_blank" rel="noopener noreferrer">LinkedIn</a></li>
+                            <li><a href="https://huggingface.co/MrPibb" target="_blank" rel="noopener noreferrer">Hugging Face</a></li>
+                            <li><a href="mailto:rask@duck.com">Email</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div id="footer">
+            <p>&copy; <span id="year">2026</span> Mattias Rask &middot; Boston, MA</p>
+        </div>
+
+    </div>
+
+    <script src="../script.js"></script>
+</body>
+
+</html>

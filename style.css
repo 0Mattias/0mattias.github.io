@@ -9,6 +9,10 @@
 
 html { background: #ced3da; }
 
+@media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+}
+
 body {
     background: #ced3da;
     font: 12px/1.75 Verdana, Geneva, Tahoma, sans-serif;
@@ -20,6 +24,14 @@ img { border: 0; max-width: 100%; }
 a { color: #1d56a5; }
 a:visited { color: #6a3aa0; }
 a:hover { color: #cc3300; }
+
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid #ff6600;
+    outline-offset: 1px;
+}
 
 /* ─── Skip link ─── */
 
@@ -128,7 +140,13 @@ a:hover { color: #cc3300; }
     padding-bottom: 6px;
 }
 
-.post-title a { text-decoration: none; }
+.post-title a,
+.post-title a:visited {
+    color: #36598f;
+    text-decoration: none;
+}
+
+.post-title a:hover { color: #cc3300; }
 
 .post-meta {
     font-size: 10px;
@@ -153,6 +171,23 @@ hr.sep {
 }
 
 .small { font-size: 11px; color: #666; }
+
+.toplink {
+    text-align: right;
+    font-size: 10px;
+    margin-top: 10px;
+}
+
+.toplink a,
+.toplink a:visited {
+    color: #8a8a8a;
+    text-decoration: none;
+}
+
+.toplink a:hover {
+    color: #cc3300;
+    text-decoration: underline;
+}
 
 .caption {
     font-size: 10px;
@@ -207,6 +242,8 @@ code {
 }
 
 /* ─── Project table ─── */
+
+.table-scroll { overflow-x: auto; }
 
 table.projects {
     border-collapse: collapse;
@@ -593,5 +630,20 @@ table.emu-regs td.chg { background: #ffffe1; }
     .emu { display: block; }
     .emu-right { margin-top: 14px; }
     .lb-img { max-height: 70vh; }
+    table.projects { min-width: 520px; }
+}
+
+/* ─── Print ─── */
+
+@media print {
+    html, body { background: #fff; }
+    #container { width: auto; margin: 0; border: 0; box-shadow: none; }
+    #header { background: #fff; border-bottom: 2px solid #36598f; padding: 0 0 10px; }
+    .site-title a { color: #36598f; text-shadow: none; }
+    .site-tagline { color: #555; }
+    #navbar, #sidebar, .skip-link, .demo-controls, .toplink, .emu-controls { display: none; }
+    #content { display: block; }
+    #main { padding: 16px 0; }
+    a { color: #333; }
 }
 
