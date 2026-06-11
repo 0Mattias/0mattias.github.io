@@ -1,14 +1,14 @@
 <!DOCTYPE html>
+<!-- yes, the source is hand-written. hi! -->
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#0c0b09">
-    <meta name="color-scheme" content="dark">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#36598f">
     <meta name="description" content="Mattias Rask. Self-taught engineer in Boston. Security tools, AI agents, low-level systems, and the homelab to run them.">
     <meta name="author" content="Mattias Rask">
-    <title>Mattias Rask</title>
+    <title>Mattias Rask :: home</title>
 
     <link rel="canonical" href="https://0mattias.github.io/">
 
@@ -26,12 +26,8 @@
     <meta name="twitter:description" content="Mattias Rask. Self-taught engineer in Boston. Security tools, AI agents, low-level systems, and the homelab to run them.">
     <meta name="twitter:image" content="https://0mattias.github.io/og.png">
 
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230c0b09'/%3E%3Ctext x='50%25' y='62%25' font-family='Georgia,serif' font-style='italic' font-size='20' font-weight='400' fill='%23ece6d9' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2336598f'/%3E%3Crect y='27' width='32' height='5' fill='%23ff6600'/%3E%3Ctext x='50%25' y='66%25' font-family='Georgia,serif' font-size='20' font-weight='bold' fill='%23ffffff' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..600,0..100;1,9..144,300..600,0..100&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="style.css">
 
@@ -58,393 +54,269 @@
 <body>
     <a href="#main" class="skip-link">Skip to content</a>
 
-    <nav class="nav" id="nav">
-        <a href="#home" class="nav-mark">Mattias <em>Rask</em></a>
-        <div class="nav-links" id="nav-links">
-            <a href="#building">Building</a>
-            <a href="#work">Work</a>
-            <a href="#about">About</a>
-            <a href="blog/">Blog</a>
-            <a href="#contact">Contact</a>
+    <div id="container">
+
+        <div id="header">
+            <h1 class="site-title"><a href="#home" id="home">Mattias Rask</a></h1>
+            <p class="site-tagline">security tools, AI agents &amp; other contraptions &middot; Boston, MA</p>
         </div>
-        <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
-            <span></span><span></span>
-        </button>
-    </nav>
 
-    <main id="main">
+        <nav id="navbar">
+            <a href="#home">Home</a><a href="#building">Building</a><a href="#work">Projects</a><a href="#about">About</a><a href="blog/">Blog</a><a href="#contact">Contact</a>
+        </nav>
 
-        <!-- ═══ HERO ═══ -->
-        <section class="hero" id="home">
-            <header class="hero-bar">
-                <span>Boston, MA</span>
-                <span>Systems &middot; Security &middot; AI</span>
-                <a href="#building" class="hero-bar-status">Now: bettermemory v3.10</a>
-            </header>
-
-            <h1 class="hero-name">
-                Mattias<br><em>Rask</em>
-            </h1>
-
-            <p class="hero-lede reveal">
-                Self-taught engineer. I build security tools, AI agents, and the low-level pieces underneath: covert channels, traffic mimicry, x86 emulation, fine-tuned LLMs. Most of it runs on a homelab I host myself.
-            </p>
-
-            <div class="hero-actions reveal">
-                <a href="mailto:rask@duck.com" class="ghost">rask@duck.com <span aria-hidden="true">→</span></a>
+        <div id="ticker">
+            <div class="reel">
+                <span>&#9733; NEWS: bettermemory v3.10 shipped June 10 &middot; 25 MCP tools, ~2,540 tests &middot; the model now knows when its own memory has gone stale &middot; write-up in the blog &#9733;</span><span aria-hidden="true">&#9733; NEWS: bettermemory v3.10 shipped June 10 &middot; 25 MCP tools, ~2,540 tests &middot; the model now knows when its own memory has gone stale &middot; write-up in the blog &#9733;</span>
             </div>
+        </div>
 
-            <nav class="hero-index reveal" aria-label="Sections">
-                <a href="#building"><span class="no" aria-hidden="true">01</span>Building</a>
-                <a href="#work"><span class="no" aria-hidden="true">02</span>Work</a>
-                <a href="#about"><span class="no" aria-hidden="true">03</span>About</a>
-                <a href="#contact"><span class="no" aria-hidden="true">04</span>Contact</a>
-            </nav>
-        </section>
+        <div id="content">
 
-        <!-- ═══ BUILDING (bettermemory) ═══ -->
-        <section class="section section-building" id="building">
-            <header class="section-head bm-head reveal">
-                <div class="section-no">
-                    <span class="no" aria-hidden="true">01</span>
-                    <span class="kicker">Currently building</span>
-                </div>
-                <div>
-                    <h2 class="bm-title">bettermemory</h2>
-                    <p class="bm-tagline">A markdown folder and 25 MCP tools that give the model a sense of time.</p>
-                </div>
-            </header>
+            <main id="main">
 
-            <div class="bm-grid reveal">
-                <div class="bm-body">
-                    <p class="bm-desc">
-                        Storing facts is the easy half of agent memory; knowing a fact has held up weeks and forty commits later is the hard half. bettermemory is built around the hard half: plain markdown and a local MCP server underneath, an extension of the model in behavior. It changes four things:
-                    </p>
+                <div class="post" id="building">
+                    <h2 class="post-title">bettermemory v3.10 <span class="new-badge">NEW!</span></h2>
+                    <p class="post-meta">Updated June 11, 2026 &middot; filed under: currently building</p>
 
-                    <ol class="bm-shifts" role="list">
-                        <li class="bm-shift">
-                            <h3>It checks before it trusts</h3>
-                            <p>Every hit carries a staleness verdict: calendar age, moved file paths, and commits landed since the fact was last confirmed.</p>
-                        </li>
-                        <li class="bm-shift">
-                            <h3>It asks before it remembers you</h3>
-                            <p>Retrieval is opt-in per turn, claims about you stage for your sign-off, and pasted secrets never reach disk.</p>
-                        </li>
-                        <li class="bm-shift">
-                            <h3>Every use leaves a record</h3>
-                            <p>The server logs which sentence a memory shaped, and flags the searches the model should have run but skipped.</p>
-                        </li>
-                        <li class="bm-shift">
-                            <h3>It carries state across agents</h3>
-                            <p>Loops and subagent swarms journal into one shared store; the next session picks up mid-thought instead of cold.</p>
-                        </li>
-                    </ol>
+                    <p>Storing facts is the easy half of agent memory; knowing a fact has held up weeks and forty commits later is the hard half. bettermemory is built around the hard half: plain markdown and a local MCP server underneath, an extension of the model in behavior. A markdown folder and 25 MCP tools that give the model a sense of time, basically.</p>
 
-                    <figure class="bm-verdict" aria-label="One bettermemory search hit, as the model sees it">
-                        <header class="terminal-bar">
-                            <span class="terminal-title">retrieval</span>
-                            <span class="terminal-meta">one search hit, as the model sees it</span>
-                        </header>
-<pre>{
-  <span class="k">"snippet"</span>: <span class="v">"Auth middleware lives in src/auth/middleware.py"</span>,
-  <span class="k">"relevance"</span>: <span class="v">"high"</span>,
-  <span class="k">"staleness_verdict"</span>: <span class="hot">"spot_check_recommended"</span>,<sup aria-hidden="true">1</sup>
-  <span class="k">"path_drift"</span>: { <span class="k">"missing"</span>: [<span class="v">"src/auth/middleware.py"</span>] },<sup aria-hidden="true">2</sup>
-  <span class="k">"commit_drift_count"</span>: <span class="v">12</span>
+                    <p>It changes four things about how the model behaves:</p>
+
+                    <ul>
+                        <li><strong>It checks before it trusts.</strong> Every hit carries a staleness verdict: calendar age, moved file paths, and commits landed since the fact was last confirmed.</li>
+                        <li><strong>It asks before it remembers you.</strong> Retrieval is opt-in per turn, claims about you stage for your sign-off, and pasted secrets never reach disk.</li>
+                        <li><strong>Every use leaves a record.</strong> The server logs which sentence a memory shaped, and flags the searches the model should have run but skipped.</li>
+                        <li><strong>It carries state across agents.</strong> Loops and subagent swarms journal into one shared store; the next session picks up mid-thought instead of cold.</li>
+                    </ul>
+
+                    <p>Here is what one search hit looks like to the model. The verdict is the whole point:</p>
+
+<pre class="codebox">{
+  "snippet": "Auth middleware lives in src/auth/middleware.py",
+  "relevance": "high",
+  "staleness_verdict": <b class="hot">"spot_check_recommended"</b>,
+  "path_drift": { "missing": ["src/auth/middleware.py"] },
+  "commit_drift_count": 12
 }</pre>
-                        <figcaption class="bm-verdict-notes">
-                            <span><sup aria-hidden="true">1</sup> <code>staleness_verdict</code> folds calendar age, path drift, and commit drift into one signal</span>
-                            <span><sup aria-hidden="true">2</sup> <code>path_drift</code> means the cited file moved since the fact was last confirmed</span>
-                        </figcaption>
-                    </figure>
+                    <p class="caption">The cited file moved, so the verdict says: go check before you trust it.</p>
 
-                    <dl class="spec">
-                        <div><dt>Release</dt><dd>v3.10.0 &middot; June 2026 &middot; MIT</dd></div>
-                        <div><dt>Surface</dt><dd>25 MCP tools &middot; ~2,540 tests</dd></div>
-                        <div><dt>Clients</dt><dd>Claude Code &middot; Cursor &middot; any MCP client</dd></div>
-                        <div><dt>Source</dt><dd><a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener noreferrer">github.com/0Mattias/bettermemory <span class="arrow" aria-hidden="true">↗</span></a></dd></div>
-                        <div><dt>Write-up</dt><dd><a href="blog/building-bettermemory/">Why I built it <span class="arrow" aria-hidden="true">→</span></a></dd></div>
-                    </dl>
+                    <p><strong>Install (Claude Code):</strong></p>
+
+<pre class="codebox">/plugin marketplace add 0Mattias/bettermemory
+/plugin install bettermemory@bettermemory</pre>
+
+                    <p class="small">Elsewhere: <code>uv tool install bettermemory</code> then <code>bettermemory init --client &lt;name&gt;</code></p>
+
+                    <p>v3.10.0 &middot; June 2026 &middot; MIT &middot; works with Claude Code, Cursor, and any MCP client.<br>
+                    <a href="https://github.com/0Mattias/bettermemory">Source on GitHub</a> &middot; <a href="blog/building-bettermemory/">Why I built it (the long version)</a></p>
                 </div>
 
-                <aside class="bm-install featured-frame featured-install" aria-label="Install bettermemory in Claude Code">
-                    <header class="terminal-bar">
-                        <span class="terminal-title">install</span>
-                        <span class="terminal-meta">claude code</span>
-                    </header>
-                    <div class="terminal-body">
-                        <div class="terminal-line" data-copy="/plugin marketplace add 0Mattias/bettermemory">
-                            <span class="terminal-slash">/plugin</span> marketplace add 0Mattias/bettermemory<button type="button" class="copy-btn" aria-label="Copy command">Copy</button>
-                        </div>
-                        <div class="terminal-line" data-copy="/plugin install bettermemory@bettermemory">
-                            <span class="terminal-slash">/plugin</span> install bettermemory@bettermemory<button type="button" class="copy-btn" aria-label="Copy command">Copy</button>
-                        </div>
-                        <div class="terminal-cursor" aria-hidden="true"><span class="cursor">▌</span></div>
+                <hr class="sep">
+
+                <div class="post" id="work">
+                    <h2 class="post-title">Stuff I've made</h2>
+                    <p class="post-meta">two open source, five private &middot; newest first-ish</p>
+
+                    <table class="projects">
+                        <tr>
+                            <th>Project</th>
+                            <th>What it is</th>
+                            <th>Where</th>
+                        </tr>
+                        <tr>
+                            <td><strong>KillChain-8B</strong></td>
+                            <td>Fully fine-tuned Qwen3-8B on offensive red-team data. Four H200s, Axolotl.</td>
+                            <td><a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener noreferrer">Hugging Face</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>EarthMC Tracker</strong></td>
+                            <td>Conversational agent over a live, time-series player database. English in, paginated SQL out.</td>
+                            <td><a href="https://github.com/0Mattias/earthmc-beta" target="_blank" rel="noopener noreferrer">GitHub</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Chromatophore</strong></td>
+                            <td>A traffic-mimicry suite. Reshapes TCP and UDP streams to look like fifteen well-known protocols on the wire.</td>
+                            <td><span class="private-tag">private</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>PineappleGPT</strong></td>
+                            <td>Claude-driven passive wireless recon agent for the Hak5 WiFi Pineapple Mk7. Pineapple as sensor, Claude as the reasoning loop.</td>
+                            <td><span class="private-tag">private</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Honeypot</strong></td>
+                            <td>A high-interaction honeypot disguised as a WordPress AI blog. Single Docker container on Cloud Run behind Cloudflare.</td>
+                            <td><span class="private-tag">private</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>WhalEmu</strong></td>
+                            <td>A real-mode x86 CPU emulator with a browser-based step debugger. Write assembly, walk through it instruction by instruction.</td>
+                            <td><span class="private-tag">private</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Homelab MCP</strong></td>
+                            <td>Three ZimaBoards on Tailscale running my own Forgejo, Sliver C2, Velociraptor DFIR, Caldera, BloodHound, and a cross-board restic backup ring.</td>
+                            <td><span class="private-tag">private</span></td>
+                        </tr>
+                    </table>
+
+                    <p class="small">The private rows: source stays closed, but I'm happy to walk through any of them on a call.</p>
+                </div>
+
+                <hr class="sep">
+
+                <div class="post" id="about">
+                    <h2 class="post-title">About me</h2>
+                    <p class="post-meta">the human behind the hostname</p>
+
+                    <p>Hi! I'm Mattias. Self-taught; I learn by building the thing.</p>
+
+                    <p>Two years into software, cybersecurity, and embedded systems, mostly building rather than reading about it. Most of what's here shipped this past spring; CCNA and PT1 are up next. Off-keyboard: drawing, photo and video editing, ham radio, the outdoors, and my cat.</p>
+
+                    <h3 class="small" style="margin-bottom: 8px;"><strong>From the bench:</strong></h3>
+
+                    <div class="gallery">
+                        <figure>
+                            <a href="photos/photo-rack.jpg"><img src="photos/photo-rack.jpg" alt="A black networking rack on a hardwood floor with a Cisco switch, patch panel, and StarTech PDU mounted on the front." width="1400" height="1866" loading="lazy" decoding="async"></a>
+                            <figcaption>Networking rack, pre-boards</figcaption>
+                        </figure>
+                        <figure>
+                            <a href="photos/photo-homelab.jpg"><img src="photos/photo-homelab.jpg" alt="Three silver ZimaBoard SBCs sitting side by side in a rack with cables routed across them." width="1866" height="1400" loading="lazy" decoding="async"></a>
+                            <figcaption>Homelab: three ZimaBoards on Tailscale</figcaption>
+                        </figure>
+                        <figure>
+                            <a href="photos/photo-marauder-flash.jpg"><img src="photos/photo-marauder-flash.jpg" alt="A custom Dual C5 ESP32 Marauder board in a translucent red case held in front of a monitor showing a flasher script and pink ASCII art output." width="1400" height="1866" loading="lazy" decoding="async"></a>
+                            <figcaption>Custom Dual C5 board, mid-flash</figcaption>
+                        </figure>
+                        <figure>
+                            <a href="photos/photo-arduino.jpg"><img src="photos/photo-arduino.jpg" alt="An Arduino UNO wired up on a breadboard with jumper wires running off-frame in front of a laptop." width="1866" height="1400" loading="lazy" decoding="async"></a>
+                            <figcaption>Arduino on the bench</figcaption>
+                        </figure>
+                        <figure>
+                            <a href="photos/photo-marauder-laptop.jpg"><img src="photos/photo-marauder-laptop.jpg" alt="A Marauder held over a desk, a sticker reading 'lookin?' visible on a laptop in the background." width="1400" height="1866" loading="lazy" decoding="async"></a>
+                            <figcaption>Before anti-detection</figcaption>
+                        </figure>
+                        <figure>
+                            <a href="photos/photo-marauder-dark.jpg"><img src="photos/photo-marauder-dark.jpg" alt="A Marauder pointed at antennas in low light, screen reading 'Detect Pineapple'." width="1400" height="1866" loading="lazy" decoding="async"></a>
+                            <figcaption>After anti-detection</figcaption>
+                        </figure>
+                        <figure>
+                            <a href="photos/photo-georgia.jpg"><img src="photos/photo-georgia.jpg" alt="Georgia, a tabby cat, sitting in front of the rack." width="1400" height="1866" loading="lazy" decoding="async"></a>
+                            <figcaption>Georgia, head of QA</figcaption>
+                        </figure>
                     </div>
-                    <footer class="terminal-foot">
-                        <span class="terminal-foot-label">Elsewhere</span>
-                        <code>uv tool install bettermemory</code> &middot; <code>bettermemory init --client &lt;name&gt;</code>
-                    </footer>
-                </aside>
-            </div>
-        </section>
 
-        <!-- ═══ WORK / ARCHIVE ═══ -->
-        <section class="section" id="work">
-            <header class="section-head reveal">
-                <div class="section-no">
-                    <span class="no" aria-hidden="true">02</span>
-                    <span class="kicker">Shipped</span>
-                </div>
-                <h2>Projects</h2>
-            </header>
-
-            <div class="archive-group reveal">
-                <header class="group-head">
-                    <span class="group-label">Open source</span>
-                </header>
-
-                <ol class="archive" role="list">
-                    <li>
-                        <a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener noreferrer" class="entry">
-                            <span class="entry-meta">Fine-tuned LLM</span>
-                            <div class="entry-body">
-                                <div class="entry-top">
-                                    <h3>KillChain-8B</h3>
-                                    <span class="arrow" aria-hidden="true">↗</span>
-                                </div>
-                                <p class="desc">Fully fine-tuned Qwen3-8B on offensive red-team data. Four H200s, Axolotl, published to Hugging Face.</p>
-                            </div>
-                        </a>
-                    </li>
-
-                    <li>
-                        <a href="https://github.com/0Mattias/earthmc-beta" target="_blank" rel="noopener noreferrer" class="entry">
-                            <span class="entry-meta">Agent &middot; SQL</span>
-                            <div class="entry-body">
-                                <div class="entry-top">
-                                    <h3>EarthMC Tracker</h3>
-                                    <span class="arrow" aria-hidden="true">↗</span>
-                                </div>
-                                <p class="desc">Conversational agent over a live, time-series player database. English in, paginated SQL out.</p>
-                            </div>
-                        </a>
-                    </li>
-                </ol>
-            </div>
-
-            <div class="archive-group reveal">
-                <header class="group-head">
-                    <span class="group-label">Private</span>
-                </header>
-                <p class="group-note">Source isn&rsquo;t public. Happy to walk through any of these on a call.</p>
-
-                <ol class="archive" role="list">
-                    <li>
-                        <div class="entry private">
-                            <span class="entry-meta">Traffic mimicry</span>
-                            <div class="entry-body">
-                                <div class="entry-top">
-                                    <h3>Chromatophore</h3>
-                                    <span class="badge">Private</span>
-                                </div>
-                                <p class="desc">A traffic-mimicry suite. Reshapes TCP and UDP streams to look like fifteen well-known protocols on the wire.</p>
-                            </div>
-                        </div>
-                    </li>
-
-                    <li>
-                        <div class="entry private">
-                            <span class="entry-meta">Wireless recon</span>
-                            <div class="entry-body">
-                                <div class="entry-top">
-                                    <h3>PineappleGPT</h3>
-                                    <span class="badge">Private</span>
-                                </div>
-                                <p class="desc">Claude-driven passive wireless recon agent for the Hak5 WiFi Pineapple Mk7. Pineapple as sensor, Claude as the reasoning loop.</p>
-                            </div>
-                        </div>
-                    </li>
-
-                    <li>
-                        <div class="entry private">
-                            <span class="entry-meta">Deception</span>
-                            <div class="entry-body">
-                                <div class="entry-top">
-                                    <h3>Honeypot</h3>
-                                    <span class="badge">Private</span>
-                                </div>
-                                <p class="desc">A high-interaction honeypot disguised as a WordPress AI blog. Single Docker container on Cloud Run behind Cloudflare.</p>
-                            </div>
-                        </div>
-                    </li>
-
-                    <li>
-                        <div class="entry private">
-                            <span class="entry-meta">x86 emulation</span>
-                            <div class="entry-body">
-                                <div class="entry-top">
-                                    <h3>WhalEmu</h3>
-                                    <span class="badge">Private</span>
-                                </div>
-                                <p class="desc">A real-mode x86 CPU emulator with a browser-based step debugger. Write assembly, assemble it, walk through it instruction by instruction.</p>
-                            </div>
-                        </div>
-                    </li>
-
-                    <li>
-                        <div class="entry private">
-                            <span class="entry-meta">Infrastructure</span>
-                            <div class="entry-body">
-                                <div class="entry-top">
-                                    <h3>Homelab MCP</h3>
-                                    <span class="badge">Private</span>
-                                </div>
-                                <p class="desc">Three ZimaBoards on Tailscale running my own Forgejo, Sliver C2, Velociraptor DFIR, Caldera, BloodHound, and a cross-board restic backup ring.</p>
-                            </div>
-                        </div>
-                    </li>
-                </ol>
-            </div>
-        </section>
-
-        <!-- ═══ ABOUT ═══ -->
-        <section class="section" id="about">
-            <header class="section-head reveal">
-                <div class="section-no">
-                    <span class="no" aria-hidden="true">03</span>
-                    <span class="kicker">Background</span>
-                </div>
-                <h2>About</h2>
-            </header>
-
-            <div class="about reveal">
-                <div class="about-text">
-                    <p class="lede">
-                        Self-taught. I learn by building the thing.
-                    </p>
-                    <p>
-                        Two years into software, cybersecurity, and embedded systems, mostly building rather than reading about it. Most of what&rsquo;s here shipped this past spring; CCNA and PT1 are up next.
-                    </p>
-                    <p>
-                        Off-keyboard: drawing, photo and video editing, ham radio, the outdoors, and my cat.
-                    </p>
+                    <p class="small">Click any photo for the full size.</p>
                 </div>
 
-                <aside class="about-stack">
-                    <dl>
-                        <dt>Systems</dt>
-                        <dd>C, Rust, Go, Java 21</dd>
+                <hr class="sep">
 
-                        <dt>Web</dt>
-                        <dd>TypeScript, Next.js, React, PostgreSQL</dd>
+                <div class="post" id="contact">
+                    <h2 class="post-title">Get in touch</h2>
+                    <p class="post-meta">no guestbook, sadly. email is the guestbook now</p>
 
-                        <dt>AI</dt>
-                        <dd>Anthropic, Gemini, OpenAI, Axolotl</dd>
-                    </dl>
+                    <p>Open to roles in systems, security, and applied AI.</p>
 
-                    <dl class="certs">
-                        <dt>Certified</dt>
-                        <dd>
-                            <span>Cisco CCST</span>
-                            <ul>
-                                <li>Cybersecurity</li>
-                                <li>Networking</li>
-                                <li>IT Support</li>
-                            </ul>
-                        </dd>
+                    <p class="mail-big"><a href="mailto:rask@duck.com">rask@duck.com</a></p>
 
-                        <dt>Verified</dt>
-                        <dd>
-                            <span>Anthropic</span>
-                            <ul>
-                                <li>Cyber Verification Program</li>
-                            </ul>
-                        </dd>
-                    </dl>
-                </aside>
-            </div>
-
-            <div class="reel reveal" role="region" aria-label="Photos from the bench">
-                <ol class="reel-track" role="list">
-                    <li class="reel-card">
-                        <figure>
-                            <img src="photos/photo-rack.jpg" alt="A black networking rack on a hardwood floor with a Cisco switch, patch panel, and StarTech PDU mounted on the front." width="1400" height="1866" decoding="async">
-                            <figcaption>Networking rack, pre-boards.</figcaption>
-                        </figure>
-                    </li>
-                    <li class="reel-card">
-                        <figure>
-                            <img src="photos/photo-homelab.jpg" alt="Three silver ZimaBoard SBCs sitting side by side in a rack with cables routed across them." width="1866" height="1400" loading="lazy" decoding="async">
-                            <figcaption>Homelab. Three ZimaBoards on Tailscale.</figcaption>
-                        </figure>
-                    </li>
-                    <li class="reel-card">
-                        <figure>
-                            <img src="photos/photo-marauder-flash.jpg" alt="A custom Dual C5 ESP32 Marauder board in a translucent red case held in front of a monitor showing a flasher script and pink ASCII art output." width="1400" height="1866" loading="lazy" decoding="async">
-                            <figcaption>Custom Dual C5 board, mid-flash.</figcaption>
-                        </figure>
-                    </li>
-                    <li class="reel-card">
-                        <figure>
-                            <img src="photos/photo-arduino.jpg" alt="An Arduino UNO wired up on a breadboard with jumper wires running off-frame in front of a laptop." width="1866" height="1400" loading="lazy" decoding="async">
-                            <figcaption>Arduino on the bench.</figcaption>
-                        </figure>
-                    </li>
-                    <li class="reel-card">
-                        <figure>
-                            <img src="photos/photo-marauder-laptop.jpg" alt="A Marauder held over a desk, a sticker reading 'lookin?' visible on a laptop in the background." width="1400" height="1866" loading="lazy" decoding="async">
-                            <figcaption>Before anti-detection.</figcaption>
-                        </figure>
-                    </li>
-                    <li class="reel-card">
-                        <figure>
-                            <img src="photos/photo-marauder-dark.jpg" alt="A Marauder pointed at antennas in low light, screen reading 'Detect Pineapple'." width="1400" height="1866" loading="lazy" decoding="async">
-                            <figcaption>After anti-detection.</figcaption>
-                        </figure>
-                    </li>
-                    <li class="reel-card">
-                        <figure>
-                            <img src="photos/photo-georgia.jpg" alt="Georgia, a tabby cat, sitting in front of the rack." width="1400" height="1866" loading="lazy" decoding="async">
-                            <figcaption>Georgia.</figcaption>
-                        </figure>
-                    </li>
-                </ol>
-            </div>
-        </section>
-
-        <!-- ═══ CONTACT ═══ -->
-        <section class="section" id="contact">
-            <header class="section-head reveal">
-                <div class="section-no">
-                    <span class="no" aria-hidden="true">04</span>
-                    <span class="kicker">Contact</span>
+                    <p class="small">Or find me on <a href="https://github.com/0Mattias" target="_blank" rel="noopener noreferrer">GitHub</a>, <a href="https://www.linkedin.com/in/mattiasrask" target="_blank" rel="noopener noreferrer">LinkedIn</a>, or <a href="https://huggingface.co/MrPibb" target="_blank" rel="noopener noreferrer">Hugging Face</a>.</p>
                 </div>
-                <h2>Get in touch</h2>
-            </header>
 
-            <div class="contact reveal">
-                <p class="contact-lede">
-                    Open to roles in systems, security, and applied AI.
-                </p>
+            </main>
 
-                <a href="mailto:rask@duck.com" class="contact-mail">rask@duck.com <span class="arrow" aria-hidden="true">→</span></a>
+            <div id="sidebar">
 
-                <ul class="contact-links" role="list">
-                    <li><a href="https://github.com/0Mattias" target="_blank" rel="noopener noreferrer">GitHub <span class="arrow" aria-hidden="true">↗</span></a></li>
-                    <li><a href="https://www.linkedin.com/in/mattiasrask" target="_blank" rel="noopener noreferrer">LinkedIn <span class="arrow" aria-hidden="true">↗</span></a></li>
-                    <li><a href="https://huggingface.co/MrPibb" target="_blank" rel="noopener noreferrer">Hugging Face <span class="arrow" aria-hidden="true">↗</span></a></li>
-                </ul>
+                <div class="box">
+                    <h3>About me</h3>
+                    <div class="inner">
+                        <p>Self-taught engineer in Boston. I build security tools, AI agents, and the low-level pieces underneath. Most of it runs on a homelab I host myself.</p>
+                        <p><a href="#about">more &raquo;</a></p>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <h3>Now building</h3>
+                    <div class="inner">
+                        <p><strong><a href="#building">bettermemory</a></strong> v3.10<br>
+                        Memory for AI agents that knows when its own facts have gone stale.</p>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <h3>Toolbox</h3>
+                    <div class="inner">
+                        <dl>
+                            <dt>Systems</dt>
+                            <dd>C, Rust, Go, Java 21</dd>
+                            <dt>Web</dt>
+                            <dd>TypeScript, Next.js, React, PostgreSQL</dd>
+                            <dt>AI</dt>
+                            <dd>Anthropic, Gemini, OpenAI, Axolotl</dd>
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <h3>Certs</h3>
+                    <div class="inner">
+                        <ul>
+                            <li>Cisco CCST: Cybersecurity</li>
+                            <li>Cisco CCST: Networking</li>
+                            <li>Cisco CCST: IT Support</li>
+                            <li>Anthropic Cyber Verification Program</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <h3>Elsewhere</h3>
+                    <div class="inner">
+                        <ul>
+                            <li><a href="https://github.com/0Mattias" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                            <li><a href="https://www.linkedin.com/in/mattiasrask" target="_blank" rel="noopener noreferrer">LinkedIn</a></li>
+                            <li><a href="https://huggingface.co/MrPibb" target="_blank" rel="noopener noreferrer">Hugging Face</a></li>
+                            <li><a href="mailto:rask@duck.com">Email</a></li>
+                            <li><a href="blog/" title="ok, it is just the blog page">RSS (sort of)</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="box mascot">
+                    <h3>Site mascot</h3>
+                    <div class="inner">
+                        <img src="photos/photo-georgia.jpg" alt="Georgia, a tabby cat, sitting in front of the rack." width="1400" height="1866" loading="lazy" decoding="async">
+                        <p class="small">Georgia. She did not approve this redesign.</p>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <h3>Site stats</h3>
+                    <div class="inner">
+                        <p>You are visitor number:<br>
+                        <span class="counter" id="counter" title="full disclosure: it only counts you">0001337</span></p>
+                        <p>Last updated:<br><strong>June 11, 2026</strong></p>
+                        <div class="badges">
+                            <span class="badge88 badge-xhtml" title="it's HTML5, but let me dream">Valid XHTML 1.0</span>
+                            <span class="badge88 badge-coffee">Powered by coffee</span>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-        </section>
 
-    </main>
+        </div>
 
-    <footer class="footer">
-        <div>&copy; <span id="year">2026</span> Mattias Rask &middot; Boston, MA</div>
-        <div>Hand-built. No framework.</div>
-        <div>Fraunces &middot; Inter &middot; JetBrains Mono</div>
-    </footer>
+        <div id="footer">
+            <p>&copy; <span id="year">2026</span> Mattias Rask &middot; hand-coded in plain HTML and CSS, no framework, never a framework &middot; best viewed in Firefox 2.0 at 1024x768 (kidding, mostly)</p>
+            <div class="badges">
+                <a class="badge88 badge-rss" href="blog/" title="ok, it is just the blog page">RSS 2.0</a>
+                <a class="badge88 badge-claude" href="https://github.com/0Mattias/bettermemory" title="my MCP memory server">bettermemory</a>
+                <span class="badge88 badge-mono" title="three ZimaBoards and a dream">homelab: UP</span>
+            </div>
+        </div>
+
+    </div>
 
     <script src="script.js"></script>
 </body>

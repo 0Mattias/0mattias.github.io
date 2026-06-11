@@ -1,14 +1,14 @@
 <!DOCTYPE html>
+<!-- yes, the source is hand-written. hi! -->
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#0c0b09">
-    <meta name="color-scheme" content="dark">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#36598f">
     <meta name="description" content="Blog by Mattias Rask. Long-form notes on systems, security, and the tools I build.">
     <meta name="author" content="Mattias Rask">
-    <title>Blog &middot; Mattias Rask</title>
+    <title>Blog :: Mattias Rask</title>
 
     <link rel="canonical" href="https://0mattias.github.io/blog/">
 
@@ -26,12 +26,8 @@
     <meta name="twitter:description" content="Long-form notes on systems, security, and the tools I build.">
     <meta name="twitter:image" content="https://0mattias.github.io/og.png">
 
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230c0b09'/%3E%3Ctext x='50%25' y='62%25' font-family='Georgia,serif' font-style='italic' font-size='20' font-weight='400' fill='%23ece6d9' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2336598f'/%3E%3Crect y='27' width='32' height='5' fill='%23ff6600'/%3E%3Ctext x='50%25' y='66%25' font-family='Georgia,serif' font-size='20' font-weight='bold' fill='%23ffffff' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..600,0..100;1,9..144,300..600,0..100&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="../style.css">
 </head>
@@ -39,55 +35,76 @@
 <body>
     <a href="#main" class="skip-link">Skip to content</a>
 
-    <nav class="nav" id="nav">
-        <a href="../" class="nav-mark">Mattias <em>Rask</em></a>
-        <div class="nav-links" id="nav-links">
-            <a href="../#building">Building</a>
-            <a href="../#work">Work</a>
-            <a href="../#about">About</a>
-            <a href="./" aria-current="page">Blog</a>
-            <a href="../#contact">Contact</a>
+    <div id="container">
+
+        <div id="header">
+            <p class="site-title"><a href="../">Mattias Rask</a></p>
+            <p class="site-tagline">security tools, AI agents &amp; other contraptions &middot; Boston, MA</p>
         </div>
-        <button class="nav-toggle" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
-            <span></span><span></span>
-        </button>
-    </nav>
 
-    <main id="main" class="page">
+        <nav id="navbar">
+            <a href="../">Home</a><a href="../#building">Building</a><a href="../#work">Projects</a><a href="../#about">About</a><a href="./" aria-current="page">Blog</a><a href="../#contact">Contact</a>
+        </nav>
 
-        <header class="page-head">
-            <p class="page-eyebrow">Blog</p>
-            <h1 class="page-title">Notes from the bench.</h1>
-            <p class="page-dek">
-                Long-form on the tools I build and the systems I run. Infrequent. Only when I have something to say.
-            </p>
-        </header>
+        <div id="content">
 
-        <section class="page-section">
-            <ol class="writing-list" role="list">
-                <li class="writing-item">
-                    <a href="building-bettermemory/" class="writing-link">
-                        <div class="writing-meta">
-                            <time datetime="2026-05-18">May 18, 2026</time>
-                            <span class="writing-tag">Tools</span>
-                        </div>
-                        <div class="writing-body">
-                            <h2 class="writing-title">Building bettermemory.</h2>
-                            <p class="writing-dek">Why I rebuilt persistent memory for AI coding agents: the design, and what&rsquo;s landed since 2.0.</p>
-                            <span class="writing-cta">Read <span aria-hidden="true">→</span></span>
-                        </div>
-                    </a>
-                </li>
-            </ol>
-        </section>
+            <main id="main">
 
-    </main>
+                <div class="post">
+                    <h1 class="post-title">The blog</h1>
+                    <p class="post-meta">long-form, infrequent, only when I have something to say</p>
 
-    <footer class="footer">
-        <div>&copy; <span id="year">2026</span> Mattias Rask &middot; Boston, MA</div>
-        <div>Hand-built. No framework.</div>
-        <div>Fraunces &middot; Inter &middot; JetBrains Mono</div>
-    </footer>
+                    <ol class="writing-list" role="list">
+                        <li class="writing-item">
+                            <h2><a href="building-bettermemory/">Building bettermemory</a></h2>
+                            <p class="post-meta"><time datetime="2026-05-18">May 18, 2026</time> &middot; updated June 11 &middot; filed under: tools</p>
+                            <p>Why I rebuilt persistent memory for AI coding agents: the design, and what's landed since 2.0.</p>
+                            <p class="small"><a href="building-bettermemory/">Read it &raquo;</a></p>
+                        </li>
+                    </ol>
+                </div>
+
+            </main>
+
+            <div id="sidebar">
+
+                <div class="box">
+                    <h3>About me</h3>
+                    <div class="inner">
+                        <p>Self-taught engineer in Boston. I build security tools, AI agents, and the low-level pieces underneath.</p>
+                        <p><a href="../#about">more &raquo;</a></p>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <h3>Now building</h3>
+                    <div class="inner">
+                        <p><strong><a href="../#building">bettermemory</a></strong> v3.10<br>
+                        Memory for AI agents that knows when its own facts have gone stale.</p>
+                    </div>
+                </div>
+
+                <div class="box">
+                    <h3>Elsewhere</h3>
+                    <div class="inner">
+                        <ul>
+                            <li><a href="https://github.com/0Mattias" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                            <li><a href="https://www.linkedin.com/in/mattiasrask" target="_blank" rel="noopener noreferrer">LinkedIn</a></li>
+                            <li><a href="https://huggingface.co/MrPibb" target="_blank" rel="noopener noreferrer">Hugging Face</a></li>
+                            <li><a href="mailto:rask@duck.com">Email</a></li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div id="footer">
+            <p>&copy; <span id="year">2026</span> Mattias Rask &middot; hand-coded in plain HTML and CSS, no framework, never a framework</p>
+        </div>
+
+    </div>
 
     <script src="../script.js"></script>
 </body>
