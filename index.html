@@ -93,41 +93,50 @@
             <div class="hero-actions reveal">
                 <a href="mailto:rask@duck.com" class="ghost">rask@duck.com <span aria-hidden="true">→</span></a>
             </div>
+
+            <nav class="hero-index reveal" aria-label="Sections">
+                <a href="#building"><span class="no" aria-hidden="true">01</span>Building</a>
+                <a href="#work"><span class="no" aria-hidden="true">02</span>Work</a>
+                <a href="#about"><span class="no" aria-hidden="true">03</span>About</a>
+                <a href="#contact"><span class="no" aria-hidden="true">04</span>Contact</a>
+            </nav>
         </section>
 
         <!-- ═══ BUILDING (bettermemory) ═══ -->
         <section class="section section-building" id="building">
-            <header class="bm-head reveal">
-                <p class="bm-eyebrow">01 &middot; Currently building</p>
-                <h2 class="bm-title">bettermemory</h2>
-                <p class="bm-tagline">A markdown folder and 25 MCP tools that give the model a sense of time.</p>
+            <header class="section-head bm-head reveal">
+                <div class="section-no">
+                    <span class="no" aria-hidden="true">01</span>
+                    <span class="kicker">Currently building</span>
+                </div>
+                <div>
+                    <h2 class="bm-title">bettermemory</h2>
+                    <p class="bm-tagline">A markdown folder and 25 MCP tools that give the model a sense of time.</p>
+                </div>
             </header>
 
             <div class="bm-grid reveal">
                 <div class="bm-body">
                     <p class="bm-desc">
-                        Storing facts is the easy half of agent memory. The hard half is knowing whether a stored fact is still true when it comes back weeks and forty commits later. bettermemory is built around the hard half: every retrieval carries a verdict on whether the fact has held up.
-                    </p>
-                    <p class="bm-desc">
-                        Underneath, it is a local MCP server and a Claude Code plugin keeping plain markdown on disk; you can <code>grep</code> the store, <code>git log</code> it, hand-edit it. But the 3.x releases pushed it past storage. By now it works like an extension of the model that runs it, and it changes how the model behaves:
+                        Storing facts is the easy half of agent memory; knowing a fact has held up weeks and forty commits later is the hard half. bettermemory is built around the hard half: plain markdown and a local MCP server underneath, an extension of the model in behavior. It changes four things:
                     </p>
 
                     <ol class="bm-shifts" role="list">
                         <li class="bm-shift">
                             <h3>It checks before it trusts</h3>
-                            <p>Every hit comes back with a staleness verdict folding calendar age, cited file paths that have moved, and commits landed since the fact was last confirmed. Anything but fresh and the model spot-checks first. The rot gets caught at retrieval instead of inside a confident wrong answer.</p>
+                            <p>Every hit carries a staleness verdict: calendar age, moved file paths, and commits landed since the fact was last confirmed.</p>
                         </li>
                         <li class="bm-shift">
                             <h3>It asks before it remembers you</h3>
-                            <p>Retrieval is opt-in per turn, so generic questions stay clean of months of accumulated notes. Anything the model infers about you stages for confirmation before it lands on disk; you hold the veto. Write gates refuse transient state and pasted secrets, and an opt-in check flags ungrounded claims.</p>
+                            <p>Retrieval is opt-in per turn, claims about you stage for your sign-off, and pasted secrets never reach disk.</p>
                         </li>
                         <li class="bm-shift">
                             <h3>Every use leaves a record</h3>
-                            <p>When a memory shapes a reply, the server logs which sentence it shaped, down to the claim. An audit pass catches the failures that used to be invisible: searches the model should have run but skipped, and memories the ranker keeps serving that never get used. Cleanup runs dry-run by default.</p>
+                            <p>The server logs which sentence a memory shaped, and flags the searches the model should have run but skipped.</p>
                         </li>
                         <li class="bm-shift">
                             <h3>It carries state across agents</h3>
-                            <p>An episodes tier journals what a loop tried and what the takeaway was, pruned after thirty days and invisible to durable search. A swarm of subagents writes into one journal; the next session calls <code>episode_handoff</code> and picks up mid-thought instead of cold. Takeaways worth keeping graduate into durable memory. The rest ages out.</p>
+                            <p>Loops and subagent swarms journal into one shared store; the next session picks up mid-thought instead of cold.</p>
                         </li>
                     </ol>
 
@@ -150,15 +159,12 @@
                     </figure>
 
                     <dl class="spec">
-                        <div><dt>Release</dt><dd>v3.10.0 &middot; June 2026</dd></div>
-                        <div><dt>Stack</dt><dd>Python &middot; MCP &middot; markdown + YAML on disk</dd></div>
-                        <div><dt>Surface</dt><dd>25 MCP tools &middot; 18 on by default &middot; ~2,540 tests</dd></div>
-                        <div><dt>Clients</dt><dd>Claude Code &middot; Claude Desktop &middot; Cursor &middot; Continue &middot; Cline</dd></div>
-                        <div><dt>License</dt><dd>MIT &middot; Python 3.11&ndash;3.14</dd></div>
+                        <div><dt>Release</dt><dd>v3.10.0 &middot; June 2026 &middot; MIT</dd></div>
+                        <div><dt>Surface</dt><dd>25 MCP tools &middot; ~2,540 tests</dd></div>
+                        <div><dt>Clients</dt><dd>Claude Code &middot; Cursor &middot; any MCP client</dd></div>
                         <div><dt>Source</dt><dd><a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener noreferrer">github.com/0Mattias/bettermemory <span class="arrow" aria-hidden="true">↗</span></a></dd></div>
                         <div><dt>Write-up</dt><dd><a href="blog/building-bettermemory/">Why I built it <span class="arrow" aria-hidden="true">→</span></a></dd></div>
                     </dl>
-                    <p class="bm-metrics">Measured by its own eval: <code>memory_helped_rate</code> &middot; <code>endorsement_rate</code> &middot; <code>silent_miss_rate</code></p>
                 </div>
 
                 <aside class="bm-install featured-frame featured-install" aria-label="Install bettermemory in Claude Code">
@@ -186,7 +192,10 @@
         <!-- ═══ WORK / ARCHIVE ═══ -->
         <section class="section" id="work">
             <header class="section-head reveal">
-                <span class="kicker">02 &middot; Shipped</span>
+                <div class="section-no">
+                    <span class="no" aria-hidden="true">02</span>
+                    <span class="kicker">Shipped</span>
+                </div>
                 <h2>Projects</h2>
             </header>
 
@@ -302,7 +311,10 @@
         <!-- ═══ ABOUT ═══ -->
         <section class="section" id="about">
             <header class="section-head reveal">
-                <span class="kicker">03 &middot; The person</span>
+                <div class="section-no">
+                    <span class="no" aria-hidden="true">03</span>
+                    <span class="kicker">Background</span>
+                </div>
                 <h2>About</h2>
             </header>
 
@@ -312,10 +324,10 @@
                         Self-taught. I learn by building the thing.
                     </p>
                     <p>
-                        Most of what&rsquo;s on this site shipped this past spring. Two years deep into software, cybersecurity, and embedded systems, mostly building rather than reading about it. CCNA and PT1 are up next.
+                        Two years into software, cybersecurity, and embedded systems, mostly building rather than reading about it. Most of what&rsquo;s here shipped this past spring; CCNA and PT1 are up next.
                     </p>
                     <p>
-                        Off-keyboard: drawing, video and photo editing, ham radio, the outdoors, and hanging out with my cat.
+                        Off-keyboard: drawing, photo and video editing, ham radio, the outdoors, and my cat.
                     </p>
                 </div>
 
@@ -404,32 +416,24 @@
         <!-- ═══ CONTACT ═══ -->
         <section class="section" id="contact">
             <header class="section-head reveal">
-                <span class="kicker">04 &middot; Contact</span>
+                <div class="section-no">
+                    <span class="no" aria-hidden="true">04</span>
+                    <span class="kicker">Contact</span>
+                </div>
                 <h2>Get in touch</h2>
             </header>
 
             <div class="contact reveal">
                 <p class="contact-lede">
-                    Open to roles in systems, security, infrastructure, and applied AI. Happy to talk about any of the work above.
+                    Open to roles in systems, security, and applied AI.
                 </p>
 
-                <ul class="contact-list" role="list">
-                    <li>
-                        <span class="label">Email</span>
-                        <a href="mailto:rask@duck.com">rask@duck.com <span class="arrow" aria-hidden="true">→</span></a>
-                    </li>
-                    <li>
-                        <span class="label">GitHub</span>
-                        <a href="https://github.com/0Mattias" target="_blank" rel="noopener noreferrer">github.com/0Mattias <span class="arrow" aria-hidden="true">↗</span></a>
-                    </li>
-                    <li>
-                        <span class="label">LinkedIn</span>
-                        <a href="https://www.linkedin.com/in/mattiasrask" target="_blank" rel="noopener noreferrer">linkedin.com/in/mattiasrask <span class="arrow" aria-hidden="true">↗</span></a>
-                    </li>
-                    <li>
-                        <span class="label">Hugging Face</span>
-                        <a href="https://huggingface.co/MrPibb" target="_blank" rel="noopener noreferrer">huggingface.co/MrPibb <span class="arrow" aria-hidden="true">↗</span></a>
-                    </li>
+                <a href="mailto:rask@duck.com" class="contact-mail">rask@duck.com <span class="arrow" aria-hidden="true">→</span></a>
+
+                <ul class="contact-links" role="list">
+                    <li><a href="https://github.com/0Mattias" target="_blank" rel="noopener noreferrer">GitHub <span class="arrow" aria-hidden="true">↗</span></a></li>
+                    <li><a href="https://www.linkedin.com/in/mattiasrask" target="_blank" rel="noopener noreferrer">LinkedIn <span class="arrow" aria-hidden="true">↗</span></a></li>
+                    <li><a href="https://huggingface.co/MrPibb" target="_blank" rel="noopener noreferrer">Hugging Face <span class="arrow" aria-hidden="true">↗</span></a></li>
                 </ul>
             </div>
         </section>
@@ -437,9 +441,9 @@
     </main>
 
     <footer class="footer">
-        <div>&copy; <span id="year">2026</span> Mattias Rask &middot; Boston, Massachusetts</div>
-        <div>Hand-built: HTML, CSS, and one small script. No framework.</div>
-        <div>Set in Fraunces, Inter, and JetBrains Mono.</div>
+        <div>&copy; <span id="year">2026</span> Mattias Rask &middot; Boston, MA</div>
+        <div>Hand-built. No framework.</div>
+        <div>Fraunces &middot; Inter &middot; JetBrains Mono</div>
     </footer>
 
     <script src="script.js"></script>
