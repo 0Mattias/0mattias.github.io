@@ -174,6 +174,7 @@ hr.sep {
 }
 
 .codebox .hot { color: #cc0000; }
+.codebox .ok { color: #1e7d1e; }
 
 code {
     font: 12px 'Courier New', Courier, monospace;
@@ -183,6 +184,27 @@ code {
 }
 
 .codebox code { border: 0; background: none; padding: 0; }
+
+/* ─── Demo controls ─── */
+
+.demo-controls { margin: -5px 0 13px; }
+
+.demo-controls button,
+.emu-controls button {
+    font: bold 11px Verdana, Geneva, Tahoma, sans-serif;
+    color: #36598f;
+    background: #f0f0f0 linear-gradient(#fbfbfb, #e3e3e3);
+    border: 1px solid #9aa2ad;
+    padding: 3px 10px;
+    margin-right: 4px;
+    cursor: pointer;
+}
+
+.demo-controls button:hover,
+.emu-controls button:hover {
+    border-color: #36598f;
+    background: #eef3f9;
+}
 
 /* ─── Project table ─── */
 
@@ -254,6 +276,172 @@ table.projects tr:nth-child(even) td { background: #eef3f9; }
     margin-top: 4px;
     line-height: 1.4;
 }
+
+/* ─── Lightbox ─── */
+
+.lb-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.lb-frame {
+    background: #fff;
+    padding: 10px 10px 8px;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6);
+    width: fit-content;
+    max-width: 100%;
+}
+
+.lb-img {
+    display: block;
+    max-width: 100%;
+    max-height: 78vh;
+}
+
+.lb-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding-top: 7px;
+    font-size: 11px;
+    color: #555;
+}
+
+.lb-caption { flex: 1; }
+
+.lb-count { color: #999; white-space: nowrap; }
+
+.lb-bar button {
+    font: 11px Verdana, Geneva, Tahoma, sans-serif;
+    background: none;
+    border: 0;
+    padding: 0;
+    color: #1d56a5;
+    text-decoration: underline;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.lb-bar button:hover { color: #cc3300; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .lb-overlay { animation: lb-fade 0.18s ease-out; }
+
+    @keyframes lb-fade {
+        from { opacity: 0; }
+    }
+}
+
+/* ─── WhalEmu mini ─── */
+
+.emu {
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+    margin-bottom: 13px;
+}
+
+.emu-left { flex: 1; min-width: 0; }
+
+.emu-right { flex: 0 0 230px; }
+
+.emu textarea {
+    width: 100%;
+    height: 250px;
+    font: 12px/1.5 'Courier New', Courier, monospace;
+    color: #333;
+    background: #fff;
+    border: 1px solid #c9c9c9;
+    padding: 8px 10px;
+    resize: vertical;
+}
+
+.emu-controls { margin: 8px 0 6px; }
+
+.emu-controls select {
+    font: 11px Verdana, Geneva, Tahoma, sans-serif;
+    margin-right: 6px;
+    padding: 2px;
+}
+
+.emu-status {
+    font-size: 11px;
+    color: #666;
+    min-height: 1.7em;
+    margin-bottom: 8px;
+}
+
+.emu-status.err { color: #cc0000; }
+
+.emu-panel-label {
+    font: bold 10px Verdana, Geneva, Tahoma, sans-serif;
+    color: #36598f;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 3px;
+}
+
+table.emu-regs {
+    border-collapse: collapse;
+    width: 100%;
+    font: 12px 'Courier New', Courier, monospace;
+    margin-bottom: 10px;
+}
+
+table.emu-regs th {
+    background: #36598f linear-gradient(#4a6da7, #36598f);
+    color: #fff;
+    font: bold 10px Verdana, Geneva, Tahoma, sans-serif;
+    text-align: left;
+    padding: 3px 7px;
+    border: 1px solid #2c4a7c;
+}
+
+table.emu-regs td {
+    border: 1px solid #ccd2da;
+    padding: 2px 7px;
+}
+
+table.emu-regs td.chg { background: #ffffe1; }
+
+.emu-panel {
+    border: 1px solid #c9c9c9;
+    background: #f4f4f4;
+    font: 11px/1.6 'Courier New', Courier, monospace;
+    padding: 5px 9px;
+    margin-bottom: 10px;
+    max-height: 130px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+}
+
+.emu-listing {
+    border: 1px solid #c9c9c9;
+    background: #fff;
+    font: 12px/1.7 'Courier New', Courier, monospace;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.emu-listing ol {
+    list-style: none;
+    margin: 0;
+    padding: 2px 0;
+}
+
+.emu-listing li {
+    padding: 0 10px;
+    white-space: pre;
+}
+
+.emu-listing li.cur { background: #ffffe1; }
 
 /* ─── Contact ─── */
 
@@ -402,5 +590,8 @@ table.projects tr:nth-child(even) td { background: #eef3f9; }
     #navbar a { padding: 8px 10px; }
     .gallery figure { width: 30%; }
     .gallery img { height: 80px; }
+    .emu { display: block; }
+    .emu-right { margin-top: 14px; }
+    .lb-img { max-height: 70vh; }
 }
 

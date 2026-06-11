@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#36598f">
+    <meta name="description" content="A teaching-sized slice of WhalEmu: a real-mode x86 subset with a two-pass assembler and step debugger, running in the browser with no dependencies.">
+    <meta name="author" content="Mattias Rask">
+    <title>WhalEmu demo &middot; Mattias Rask</title>
+
+    <link rel="canonical" href="https://0mattias.github.io/whalemu/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://0mattias.github.io/whalemu/">
+    <meta property="og:title" content="WhalEmu demo">
+    <meta property="og:description" content="A teaching-sized slice of WhalEmu: a real-mode x86 subset with a two-pass assembler and step debugger, running in the browser.">
+    <meta property="og:image" content="https://0mattias.github.io/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Mattias Rask: security tools, AI agents, low-level systems.">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="WhalEmu demo">
+    <meta name="twitter:description" content="A teaching-sized slice of WhalEmu: a real-mode x86 subset with a step debugger, running in the browser.">
+    <meta name="twitter:image" content="https://0mattias.github.io/og.png">
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%2336598f'/%3E%3Crect y='27' width='32' height='5' fill='%23ff6600'/%3E%3Ctext x='50%25' y='66%25' font-family='Georgia,serif' font-size='20' font-weight='bold' fill='%23ffffff' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+
+    <link rel="stylesheet" href="../style.css">
+    <link rel="alternate" type="application/atom+xml" title="Mattias Rask" href="/atom.xml">
+</head>
+
+<body>
+    <a href="#main" class="skip-link">Skip to content</a>
+
+    <div id="container">
+
+        <div id="header">
+            <p class="site-title"><a href="../">Mattias Rask</a></p>
+            <p class="site-tagline">Security tools, AI agents, low-level systems &middot; Boston, MA</p>
+        </div>
+
+        <nav id="navbar">
+            <a href="../">Home</a><a href="../#building">Building</a><a href="../#work" aria-current="page">Projects</a><a href="../#about">About</a><a href="../blog/">Blog</a><a href="../#contact">Contact</a>
+        </nav>
+
+        <div id="content">
+
+            <main id="main">
+
+                <div class="post">
+                    <h1 class="post-title">WhalEmu, in miniature</h1>
+                    <p class="post-meta">A teaching-sized slice of a private project &middot; runs entirely in your browser</p>
+
+                    <p>WhalEmu is a real-mode x86 CPU emulator with a browser-based step debugger. The full version stays private; this page is a small working slice of the idea: a two-pass assembler, eight 16-bit registers, four flags, a visible stack, and two dozen instructions. Load a sample or write your own, then step through it and watch the registers move.</p>
+
+                    <div class="emu">
+                        <div class="emu-left">
+                            <label class="emu-panel-label" for="asm">Source</label>
+                            <textarea id="asm" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
+                            <p class="emu-controls">
+                                <select id="sample" aria-label="Sample program">
+                                    <option value="fib">Fibonacci</option>
+                                    <option value="countdown">Countdown</option>
+                                    <option value="gcd">GCD</option>
+                                    <option value="stack">Stack swap</option>
+                                </select>
+                                <button type="button" id="btn-asm">Assemble</button>
+                                <button type="button" id="btn-step">Step</button>
+                                <button type="button" id="btn-run">Run</button>
+                            </p>
+                            <p class="emu-status" id="emu-status" role="status">Pick a sample or write your own, then Assemble.</p>
+                            <div class="emu-panel-label" id="listing-label">Listing</div>
+                            <div class="emu-listing"><ol id="listing" aria-labelledby="listing-label"></ol></div>
+                        </div>
+                        <div class="emu-right">
+                            <div class="emu-panel-label">Registers</div>
+                            <table class="emu-regs">
+                                <tr><th>Reg</th><th>Value</th><th>Reg</th><th>Value</th></tr>
+                                <tr><td>AX</td><td id="r-AX">0000</td><td>SI</td><td id="r-SI">0000</td></tr>
+                                <tr><td>BX</td><td id="r-BX">0000</td><td>DI</td><td id="r-DI">0000</td></tr>
+                                <tr><td>CX</td><td id="r-CX">0000</td><td>BP</td><td id="r-BP">0000</td></tr>
+                                <tr><td>DX</td><td id="r-DX">0000</td><td>SP</td><td id="r-SP">FFFE</td></tr>
+                                <tr><td>IP</td><td id="r-IP">0</td><td></td><td></td></tr>
+                            </table>
+                            <div class="emu-panel-label">Flags</div>
+                            <div class="emu-panel" id="flags">ZF=0 SF=0 CF=0 OF=0</div>
+                            <div class="emu-panel-label">Stack</div>
+                            <div class="emu-panel" id="stack">(empty)</div>
+                            <div class="emu-panel-label">Output</div>
+                            <div class="emu-panel" id="out" aria-live="polite">(no output)</div>
+                        </div>
+                    </div>
+
+                    <noscript><p class="small">This demo needs JavaScript; nothing else on the site does.</p></noscript>
+
+                    <h3>Instruction reference</h3>
+
+<pre class="codebox">MOV ADD SUB AND OR XOR CMP    reg, reg|imm
+SHL SHR                       reg, count
+INC DEC                       reg
+PUSH                          reg|imm
+POP OUT                       reg
+JMP JE JNE JG JGE JL JLE
+JA JAE JB JBE LOOP            label
+NOP HLT</pre>
+
+                    <p class="small">Registers AX BX CX DX SI DI BP SP, all 16-bit. Flags ZF SF CF OF. Immediates in decimal, 0x hex, or trailing-h hex. Labels end with a colon, comments start with a semicolon. OUT prints a register to the output panel, standing in for the DOS print interrupt. The instruction listing executes by index rather than from encoded bytes; the full emulator does real instruction encoding, this page keeps the part that teaches.</p>
+                </div>
+
+            </main>
+
+        </div>
+
+        <div id="footer">
+            <p>&copy; <span id="year">2026</span> Mattias Rask &middot; Boston, MA</p>
+        </div>
+
+    </div>
+
+    <script src="../script.js"></script>
+    <script src="whalemu.js"></script>
+</body>
+
+</html>

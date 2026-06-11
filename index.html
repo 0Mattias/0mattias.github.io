@@ -29,6 +29,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 
     <link rel="stylesheet" href="style.css">
+    <link rel="alternate" type="application/atom+xml" title="Mattias Rask" href="/atom.xml">
 
     <script type="application/ld+json">
     {
@@ -85,14 +86,19 @@
 
                     <p>Here is what one search hit looks like to the model. The verdict is the whole point:</p>
 
-<pre class="codebox">{
+<pre class="codebox" id="bm-demo" aria-live="polite">{
   "snippet": "Auth middleware lives in src/auth/middleware.py",
   "relevance": "high",
-  "staleness_verdict": <b class="hot">"spot_check_recommended"</b>,
+  "staleness_verdict": <b class="hot">"spot_check_required"</b>,
   "path_drift": { "missing": ["src/auth/middleware.py"] },
   "commit_drift_count": 12
 }</pre>
-                    <p class="caption">The cited file moved, so the verdict says: go check before you trust it.</p>
+                    <p class="demo-controls" id="bm-demo-controls" hidden>
+                        <button type="button" data-act="commits">Land 12 commits</button>
+                        <button type="button" data-act="move">Move the file</button>
+                        <button type="button" data-act="verify">memory_verify</button>
+                    </p>
+                    <p class="caption">The verdict tracks what happened since the fact was stored. Move the cited file and it stops trusting it; verify it and it goes back to fresh.</p>
 
                     <p><strong>Install (Claude Code):</strong></p>
 
@@ -145,7 +151,7 @@
                         <tr>
                             <td><strong>WhalEmu</strong></td>
                             <td>A real-mode x86 CPU emulator with a browser-based step debugger. Write assembly, walk through it instruction by instruction.</td>
-                            <td><span class="private-tag">private</span></td>
+                            <td><a href="whalemu/">Demo</a><br><span class="private-tag">source private</span></td>
                         </tr>
                         <tr>
                             <td><strong>Homelab MCP</strong></td>
@@ -169,31 +175,31 @@
 
                     <div class="gallery">
                         <figure>
-                            <a href="photos/photo-rack.jpg"><img src="photos/photo-rack.jpg" alt="A black networking rack on a hardwood floor with a Cisco switch, patch panel, and StarTech PDU mounted on the front." width="1400" height="1866" loading="lazy" decoding="async"></a>
+                            <a href="photos/photo-rack.jpg"><img src="photos/thumbs/photo-rack.jpg" alt="A black networking rack on a hardwood floor with a Cisco switch, patch panel, and StarTech PDU mounted on the front." width="240" height="320" loading="lazy" decoding="async"></a>
                             <figcaption>Networking rack, pre-boards</figcaption>
                         </figure>
                         <figure>
-                            <a href="photos/photo-homelab.jpg"><img src="photos/photo-homelab.jpg" alt="Three silver ZimaBoard SBCs sitting side by side in a rack with cables routed across them." width="1866" height="1400" loading="lazy" decoding="async"></a>
+                            <a href="photos/photo-homelab.jpg"><img src="photos/thumbs/photo-homelab.jpg" alt="Three silver ZimaBoard SBCs sitting side by side in a rack with cables routed across them." width="320" height="240" loading="lazy" decoding="async"></a>
                             <figcaption>Homelab: three ZimaBoards on Tailscale</figcaption>
                         </figure>
                         <figure>
-                            <a href="photos/photo-marauder-flash.jpg"><img src="photos/photo-marauder-flash.jpg" alt="A custom Dual C5 ESP32 Marauder board in a translucent red case held in front of a monitor showing a flasher script and pink ASCII art output." width="1400" height="1866" loading="lazy" decoding="async"></a>
+                            <a href="photos/photo-marauder-flash.jpg"><img src="photos/thumbs/photo-marauder-flash.jpg" alt="A custom Dual C5 ESP32 Marauder board in a translucent red case held in front of a monitor showing a flasher script and pink ASCII art output." width="240" height="320" loading="lazy" decoding="async"></a>
                             <figcaption>Custom Dual C5 board, mid-flash</figcaption>
                         </figure>
                         <figure>
-                            <a href="photos/photo-arduino.jpg"><img src="photos/photo-arduino.jpg" alt="An Arduino UNO wired up on a breadboard with jumper wires running off-frame in front of a laptop." width="1866" height="1400" loading="lazy" decoding="async"></a>
+                            <a href="photos/photo-arduino.jpg"><img src="photos/thumbs/photo-arduino.jpg" alt="An Arduino UNO wired up on a breadboard with jumper wires running off-frame in front of a laptop." width="320" height="240" loading="lazy" decoding="async"></a>
                             <figcaption>Arduino on the bench</figcaption>
                         </figure>
                         <figure>
-                            <a href="photos/photo-marauder-laptop.jpg"><img src="photos/photo-marauder-laptop.jpg" alt="A Marauder held over a desk, a sticker reading 'lookin?' visible on a laptop in the background." width="1400" height="1866" loading="lazy" decoding="async"></a>
+                            <a href="photos/photo-marauder-laptop.jpg"><img src="photos/thumbs/photo-marauder-laptop.jpg" alt="A Marauder held over a desk, a sticker reading 'lookin?' visible on a laptop in the background." width="240" height="320" loading="lazy" decoding="async"></a>
                             <figcaption>Before anti-detection</figcaption>
                         </figure>
                         <figure>
-                            <a href="photos/photo-marauder-dark.jpg"><img src="photos/photo-marauder-dark.jpg" alt="A Marauder pointed at antennas in low light, screen reading 'Detect Pineapple'." width="1400" height="1866" loading="lazy" decoding="async"></a>
+                            <a href="photos/photo-marauder-dark.jpg"><img src="photos/thumbs/photo-marauder-dark.jpg" alt="A Marauder pointed at antennas in low light, screen reading 'Detect Pineapple'." width="240" height="320" loading="lazy" decoding="async"></a>
                             <figcaption>After anti-detection</figcaption>
                         </figure>
                         <figure>
-                            <a href="photos/photo-georgia.jpg"><img src="photos/photo-georgia.jpg" alt="Georgia, a tabby cat, sitting in front of the rack." width="1400" height="1866" loading="lazy" decoding="async"></a>
+                            <a href="photos/photo-georgia.jpg"><img src="photos/thumbs/photo-georgia.jpg" alt="Georgia, a tabby cat, sitting in front of the rack." width="240" height="320" loading="lazy" decoding="async"></a>
                             <figcaption>Georgia</figcaption>
                         </figure>
                     </div>
@@ -266,6 +272,7 @@
                             <li><a href="https://www.linkedin.com/in/mattiasrask" target="_blank" rel="noopener noreferrer">LinkedIn</a></li>
                             <li><a href="https://huggingface.co/MrPibb" target="_blank" rel="noopener noreferrer">Hugging Face</a></li>
                             <li><a href="mailto:rask@duck.com">Email</a></li>
+                            <li><a href="/atom.xml">Atom feed</a></li>
                         </ul>
                     </div>
                 </div>
