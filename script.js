@@ -138,17 +138,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const nextBtn = demoControls.querySelector('[data-act="next"]');
         const resetBtn = demoControls.querySelector('[data-act="reset"]');
         let beat = 0;
+        let prevPlain = null;
 
         const render = () => {
             const b = BEATS[beat];
             demoSay.innerHTML = '<span class="stepnum">step ' + (beat + 1) + ' of ' + BEATS.length + '</span>' + b.say;
 
-            const lines = ['  "snippet": "Auth middleware lives in src/auth/middleware.py"', '  "relevance": "high"'];
+            const plain = ['  "snippet": "Auth middleware lives in src/auth/middleware.py"', '  "relevance": "high"'];
+            const marked = plain.slice();
             b.fields.forEach(f => {
+                plain.push('  ' + f[0] + ': ' + f[1]);
                 const value = f[2] ? '<b class="' + f[2] + '">' + f[1] + '</b>' : f[1];
-                lines.push('  ' + f[0] + ': ' + value);
+                marked.push('  ' + f[0] + ': ' + value);
             });
+
+            /* Lines that changed since the previous beat flash like the
+               emulator's register highlight. First render flashes nothing. */
+            const lines = marked.map((line, i) =>
+                prevPlain && plain[i] !== prevPlain[i] ? '<span class="chg">' + line + '</span>' : line);
             demoOut.innerHTML = '{\n' + lines.join(',\n') + '\n}';
+            prevPlain = plain;
 
             nextBtn.disabled = beat === BEATS.length - 1;
             resetBtn.disabled = beat === 0;

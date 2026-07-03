@@ -4,6 +4,7 @@
 */
 
 :root {
+    color-scheme: light dark;
     --paper: #faf8f2;
     --ink: #1d1d1b;
     --muted: #5f5e57;
@@ -80,6 +81,24 @@ textarea:focus-visible {
 
 strong { font-weight: 700; }
 
+p, li { text-wrap: pretty; }
+
+h1, h2, h3, .article-dek { text-wrap: balance; }
+
+.skip {
+    position: fixed;
+    left: -9999px;
+    top: 12px;
+    z-index: 300;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 6px 12px;
+    font-size: 12px;
+    text-decoration: none;
+}
+
+.skip:focus { left: 12px; }
+
 /* ─── Header ─── */
 
 #header { margin-bottom: 34px; }
@@ -103,6 +122,14 @@ strong { font-weight: 700; }
 .site-title a:hover { color: var(--accent); }
 
 .site-title .cursor { color: var(--mark); }
+
+@media (prefers-reduced-motion: no-preference) {
+    .site-title .cursor { animation: cursor-blink 1.2s steps(1) infinite; }
+
+    @keyframes cursor-blink {
+        50% { opacity: 0; }
+    }
+}
 
 .site-mail {
     font-size: 12px;
@@ -195,6 +222,8 @@ li { margin-bottom: 8px; }
     white-space: nowrap;
 }
 
+.entry-row:has(h3 a:hover) .leader { border-bottom-color: var(--mark); }
+
 .entry > p { margin: 5px 0 0; }
 
 .entry .links {
@@ -254,6 +283,14 @@ pre code, .codebox code { border: 0; background: none; padding: 0; }
 .codebox .hot { color: var(--bad); font-weight: 700; }
 .codebox .warn { color: var(--warn); font-weight: 700; }
 .codebox .ok { color: var(--good); font-weight: 700; }
+
+@media (prefers-reduced-motion: no-preference) {
+    .codebox .chg { animation: chg-fade 0.9s ease-out; }
+
+    @keyframes chg-fade {
+        from { background: var(--hl); }
+    }
+}
 
 /* ─── Demo (bettermemory verdict walkthrough) ─── */
 
@@ -591,6 +628,13 @@ table.emu-regs td.chg { background: var(--hl); }
 
 @media print {
     body { max-width: none; padding: 0; }
-    .demo-controls, .emu-controls, .demo-say { display: none; }
+    .skip, .demo-controls, .emu-controls, .demo-say, .lb-overlay { display: none; }
     a { color: var(--ink); text-decoration: none; }
+    .links a[href^="http"]::after,
+    #contact a[href^="http"]::after {
+        content: " (" attr(href) ")";
+        font-size: 10px;
+        color: var(--muted);
+    }
+    .entry, .spec-row, figure, pre, .codebox { break-inside: avoid; }
 }
