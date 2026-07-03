@@ -342,6 +342,23 @@ button:disabled {
     margin-top: -4px;
 }
 
+/* ─── Cert badges ─── */
+
+.badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.badges img {
+    width: 88px;
+    height: 88px;
+    padding: 5px;
+    background: #fff;
+    border: 1px solid var(--rule);
+}
+
 /* ─── Photo strip ─── */
 
 .gallery {
