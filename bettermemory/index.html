@@ -39,7 +39,7 @@
         "name": "bettermemory",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, Linux, Windows",
-        "softwareVersion": "3.12.0",
+        "softwareVersion": "3.13.0",
         "license": "https://opensource.org/licenses/MIT",
         "url": "https://0mattias.github.io/bettermemory/",
         "author": {"@type": "Person", "name": "Mattias Rask", "url": "https://0mattias.github.io/"}
@@ -65,7 +65,7 @@
         <p class="crumb"><a href="/">&larr; home</a></p>
 
         <h1>bettermemory</h1>
-        <p class="post-meta">v3.12 &middot; updated July 2, 2026 &middot; MIT &middot; works with Claude Code, Cursor, and any MCP client</p>
+        <p class="post-meta">v3.13 &middot; updated July 3, 2026 &middot; MIT &middot; works with Claude Code, Cursor, and any MCP client</p>
 
         <p>Memory tools for AI agents are good at storing facts and silent about whether a fact is still true. Files move, projects pivot, preferences change, and the stored note from March reads as gospel in November.</p>
 
@@ -115,6 +115,15 @@ bettermemory try</pre>
 
             <div class="entry">
                 <div class="entry-row">
+                    <h3>v3.13</h3>
+                    <span class="leader" aria-hidden="true"></span>
+                    <span class="tag"><time datetime="2026-07-03">July 3, 2026</time></span>
+                </div>
+                <p>The recall-repair release. Four tokenizer fixes had quietly respelled the on-disk search index, so a query like "todo" or "cookie" could miss the exact memories ranked highest; the index now heals itself on first touch, and a tokenizer fingerprint makes that class of silent drift impossible to reintroduce. Sixteen developer words rescued from the stopword lists, and one-character CJK queries finally hit.</p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-row">
                     <h3>v3.12</h3>
                     <span class="leader" aria-hidden="true"></span>
                     <span class="tag"><time datetime="2026-07-02">July 2, 2026</time></span>
@@ -129,15 +138,6 @@ bettermemory try</pre>
                     <span class="tag"><time datetime="2026-07-02">July 2, 2026</time></span>
                 </div>
                 <p>The eval CLI and the health rollups now apply identical rules for which silent-miss telemetry still counts, so the publishable numbers cannot quietly disagree with the curation view.</p>
-            </div>
-
-            <div class="entry">
-                <div class="entry-row">
-                    <h3>v3.10</h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag"><time datetime="2026-06-10">June 10, 2026</time></span>
-                </div>
-                <p>The audit release: roughly 150 heuristic defects found by multi-agent review, each fixed with its own regression test.</p>
             </div>
 
             <p class="small">Full history in the <a href="https://github.com/0Mattias/bettermemory/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">changelog</a>.</p>
