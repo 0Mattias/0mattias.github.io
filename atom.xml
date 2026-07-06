@@ -5,10 +5,18 @@
   <link href="https://0mattias.github.io/atom.xml" rel="self"/>
   <link href="https://0mattias.github.io/"/>
   <id>https://0mattias.github.io/</id>
-  <updated>2026-07-02T00:00:00Z</updated>
+  <updated>2026-07-06T00:00:00Z</updated>
   <author>
     <name>Mattias Rask</name>
   </author>
+  <entry>
+    <title>Cisco Modeling Labs on Google Cloud</title>
+    <link href="https://0mattias.github.io/blog/cml-on-google-cloud/"/>
+    <id>https://0mattias.github.io/blog/cml-on-google-cloud/</id>
+    <published>2026-07-06T00:00:00Z</published>
+    <updated>2026-07-06T00:00:00Z</updated>
+    <summary>CML 2.10 on a Google Cloud VM for CCNP study: the nested virtualization flag, a Tailscale-only perimeter, and the two Docker bugs between install and the first booted lab.</summary>
+  </entry>
   <entry>
     <title>Building bettermemory</title>
     <link href="https://0mattias.github.io/blog/building-bettermemory/"/>

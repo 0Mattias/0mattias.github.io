@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#faf8f2" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#131311" media="(prefers-color-scheme: dark)">
+    <meta name="description" content="CML 2.10 on a Google Cloud VM for CCNP study: the nested virtualization flag, a Tailscale-only perimeter, and the two Docker bugs between install and the first booted lab.">
+    <meta name="author" content="Mattias Rask">
+    <title>Cisco Modeling Labs on Google Cloud &middot; Mattias Rask</title>
+
+    <link rel="canonical" href="https://0mattias.github.io/blog/cml-on-google-cloud/">
+
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://0mattias.github.io/blog/cml-on-google-cloud/">
+    <meta property="og:title" content="Cisco Modeling Labs on Google Cloud">
+    <meta property="og:description" content="CML 2.10 on a Google Cloud VM for CCNP study: the nested virtualization flag, a Tailscale-only perimeter, and the two Docker bugs between install and the first booted lab.">
+    <meta property="og:image" content="https://0mattias.github.io/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Mattias Rask: security tools, AI agents, low-level systems.">
+    <meta property="article:published_time" content="2026-07-06">
+    <meta property="article:author" content="Mattias Rask">
+    <meta property="og:locale" content="en_US">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Cisco Modeling Labs on Google Cloud">
+    <meta name="twitter:description" content="CML 2.10 on a Google Cloud VM for CCNP study: the nested virtualization flag, a Tailscale-only perimeter, and the two Docker bugs between install and the first booted lab.">
+    <meta name="twitter:image" content="https://0mattias.github.io/og.png">
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231d1d1b'/%3E%3Crect y='27' width='32' height='5' fill='%23ff6600'/%3E%3Ctext x='50%25' y='68%25' font-family='Menlo,monospace' font-size='19' font-weight='bold' fill='%23faf8f2' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+    <link rel="stylesheet" href="/style.css">
+    <link rel="alternate" type="application/atom+xml" title="Mattias Rask" href="/atom.xml">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": "Cisco Modeling Labs on Google Cloud",
+        "description": "CML 2.10 on a Google Cloud VM for CCNP study: the nested virtualization flag, a Tailscale-only perimeter, and the two Docker bugs between install and the first booted lab.",
+        "datePublished": "2026-07-06",
+        "author": {"@type": "Person", "name": "Mattias Rask", "url": "https://0mattias.github.io/"},
+        "url": "https://0mattias.github.io/blog/cml-on-google-cloud/",
+        "image": "https://0mattias.github.io/og.png"
+    }
+    </script>
+</head>
+
+<body>
+
+    <a class="skip" href="#main">skip to content</a>
+
+    <header id="header">
+        <div class="masthead">
+            <p class="site-title"><a href="/">Mattias Rask<span class="cursor" aria-hidden="true"> &#9646;</span></a></p>
+            <p class="site-mail"><a href="mailto:rask@duck.com">rask@duck.com</a></p>
+        </div>
+        <p class="site-tagline">security tools &middot; AI agents &middot; low-level systems &middot; Boston, MA</p>
+        <hr class="rule">
+    </header>
+
+    <main id="main">
+
+        <p class="crumb"><a href="/">&larr; home</a> &middot; writing</p>
+
+        <article class="article">
+            <header class="article-head">
+                <h1>Cisco Modeling Labs on Google Cloud</h1>
+                <p class="article-dek">CML 2.10 on a Google Cloud VM for CCNP study: the nested virtualization flag, a Tailscale-only perimeter, and the two Docker bugs between install and the first booted lab.</p>
+                <p class="post-meta"><time datetime="2026-07-06">July 6, 2026</time> &middot; 5 min read</p>
+            </header>
+
+            <div class="article-body">
+
+                <p>The CCNA is done and the CCNP is next, and CCNP labs want more routers than a bench can hold. The sanctioned way to get them is Cisco Modeling Labs: real Cisco network operating systems booted as virtual machines, wired into topologies in a browser. The catch is that CML wants a dedicated x86 host with virtualization extensions and a pile of RAM, and the hardware by my desk is three small single-board computers that already have jobs.</p>
+
+                <p>So the lab went to Google Cloud. This is the build log.</p>
+
+                <h2>The instance</h2>
+
+                <p>An <code>n2-standard-8</code> in us-central1: eight vCPUs, 32 GB of RAM, a 100 GB disk, stock Ubuntu 24.04 Server. Enough for the multi-router topologies the CCNP material asks for, with room left over for the Alpine hosts and unmanaged switches that fill out a lab.</p>
+
+                <p>The one thing a stock instance lacks is nested virtualization. CML boots its nodes under KVM, so the VM has to pass the virtualization extensions through, and GCP keeps that flag out of the console UI. The dance: stop the instance, <code>gcloud compute instances export</code>, add <code>advancedMachineFeatures.enableNestedVirtualization: true</code> to the exported YAML, <code>update-from-file</code>, start it again. After that <code>/dev/kvm</code> exists inside the VM and CML has what it needs.</p>
+
+                <h2>The install</h2>
+
+                <p>Cisco ships CML as a <code>.pkg</code> that is a tarball wearing a different extension. Inside sit Debian packages: the <code>cml2</code> controller, the PaTTY console proxy, the IOL tools. Extract them, <code>apt install</code> alongside <code>network-manager</code>, copy the reference platform images into <code>/var/lib/libvirt/images</code>, and the controller is on the box. A CML Personal license goes in later through the web UI as a Smart Licensing token.</p>
+
+                <p>Doing this headless on a cloud image has two wrinkles. The initial-setup service expects someone at a console TTY, so instead you hand it <code>/etc/virl2-base-config.yml</code> with <code>interactive: false</code> and the admin accounts predefined, strip the TTY directives from the service unit, and let it configure unattended. And CML&rsquo;s network helper likes to switch netplan&rsquo;s renderer to NetworkManager, which on Google Compute Engine kills runtime networking the instant it applies. I can report that a GCP instance reset is quick. The same change applies cleanly at boot; it just cannot be done live.</p>
+
+                <p>One more thing the package does without asking: it moves the system sshd to port 1122. Worth knowing before you conclude your VM is gone.</p>
+
+                <h2>Nothing public</h2>
+
+                <p>The VM joined the tailnet before CML went on, and every path in has stayed there: the web UI is HTTPS on the tailnet only, admin access is Tailscale SSH, node consoles run in the browser. There is no public 443. The default allow-SSH firewall rule is deleted, and break-glass is a single rule admitting Google&rsquo;s Identity-Aware Proxy range, so a dead tailscaled still leaves a way in through an IAP tunnel.</p>
+
+                <p>A 2026 footnote: Google no longer grants the default service account Editor on new projects, so the VM cannot touch its own infrastructure. Every <code>gcloud</code> change runs from the laptop instead. That is the right default, and for a box whose job is booting lab routers, nothing of value is lost.</p>
+
+                <h2>Two Docker bugs</h2>
+
+                <p>CML boots two kinds of node. The KVM kind (IOSv, the Catalyst 8000v, qcow2 images) worked on the first try. The Docker kind (IOL, IOS XE compiled to run as a Linux process) did not: every IOL node died with <em>Delayed docker node start failed</em>, and the shim log said <em>No such image</em>, naming a SHA the Docker daemon insisted it had never seen.</p>
+
+                <p>Cause one: current docker-ce defaults to the containerd image store, and the containerd store assigns a loaded image a different ID than the classic graph driver would. CML&rsquo;s image definitions record the classic ID and look the image up by it. Same tarball, same bytes, different name, no match. The fix is one line in <code>/etc/docker/daemon.json</code>, <code>{"features": {"containerd-snapshotter": false}}</code>, then a restart of Docker and the shim. Images load under the expected ID and every IOL node reaches BOOTED.</p>
+
+                <p>Cause two was mine. The reference images came over as <code>tar</code> piped through <code>ssh</code> from macOS, and macOS tar shipped 51 AppleDouble <code>._*</code> files along with them. The shim then tried to parse the <code>._</code> copies of the image definition YAMLs as definitions and refused the control characters inside. Delete them, restart, done. The lasting rule: nothing leaves a Mac by tar without <code>COPYFILE_DISABLE=1</code>, and <code>rsync</code> exists.</p>
+
+                <h2>The 40 milliseconds</h2>
+
+                <p>Consoles felt slow, so I went hunting for the misconfiguration, and there was none to find. <code>tailscale ping</code> showed the WireGuard tunnel already direct, no relay, steady between 38 and 44 ms. That number is geography: us-central1 is in Iowa, I am in Boston, and 40 ms is roughly what the distance costs. The real fixes are moving the VM to an East Coast region someday, or accepting 40 ms of typing lag in a router console; the second turns out to be easy to live with. A larger instance would change nothing here. More vCPUs buy bigger topologies, not shorter round trips.</p>
+
+                <h2>Running it</h2>
+
+                <p>Seventeen platform images are registered, IOL and IOSv in router and switch flavors for the core work, plus CSR1000v and Catalyst 8000v, an ASAv, an NX-OS switch, a wireless AP and client, and Alpine and Ubuntu hosts. I skipped the Catalyst 9000v on purpose (18 GB of RAM per node has no place on a 32 GB box) and the service-provider images, which belong to a track I am not on.</p>
+
+                <p>The instance is stopped whenever I am not in a lab. The homelab&rsquo;s Uptime Kuma keeps a monitor on the web UI anyway, which sounds backwards for a machine that is supposed to be down; in practice it is a did-I-leave-it-running light.</p>
+
+                <p>Nothing here is exotic once it runs. The instance starts, the topology boots, and the CCNP plan has a bench that powers off between sessions.</p>
+
+            </div>
+
+            <footer class="article-foot">
+                <p><a href="/">&larr; home</a> &middot; <a href="#main">back to top &uarr;</a></p>
+            </footer>
+        </article>
+
+    </main>
+
+    <footer id="footer">
+        <p><a href="/">&larr; home</a> &middot; &copy; <span id="year">2026</span> Mattias Rask &middot; Boston, MA &middot; <a href="/atom.xml">atom</a></p>
+    </footer>
+
+    <script src="/script.js"></script>
+</body>
+
+</html>
