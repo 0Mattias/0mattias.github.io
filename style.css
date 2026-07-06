@@ -645,6 +645,7 @@ table.emu-regs td.chg { background: var(--hl); }
 
 @media (max-width: 540px) {
     body { padding: 28px 16px 24px; }
+    .entry-row h3 { white-space: normal; }
     .gallery figure { width: calc((100% - 10px) / 2); }
     .gallery img { height: 130px; }
     .emu { display: block; }
