@@ -78,6 +78,15 @@
 
             <div class="entry">
                 <div class="entry-row">
+                    <h3>Verendo</h3>
+                    <span class="leader" aria-hidden="true"></span>
+                    <span class="tag">Go &middot; React &middot; private</span>
+                </div>
+                <p>An IT service management platform in the ServiceNow mold: incidents, problems, changes with CAB approval, a service catalog, a knowledge base, a CMDB, and an SLA engine that precomputes every deadline, multi-tenant down to the foreign keys. Claude is in the product: a &#8984;J agent that works the queue through twenty-one validated tools and never writes without a confirmed proposal, plus an MCP server so an outside Claude can drive the console.</p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-row">
                     <h3><a href="/bettermemory/">bettermemory</a></h3>
                     <span class="leader" aria-hidden="true"></span>
                     <span class="tag">v3.23 &middot; MIT</span>
@@ -88,90 +97,12 @@
 
             <div class="entry">
                 <div class="entry-row">
-                    <h3>Verendo</h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag">Go &middot; React &middot; private</span>
-                </div>
-                <p>An IT service management platform in the ServiceNow mold: incidents, problems, changes with CAB approval, a service catalog, a knowledge base, a CMDB, and an SLA engine that precomputes every deadline, multi-tenant down to the foreign keys. Claude is in the product: a &#8984;J agent that works the queue through twenty-one validated tools and never writes without a confirmed proposal, plus an MCP server so an outside Claude can drive the console.</p>
-            </div>
-
-            <div class="entry">
-                <div class="entry-row">
                     <h3><a href="/blog/cml-on-google-cloud/">CCNP lab</a></h3>
                     <span class="leader" aria-hidden="true"></span>
                     <span class="tag">CML 2.10 &middot; Google Cloud</span>
                 </div>
                 <p>Studying for the CCNP on Cisco Modeling Labs, run on a Google Cloud VM: seventeen platform images on an eight-vCPU instance that exists only on my tailnet and powers off between study sessions.</p>
             </div>
-        </section>
-
-        <section id="work">
-            <h2>work</h2>
-
-            <div class="entry">
-                <div class="entry-row">
-                    <h3><a href="/whalemu/">WhalEmu</a></h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag">demo in your browser</span>
-                </div>
-                <p>A real-mode x86 emulator with a step debugger. Fibonacci is loaded and assembled when the page opens; press Step and watch the registers move. The full build does real instruction encoding and stays private; the demo keeps the part that teaches.</p>
-            </div>
-
-            <div class="entry">
-                <div class="entry-row">
-                    <h3>Homelab MCP</h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag">three ZimaBoards &middot; Tailscale</span>
-                </div>
-                <p>The boards run Forgejo, a Sliver C2 for lab work, Velociraptor, Caldera, BloodHound, and a restic ring where each board backs up to the next. The MCP server on top is the part I use daily: Claude reads the uptime monitors, tails service logs, restarts containers, and kicks off snapshots from inside a conversation.</p>
-            </div>
-
-            <div class="entry">
-                <div class="entry-row">
-                    <h3><a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener noreferrer">KillChain-8B</a></h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag">weights on Hugging Face</span>
-                </div>
-                <p>Qwen3-8B, fully fine-tuned on offensive red-team data: full-parameter training with Axolotl across four H200s, not a LoRA.</p>
-            </div>
-
-            <div class="entry">
-                <div class="entry-row">
-                    <h3>Chromatophore</h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag">private</span>
-                </div>
-                <p>Reshapes TCP and UDP streams until they pass for one of fifteen well-known protocols on the wire. Named for the cells a squid changes color with. Built and tested against my own lab traffic.</p>
-            </div>
-
-            <div class="entry">
-                <div class="entry-row">
-                    <h3>PineappleGPT</h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag">private</span>
-                </div>
-                <p>A passive wireless recon agent: a Hak5 WiFi Pineapple Mk7 as the sensor, Claude as the reasoning loop that decides what deserves a closer look.</p>
-            </div>
-
-            <div class="entry">
-                <div class="entry-row">
-                    <h3>Honeypot</h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag">private</span>
-                </div>
-                <p>A high-interaction honeypot dressed as a WordPress AI blog. One Docker container on Cloud Run behind Cloudflare, watching what automated visitors try first.</p>
-            </div>
-
-            <div class="entry">
-                <div class="entry-row">
-                    <h3><a href="https://github.com/0Mattias/earthmc-beta" target="_blank" rel="noopener noreferrer">EarthMC Tracker</a></h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag">GitHub</span>
-                </div>
-                <p>A conversational agent over a live, time-series player database. English in, paginated SQL out. Early work.</p>
-            </div>
-
-            <p class="small">The private ones stay private; I'd rather walk through them on a call than publish the source.</p>
         </section>
 
         <section id="writing">
@@ -200,6 +131,8 @@
             <h2>about</h2>
 
             <p>Two years into software, cybersecurity, and embedded systems, almost all of it hands-on. Most of what's above shipped since spring.</p>
+
+            <p>Also on the bench: <a href="/whalemu/">WhalEmu</a>, a real-mode x86 emulator you can step through in your browser, and <a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener noreferrer">KillChain-8B</a>, Qwen3-8B fully fine-tuned on offensive red-team data. The private shelf: Chromatophore, which reshapes TCP and UDP streams until they pass for well-known protocols on the wire; PineappleGPT, passive wireless recon with Claude as the reasoning loop; a honeypot dressed as a WordPress AI blog; and the MCP server that lets Claude run the homelab from inside a conversation. I'd rather walk through those on a call than publish the source.</p>
 
             <dl class="spec">
                 <div class="spec-row">
