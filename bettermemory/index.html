@@ -39,7 +39,7 @@
         "name": "bettermemory",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, Linux, Windows",
-        "softwareVersion": "3.22.0",
+        "softwareVersion": "3.23.0",
         "license": "https://opensource.org/licenses/MIT",
         "url": "https://0mattias.github.io/bettermemory/",
         "author": {"@type": "Person", "name": "Mattias Rask", "url": "https://0mattias.github.io/"}
@@ -65,11 +65,11 @@
         <p class="crumb"><a href="/">&larr; home</a></p>
 
         <h1>bettermemory</h1>
-        <p class="post-meta">v3.22 &middot; updated July 11, 2026 &middot; MIT &middot; works with Claude Code, Cursor, and any MCP client</p>
+        <p class="post-meta">v3.23 &middot; updated July 12, 2026 &middot; MIT &middot; works with Claude Code, Cursor, and any MCP client</p>
 
         <p>Memory tools for AI agents are good at storing facts and silent about whether a fact is still true. Files move, projects pivot, preferences change, and the stored note from March reads as gospel in November. A confidently remembered stale fact is worse than no memory at all.</p>
 
-        <p>bettermemory is built around that gap. It is a local MCP server &mdash; plain markdown on disk, 25 tools, no cloud, no database &mdash; but the store is the substrate, not the point. The point is trust: a stored fact is treated as a claim that has to keep earning belief. It is verified against the filesystem and git before the agent relies on it, attributed down to the sentence it shaped when it gets used, measured for whether it actually helped, and owed a public postmortem when a verdict is wrong.</p>
+        <p>bettermemory is built around that gap. It is a local MCP server (plain markdown on disk, 25 tools, no cloud, no database), but the store is the substrate, not the point. The point is trust: a stored fact is treated as a claim that has to keep earning belief. It is verified against the filesystem and git before the agent relies on it, attributed down to the sentence it shaped when it gets used, measured for whether it actually helped, and owed a public postmortem when a verdict is wrong.</p>
 
         <section>
             <h2>the verdict, in four steps</h2>
@@ -106,7 +106,7 @@ bettermemory try</pre>
                 <li><strong>It checks before it trusts.</strong> Every hit carries a staleness verdict: calendar age, moved file paths, and commits landed since the fact was last confirmed.</li>
                 <li><strong>It asks before it remembers you.</strong> Retrieval is opt-in per turn, claims about you stage for your sign-off, and pasted secrets never reach disk.</li>
                 <li><strong>Every use leaves a record.</strong> The server logs which sentence a memory shaped, and flags the searches the model should have run but skipped.</li>
-                <li><strong>It proves it's helping.</strong> A built-in eval reports how often retrieved memory shaped a reply and how often it should have been consulted but wasn't. Numbers, not vibes &mdash; published with the repo.</li>
+                <li><strong>It proves it's helping.</strong> A built-in eval reports how often retrieved memory shaped a reply and how often it should have been consulted but wasn't. Numbers, not vibes, published with the repo.</li>
                 <li><strong>It answers for wrong verdicts.</strong> A memory that misleads an agent is owed a public postmortem; the incidents ledger ships in the repo, and it is meant to be embarrassing to add to.</li>
                 <li><strong>It carries state across agents.</strong> Loops and subagent swarms journal into one shared store; the next session picks up mid-thought instead of cold.</li>
             </ul>
@@ -117,11 +117,20 @@ bettermemory try</pre>
 
             <div class="entry">
                 <div class="entry-row">
+                    <h3>v3.23</h3>
+                    <span class="leader" aria-hidden="true"></span>
+                    <span class="tag"><time datetime="2026-07-12">July 12, 2026</time></span>
+                </div>
+                <p>The report release. <code>eval --report</code> renders the effectiveness telemetry into one self-contained markdown document: the three rates with 95% confidence intervals, the per-model audit slices, the threshold-sweep counterfactual, and a versioned methodology footer. What can appear in it is a tested contract, not a hope: a canary test seeds a store where every memory body, scope name, and logged query carries a token, then asserts the token shows up nowhere. The report shares your distribution without sharing your store.</p>
+            </div>
+
+            <div class="entry">
+                <div class="entry-row">
                     <h3>v3.22</h3>
                     <span class="leader" aria-hidden="true"></span>
                     <span class="tag"><time datetime="2026-07-11">July 11, 2026</time></span>
                 </div>
-                <p>The repair release. <code>doctor</code> learns to fix what it finds: its checks always printed pasteable remediations, and <code>--fix</code> now applies the safe subset &mdash; permission heals, index rebuilds, stale lock cleanup &mdash; by calling the same functions the hints point at, never by re-parsing its own strings. Each fix re-runs its check and only counts as fixed when the re-run comes back green, so the exit code describes the store as it actually is. Anything destructive stays a printed hint, forever.</p>
+                <p>The repair release. <code>doctor</code> learns to fix what it finds: its checks always printed pasteable remediations, and <code>--fix</code> now applies the safe subset (permission heals, index rebuilds, stale lock cleanup) by calling the same functions the hints point at, never by re-parsing its own strings. Each fix re-runs its check and only counts as fixed when the re-run comes back green, so the exit code describes the store as it actually is. Anything destructive stays a printed hint, forever.</p>
             </div>
 
             <div class="entry">
@@ -130,16 +139,7 @@ bettermemory try</pre>
                     <span class="leader" aria-hidden="true"></span>
                     <span class="tag"><time datetime="2026-07-11">July 11, 2026</time></span>
                 </div>
-                <p>The naming release. Two months of measurement, calibration, and audit releases added up to something the docs never said out loud: this is not a memory store with extras, it is a trust layer between an agent and its own past, where a stored fact is a claim that keeps earning belief. The docs now say it. Episodes also became host-local by design &mdash; session run-state full of absolute paths and machine-local clocks stops syncing to machines it can't be true on, and a structural guard now forces that stays-or-syncs decision for every directory the store will ever grow.</p>
-            </div>
-
-            <div class="entry">
-                <div class="entry-row">
-                    <h3>v3.20</h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag"><time datetime="2026-07-11">July 11, 2026</time></span>
-                </div>
-                <p>The audit release, audited. The release before it had found a real leak &mdash; a queue of raw captured text was syncing to every clone in plaintext, never having passed the credential gate &mdash; and sealed it going forward. But gitignore can't untrack a file, so stores that synced before the fix were still leaking. <code>doctor</code> now detects a sync repo that still tracks a pre-fix sidecar and treats it as what it is, a live leak: exit code 2 and the full remediation printed, down to the history rewrite. It also looks outward, catching a dotfiles repo quietly tracking files under a nested store.</p>
+                <p>The naming release. Two months of measurement, calibration, and audit releases added up to something the docs never said out loud: this is not a memory store with extras, it is a trust layer between an agent and its own past, where a stored fact is a claim that keeps earning belief. The docs now say it. Episodes also became host-local by design: session run-state full of absolute paths and machine-local clocks stops syncing to machines it can't be true on, and a structural guard now forces that stays-or-syncs decision for every directory the store will ever grow.</p>
             </div>
 
             <p class="small">Full history in the <a href="https://github.com/0Mattias/bettermemory/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">changelog</a>.</p>
