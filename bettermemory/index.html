@@ -39,7 +39,7 @@
         "name": "bettermemory",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, Linux, Windows",
-        "softwareVersion": "3.23.0",
+        "softwareVersion": "3.27.0",
         "license": "https://opensource.org/licenses/MIT",
         "url": "https://0mattias.github.io/bettermemory/",
         "author": {"@type": "Person", "name": "Mattias Rask", "url": "https://0mattias.github.io/"}
@@ -65,7 +65,7 @@
         <p class="crumb"><a href="/">&larr; home</a></p>
 
         <h1>bettermemory</h1>
-        <p class="post-meta">v3.23 &middot; updated July 12, 2026 &middot; MIT &middot; works with Claude Code, Cursor, and any MCP client</p>
+        <p class="post-meta">v3.27 &middot; updated July 22, 2026 &middot; MIT &middot; works with Claude Code, Cursor, and any MCP client</p>
 
         <p>Memory tools for AI agents are good at storing facts and silent about whether a fact is still true. Files move, projects pivot, preferences change, and the stored note from March reads as gospel in November. A confidently remembered stale fact is worse than no memory at all.</p>
 
@@ -106,7 +106,7 @@ bettermemory try</pre>
                 <li><strong>It checks before it trusts.</strong> Every hit carries a staleness verdict: calendar age, moved file paths, and commits landed since the fact was last confirmed.</li>
                 <li><strong>It asks before it remembers you.</strong> Retrieval is opt-in per turn, claims about you stage for your sign-off, and pasted secrets never reach disk.</li>
                 <li><strong>Every use leaves a record.</strong> The server logs which sentence a memory shaped, and flags the searches the model should have run but skipped.</li>
-                <li><strong>It proves it's helping.</strong> A built-in eval reports how often retrieved memory shaped a reply and how often it should have been consulted but wasn't. Numbers, not vibes, published with the repo.</li>
+                <li><strong>It measures whether it's helping.</strong> A built-in eval reports how often retrieved memory shaped a reply and how often it should have been consulted but wasn't. Numbers, not vibes, published with the repo, unflattering ones included.</li>
                 <li><strong>It answers for wrong verdicts.</strong> A memory that misleads an agent is owed a public postmortem; the incidents ledger ships in the repo, and it is meant to be embarrassing to add to.</li>
                 <li><strong>It carries state across agents.</strong> Loops and subagent swarms journal into one shared store; the next session picks up mid-thought instead of cold.</li>
             </ul>
@@ -117,29 +117,29 @@ bettermemory try</pre>
 
             <div class="entry">
                 <div class="entry-row">
-                    <h3>v3.23</h3>
+                    <h3>v3.27</h3>
                     <span class="leader" aria-hidden="true"></span>
-                    <span class="tag"><time datetime="2026-07-12">July 12, 2026</time></span>
+                    <span class="tag"><time datetime="2026-07-20">July 20, 2026</time></span>
                 </div>
-                <p>The report release. <code>eval --report</code> renders the effectiveness telemetry into one self-contained markdown document: the three rates with 95% confidence intervals, the per-model audit slices, the threshold-sweep counterfactual, and a versioned methodology footer. What can appear in it is a tested contract, not a hope: a canary test seeds a store where every memory body, scope name, and logged query carries a token, then asserts the token shows up nowhere. The report shares your distribution without sharing your store.</p>
+                <p>The disclosure release. Store roots were created with the caller's umask, and a memory's filename embeds the first ~43 characters of its summary, so a world-listable root handed any local account the gist of the whole store from <code>ls</code> alone. Roots are now created private and healed on open (POSIX, best-effort; <code>doctor</code> reports anything a filesystem refuses). Also fixed: BM25 priced term rarity against the wrong collection. Document frequencies now come from the index, over exactly the scoped set the search ranks, because whole-store numbers describe memories the caller cannot retrieve.</p>
             </div>
 
             <div class="entry">
                 <div class="entry-row">
-                    <h3>v3.22</h3>
+                    <h3>v3.26</h3>
                     <span class="leader" aria-hidden="true"></span>
-                    <span class="tag"><time datetime="2026-07-11">July 11, 2026</time></span>
+                    <span class="tag"><time datetime="2026-07-20">July 20, 2026</time></span>
                 </div>
-                <p>The repair release. <code>doctor</code> learns to fix what it finds: its checks always printed pasteable remediations, and <code>--fix</code> now applies the safe subset (permission heals, index rebuilds, stale lock cleanup) by calling the same functions the hints point at, never by re-parsing its own strings. Each fix re-runs its check and only counts as fixed when the re-run comes back green, so the exit code describes the store as it actually is. Anything destructive stays a printed hint, forever.</p>
+                <p>The guarantees release. Event-log rotation could silently drop events under concurrent writers; archives are now shard-partitioned with a real ordering guarantee, and stores upgraded mid-line keep a best-effort fallback. <code>sync</code> gained guards on every path that could commit conflict markers as resolved content (a class found live: a push had shipped markers to the remote with no error raised). And shipped prose became testable: a checker extracts path, symbol, and count claims from the docs and asserts each against the repo, with a ratcheted allowlist so an exemption cannot outlive the defect it excuses.</p>
             </div>
 
             <div class="entry">
                 <div class="entry-row">
-                    <h3>v3.21</h3>
+                    <h3>v3.25</h3>
                     <span class="leader" aria-hidden="true"></span>
-                    <span class="tag"><time datetime="2026-07-11">July 11, 2026</time></span>
+                    <span class="tag"><time datetime="2026-07-19">July 19, 2026</time></span>
                 </div>
-                <p>The naming release. Two months of measurement, calibration, and audit releases added up to something the docs never said out loud: this is not a memory store with extras, it is a trust layer between an agent and its own past, where a stored fact is a claim that keeps earning belief. The docs now say it. Episodes also became host-local by design: session run-state full of absolute paths and machine-local clocks stops syncing to machines it can't be true on, and a structural guard now forces that stays-or-syncs decision for every directory the store will ever grow.</p>
+                <p>The provenance release. <code>migrate origin --repair</code> fixes memories whose origin was captured wrong: a write made outside a checkout claimed no repo at all, so auto-scoping quietly hid it from the project it belonged to (<code>--keep-global</code> preserves the ones that really are global). Two patches rode the same day: a Windows-only durability gap in the atomic write path, and a path-drift false positive that made healthy web-app memories look stale because bare application routes read as missing files.</p>
             </div>
 
             <p class="small">Full history in the <a href="https://github.com/0Mattias/bettermemory/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">changelog</a>.</p>
