@@ -3,14 +3,12 @@
     v10 · the calling card: one sheet of the anaphase light system
 
     House stock shared with anaphase.ai: the same paper, the same ink,
-    the same hairlines, light only, and the artwork in hairline cages.
-    The accent is the one thing held apart. Umber here, registry green
-    there, so the person and the company stay legible as two members
-    of one family.
+    the same hairlines, light only. The accent is the one thing held
+    apart. Umber here, registry green there, so the person and the
+    company stay legible as two members of one family.
 
     Set in Charter, fittings in the system mono. No webfonts, no
-    trackers, no build step; no scripts outside the demos that are
-    the content.
+    trackers, no build step, no scripts.
 */
 
 :root {
@@ -25,9 +23,6 @@
     --accent: #9a4a12;
     --wash: #e7d8c9;   /* the accent at 16% over paper: the one highlight tone */
     --panel: #efebe0;
-    --good: #2c7040;
-    --warn: #8a590c;
-    --bad: #a8281f;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -66,8 +61,6 @@ body::before {
         var(--paper);
 }
 
-img { border: 0; max-width: 100%; }
-
 ::selection { background: var(--wash); color: var(--ink); }
 
 a {
@@ -93,10 +86,7 @@ a[target="_blank"] span[aria-hidden="true"] {
     font-size: 0.72em;
 }
 
-a:focus-visible,
-button:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
+a:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
@@ -128,9 +118,6 @@ h1, h2, h3, .dek { text-wrap: balance; }
     margin-bottom: clamp(44px, 8vh, 68px);
 }
 
-/* Hairlines against lit paper; the crest carries its own glow. */
-.crest { display: block; margin: 0 auto -6px; }
-
 .letterhead .name {
     font: 400 clamp(29px, 5vw, 38px)/1.1 var(--serif);
     letter-spacing: -0.01em;
@@ -147,11 +134,9 @@ h1, h2, h3, .dek { text-wrap: balance; }
     text-wrap: balance;
 }
 
-/* Subpages stand under a smaller letterhead: the crest and the name,
-   both the way home, a document under the same head of sheet. */
+/* Subpages stand under a smaller letterhead: the name alone, the way
+   home, a document under the same head of sheet. */
 .letterhead-sub { margin-bottom: clamp(34px, 6vh, 52px); }
-
-.letterhead-sub .crest { margin-bottom: 2px; }
 
 .letterhead-sub .name {
     font: 400 20px/1.2 var(--serif);
@@ -179,18 +164,12 @@ p:last-child { margin-bottom: 0; }
     line-height: 1.6;
 }
 
-ul, ol { margin: 0 0 14px 22px; }
-
-li { margin-bottom: 8px; }
-
-li::marker { color: var(--quiet); }
-
 .small {
     font: 12px/1.8 var(--mono);
     color: var(--quiet);
 }
 
-/* ─── Entries (projects, releases, writing) ─── */
+/* ─── Entries (projects, writing) ─── */
 
 .entry { margin-bottom: 26px; }
 
@@ -236,7 +215,7 @@ code {
     font-size: 0.86em;
 }
 
-pre, .codebox {
+pre {
     background: var(--panel);
     border: 1px solid var(--hairline);
     padding: 13px 16px;
@@ -245,170 +224,7 @@ pre, .codebox {
     overflow-x: auto;
 }
 
-pre code, .codebox code { font-size: 12.5px; }
-
-.codebox .hot { color: var(--bad); font-weight: 700; }
-.codebox .warn { color: var(--warn); font-weight: 700; }
-.codebox .ok { color: var(--good); font-weight: 700; }
-
-@media (prefers-reduced-motion: no-preference) {
-    .codebox .chg { animation: chg-fade 0.9s ease-out; }
-
-    @keyframes chg-fade {
-        from { background: var(--wash); }
-    }
-}
-
-/* ─── Demo (bettermemory verdict walkthrough) ─── */
-
-.demo-say {
-    font-style: italic;
-    min-height: 3.2em;
-}
-
-.demo-say .stepnum {
-    float: right;
-    margin-left: 12px;
-    font: 10.5px/2.2 var(--mono);
-    font-style: normal;
-    letter-spacing: 0.08em;
-    color: var(--quiet);
-}
-
-.demo-controls { margin: -2px 0 14px; }
-
-button, select {
-    font: 12px/1.6 var(--mono);
-    color: var(--ink);
-    background: var(--paper);
-    border: 1px solid var(--ink);
-    padding: 4px 14px;
-    cursor: pointer;
-    transition: background-color 0.14s ease, color 0.14s ease, border-color 0.14s ease;
-}
-
-button:hover:not(:disabled) {
-    background: var(--ink);
-    color: var(--paper);
-}
-
-button:disabled {
-    color: var(--quiet);
-    border-color: var(--hairline);
-    cursor: default;
-}
-
-.demo-controls button { margin-right: 6px; }
-
-.caption {
-    font: 11.5px/1.7 var(--mono);
-    color: var(--quiet);
-    margin-top: -4px;
-}
-
-/* ─── WhalEmu ─── */
-
-.emu {
-    display: flex;
-    gap: 18px;
-    align-items: flex-start;
-    margin-bottom: 14px;
-}
-
-.emu-left { flex: 1; min-width: 0; }
-
-.emu-right { flex: 0 0 208px; }
-
-.emu textarea {
-    width: 100%;
-    height: 250px;
-    font: 12.5px/1.6 var(--mono);
-    color: var(--ink);
-    background: var(--paper);
-    border: 1px solid var(--hairline);
-    padding: 8px 10px;
-    resize: vertical;
-}
-
-.emu-controls { margin: 10px 0 6px; }
-
-.emu-controls button,
-.emu-controls select { margin-right: 5px; }
-
-select { cursor: auto; }
-
-.emu-status {
-    font: 11.5px/1.8 var(--mono);
-    color: var(--quiet);
-    min-height: 1.8em;
-    margin-bottom: 8px;
-}
-
-.emu-status.err { color: var(--bad); }
-
-.emu-panel-label {
-    font: italic 400 14px/1.6 var(--serif);
-    color: var(--quiet);
-    margin-bottom: 4px;
-}
-
-table.emu-regs {
-    border-collapse: collapse;
-    width: 100%;
-    font: 12px var(--mono);
-    margin-bottom: 12px;
-}
-
-table.emu-regs th {
-    font-size: 10px;
-    font-weight: 400;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--quiet);
-    text-align: left;
-    padding: 2px 7px;
-    border-bottom: 1px solid var(--ink);
-}
-
-table.emu-regs td {
-    border-bottom: 1px solid var(--hairline);
-    padding: 2px 7px;
-}
-
-table.emu-regs td.chg { background: var(--wash); }
-
-.emu-panel {
-    border: 1px solid var(--hairline);
-    background: var(--panel);
-    font: 11.5px/1.7 var(--mono);
-    padding: 6px 9px;
-    margin-bottom: 12px;
-    max-height: 130px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-}
-
-.emu-listing {
-    border: 1px solid var(--hairline);
-    background: var(--paper);
-    font: 12.5px/1.8 var(--mono);
-    max-height: 280px;
-    overflow-y: auto;
-}
-
-.emu-listing ol {
-    list-style: none;
-    margin: 0;
-    padding: 2px 0;
-}
-
-.emu-listing li {
-    padding: 0 10px;
-    white-space: pre;
-    margin: 0;
-}
-
-.emu-listing li.cur { background: var(--wash); }
+pre code { font-size: 12.5px; }
 
 /* ─── The document (blog post, project sheet) ─── */
 
@@ -434,11 +250,6 @@ table.emu-regs td.chg { background: var(--wash); }
 .article-head .dateline { margin-top: 0; }
 
 .article-body h2 { margin: 34px 0 12px; }
-
-.article-body h3 {
-    font: 700 17px/1.4 var(--serif);
-    margin: 24px 0 8px;
-}
 
 .article-body blockquote {
     border-left: 2px solid var(--hairline);
@@ -493,20 +304,12 @@ footer {
 
 footer a { color: inherit; }
 
-footer .colophon {
-    margin-top: 4px;
-    font: 11px/1.8 var(--mono);
-    letter-spacing: 0.02em;
-}
-
 /* ─── Small screens ─── */
 
 @media (max-width: 540px) {
     body { font-size: 16px; padding-left: 20px; padding-right: 20px; }
     .intro p { font-size: 17px; }
     .annot { white-space: normal; }
-    .emu { display: block; }
-    .emu-right { margin-top: 16px; }
 }
 
 /* ─── Print: a letterhead is a thing that prints, so let it ─── */
@@ -514,8 +317,7 @@ footer .colophon {
 @media print {
     body { max-width: none; padding: 0; background: #fff; }
     body::before { content: none; }
-    /* hairlines at six parts ink in a hundred do not survive paper */
-    .crest, .skip, .demo-controls, .demo-say, .emu-controls { display: none; }
+    .skip { display: none; }
     a { color: #000; text-decoration: none; }
     .links a[href^="http"]::after,
     #contact a[href^="http"]::after {
@@ -523,5 +325,5 @@ footer .colophon {
         font-size: 10px;
         color: var(--quiet);
     }
-    .entry, pre, .codebox { break-inside: avoid; }
+    .entry, pre { break-inside: avoid; }
 }
