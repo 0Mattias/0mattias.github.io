@@ -1,11 +1,11 @@
 """Redraw the brand rasters: og.png (1200x630), apple-touch-icon.png,
 favicon.ico.
 
-No artwork. The og card is the letterhead and nothing else: the name in
-Charter over the fittings in the system mono, centered on lit, grained
-paper. Drawn at 2x and downsampled so the type stays crisp. The icons
-are the ink plate with the paper Charter M, matching the inline SVG
-favicon on every page.
+No artwork, no atmosphere. The og card is the letterhead and nothing
+else: the name in Charter over the fittings in the system mono, centered
+on flat paper. Drawn at 2x and downsampled so the type stays crisp. The
+icons are the ink plate with the paper Charter M, matching the inline
+SVG favicon on every page.
 
 Uses macOS system fonts. No webfonts here either. Edit this generator,
 not the emitted files.
@@ -13,11 +13,9 @@ not the emitted files.
 Run:  uv run --with pillow --with pyoxipng python tools/brand_gen.py
 """
 
-import math
-import random
 from pathlib import Path
 
-from PIL import Image, ImageChops, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -30,7 +28,6 @@ MENLO = "/System/Library/Fonts/Menlo.ttc"
 
 
 def crush(path):
-    """The grain is the payload, so only lossless crushing is allowed."""
     try:
         import oxipng
     except ImportError:
@@ -39,35 +36,11 @@ def crush(path):
         path.read_bytes(), level=6, strip=oxipng.StripChunks.safe()))
 
 
-def grained_paper(w, h, cx, cy, spread, strength):
-    """Lit paper rather than flat fill: a soft rise of light behind the
-    name, a breath of vignette at the corners, and grain."""
-    d = 8
-    atmo = Image.new("RGB", (w // d, h // d))
-    px = atmo.load()
-    for ay in range(h // d):
-        for ax in range(w // d):
-            x, y = ax * d + d / 2, ay * d + d / 2
-            rr = math.hypot(x - cx, y - cy) / spread
-            lift = math.exp(-rr * rr * 1.4) * strength
-            v = math.hypot(x / w - 0.5, y / h - 0.5) * 1.4142
-            t = min(max((v - 0.55) / 0.53, 0.0), 1.0)
-            vig = t * t * (3 - 2 * t) * 0.045
-            px[ax, ay] = tuple(min(255, round(c * (1 + lift - vig)))
-                               for c in PAPER)
-    img = atmo.resize((w, h), Image.BILINEAR)
-
-    rnd = random.Random(20260815)
-    noise = Image.frombytes(
-        "L", (w, h), bytes(bytearray(rnd.randrange(126, 131) for _ in range(w * h))))
-    return ImageChops.add(img, noise.convert("RGB"), 1.0, -128)
-
-
 def og_card():
     s = 2
     w, h = 1200 * s, 630 * s
 
-    img = grained_paper(w, h, w / 2, 268 * s, 380 * s, 0.030)
+    img = Image.new("RGB", (w, h), PAPER)
     d = ImageDraw.Draw(img)
 
     name = ImageFont.truetype(CHARTER, 92 * s, index=0)

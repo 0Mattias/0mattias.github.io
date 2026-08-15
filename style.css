@@ -43,24 +43,6 @@ body {
     padding: clamp(40px, 9vh, 84px) 24px clamp(40px, 7vh, 64px);
 }
 
-/* Lit paper rather than flat fill, pinned to the glass so the prose
-   scrolls over a still light: a soft rise behind the letterhead and a
-   breath of vignette at the corners. The stops are the company card's
-   own numbers -- paper x 1.022 at the centre of the lift -- so the two
-   sites are the same material, not just the same hex. */
-body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-    background:
-        radial-gradient(125% 105% at 50% 50%,
-            rgba(33, 31, 25, 0) 55%, rgba(33, 31, 25, 0.045) 100%),
-        radial-gradient(60% 42% at 50% 0%,
-            #fbf8f1 0%, rgba(251, 248, 241, 0) 100%),
-        var(--paper);
-}
-
 ::selection { background: var(--wash); color: var(--ink); }
 
 a {
@@ -203,6 +185,41 @@ p:last-child { margin-bottom: 0; }
 .entry .links a { color: var(--accent); text-decoration-color: var(--accent); }
 .entry .links a:hover { color: var(--ink); text-decoration-color: var(--ink); }
 
+/* ─── Photo strip ─── */
+
+.gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.gallery figure { width: calc((100% - 36px) / 4); }
+
+.gallery a { display: block; }
+
+.gallery img {
+    display: block;
+    width: 100%;
+    height: 108px;
+    object-fit: cover;
+    border: 1px solid var(--hairline);
+    filter: saturate(0.9);
+    transition: filter 0.2s ease, border-color 0.14s ease;
+}
+
+.gallery a:hover img,
+.gallery a:focus-visible img {
+    filter: saturate(1);
+    border-color: var(--accent);
+}
+
+.gallery figcaption {
+    font: 10px/1.5 var(--mono);
+    color: var(--quiet);
+    margin-top: 4px;
+}
+
 /* ─── Contact ─── */
 
 .mail-big { font: 400 22px/1.5 var(--serif); }
@@ -310,13 +327,14 @@ footer a { color: inherit; }
     body { font-size: 16px; padding-left: 20px; padding-right: 20px; }
     .intro p { font-size: 17px; }
     .annot { white-space: normal; }
+    .gallery figure { width: calc((100% - 12px) / 2); }
+    .gallery img { height: 130px; }
 }
 
 /* ─── Print: a letterhead is a thing that prints, so let it ─── */
 
 @media print {
     body { max-width: none; padding: 0; background: #fff; }
-    body::before { content: none; }
     .skip { display: none; }
     a { color: #000; text-decoration: none; }
     .links a[href^="http"]::after,
@@ -325,5 +343,5 @@ footer a { color: inherit; }
         font-size: 10px;
         color: var(--quiet);
     }
-    .entry, pre { break-inside: avoid; }
+    .entry, pre, figure { break-inside: avoid; }
 }
