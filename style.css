@@ -1,28 +1,14 @@
-/*
-    Mattias Rask
-    v10 · the calling card: one sheet of the anaphase light system
-
-    House stock shared with anaphase.ai: the same paper, the same ink,
-    the same hairlines, light only. The accent is the one thing held
-    apart. Umber here, registry green there, so the person and the
-    company stay legible as two members of one family.
-
-    Set in Charter, fittings in the system mono. No webfonts, no
-    trackers, no build step, no scripts.
-*/
-
 :root {
     color-scheme: light;
     --serif: Charter, 'Bitstream Charter', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
     --mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
     --paper: #f6f3ec;
     --ink: #211f19;
-    --quiet: rgba(33, 31, 25, 0.62);   /* the quiet tone; 4.6:1 on this paper */
+    --quiet: rgba(33, 31, 25, 0.62);
     --underline: rgba(33, 31, 25, 0.35);
     --hairline: #d8d5ce;
     --accent: #9a4a12;
-    --wash: #e7d8c9;   /* the accent at 16% over paper: the one highlight tone */
-    --panel: #efebe0;
+    --wash: #e7d8c9;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -38,7 +24,7 @@ body {
     color: var(--ink);
     font: 17px/1.62 var(--serif);
     font-kerning: normal;
-    max-width: 34em;   /* a reading measure, not a viewport */
+    max-width: 34em;
     margin: 0 auto;
     padding: clamp(40px, 9vh, 84px) 24px clamp(40px, 7vh, 64px);
 }
@@ -60,9 +46,6 @@ a:hover {
     text-decoration-color: currentColor;
 }
 
-/* The outbound mark. Charter carries no arrow of its own, so the
-   fallback comes in large and loose; the mono a size down keeps it a
-   fitting rather than a word. */
 a[target="_blank"] span[aria-hidden="true"] {
     font-family: var(--mono);
     font-size: 0.72em;
@@ -77,7 +60,7 @@ strong { font-weight: 700; }
 
 p, li { text-wrap: pretty; }
 
-h1, h2, h3, .dek { text-wrap: balance; }
+h1, h2, h3 { text-wrap: balance; }
 
 .skip {
     position: fixed;
@@ -92,8 +75,6 @@ h1, h2, h3, .dek { text-wrap: balance; }
 }
 
 .skip:focus { left: 12px; }
-
-/* ─── The letterhead ─── */
 
 .letterhead {
     text-align: center;
@@ -116,20 +97,6 @@ h1, h2, h3, .dek { text-wrap: balance; }
     text-wrap: balance;
 }
 
-/* Subpages stand under a smaller letterhead: the name alone, the way
-   home, a document under the same head of sheet. */
-.letterhead-sub { margin-bottom: clamp(34px, 6vh, 52px); }
-
-.letterhead-sub .name {
-    font: 400 20px/1.2 var(--serif);
-    letter-spacing: -0.01em;
-}
-
-.letterhead-sub .name a { text-decoration: none; color: var(--ink); }
-.letterhead-sub .name a:hover { color: var(--accent); }
-
-/* ─── Sections ─── */
-
 section { margin-bottom: clamp(40px, 7vh, 56px); scroll-margin-top: 24px; }
 
 h2 {
@@ -151,8 +118,6 @@ p:last-child { margin-bottom: 0; }
     color: var(--quiet);
 }
 
-/* ─── Entries (projects, writing) ─── */
-
 .entry { margin-bottom: 26px; }
 
 .entry:last-child { margin-bottom: 0; }
@@ -165,7 +130,6 @@ p:last-child { margin-bottom: 0; }
 .entry h3 a { text-decoration: none; }
 .entry h3 a:hover { color: var(--accent); }
 
-/* The fitting after a name: version, licence, date. */
 .annot {
     font: 11.5px/1.7 var(--mono);
     letter-spacing: 0.02em;
@@ -176,16 +140,6 @@ p:last-child { margin-bottom: 0; }
 .entry > .annot { margin-left: 8px; }
 
 .entry p { margin: 5px 0 0; }
-
-.entry .links {
-    margin-top: 6px;
-    font: 12px/1.8 var(--mono);
-}
-
-.entry .links a { color: var(--accent); text-decoration-color: var(--accent); }
-.entry .links a:hover { color: var(--ink); text-decoration-color: var(--ink); }
-
-/* ─── Photo strip ─── */
 
 .gallery {
     display: flex;
@@ -220,73 +174,8 @@ p:last-child { margin-bottom: 0; }
     margin-top: 4px;
 }
 
-/* ─── Contact ─── */
-
 .mail-big { font: 400 22px/1.5 var(--serif); }
 .mail-big a { text-decoration-color: var(--underline); }
-
-/* ─── Code ─── */
-
-code {
-    font-family: var(--mono);
-    font-size: 0.86em;
-}
-
-pre {
-    background: var(--panel);
-    border: 1px solid var(--hairline);
-    padding: 13px 16px;
-    margin: 0 0 14px;
-    font: 12.5px/1.7 var(--mono);
-    overflow-x: auto;
-}
-
-pre code { font-size: 12.5px; }
-
-/* ─── The document (blog post, project sheet) ─── */
-
-.article-head {
-    text-align: center;
-    margin-bottom: clamp(30px, 5vh, 44px);
-}
-
-.article-head h1 {
-    font: 400 clamp(24px, 4vw, 30px)/1.25 var(--serif);
-    letter-spacing: -0.005em;
-    margin-bottom: 8px;
-}
-
-.dek {
-    font-style: italic;
-    font-size: 17.5px;
-    line-height: 1.5;
-    color: var(--quiet);
-    margin-bottom: 8px;
-}
-
-.article-head .dateline { margin-top: 0; }
-
-.article-body h2 { margin: 34px 0 12px; }
-
-.article-body blockquote {
-    border-left: 2px solid var(--hairline);
-    padding: 2px 0 2px 16px;
-    margin: 0 0 14px;
-    color: var(--quiet);
-    font-style: italic;
-}
-
-.article-body blockquote p:last-child { margin-bottom: 0; }
-
-.article-foot {
-    margin-top: 36px;
-    padding-top: 14px;
-    border-top: 1px solid var(--hairline);
-    font: 12px/1.8 var(--mono);
-    color: var(--quiet);
-}
-
-/* ─── 404 ─── */
 
 .gone {
     min-height: 82vh;
@@ -310,8 +199,6 @@ pre code { font-size: 12.5px; }
 
 .gone a { color: var(--accent); }
 
-/* ─── Footer ─── */
-
 footer {
     margin-top: clamp(48px, 9vh, 80px);
     text-align: center;
@@ -321,8 +208,6 @@ footer {
 
 footer a { color: inherit; }
 
-/* ─── Small screens ─── */
-
 @media (max-width: 540px) {
     body { font-size: 16px; padding-left: 20px; padding-right: 20px; }
     .intro p { font-size: 17px; }
@@ -331,17 +216,14 @@ footer a { color: inherit; }
     .gallery img { height: 130px; }
 }
 
-/* ─── Print: a letterhead is a thing that prints, so let it ─── */
-
 @media print {
     body { max-width: none; padding: 0; background: #fff; }
     .skip { display: none; }
     a { color: #000; text-decoration: none; }
-    .links a[href^="http"]::after,
     #contact a[href^="http"]::after {
         content: " (" attr(href) ")";
         font-size: 10px;
         color: var(--quiet);
     }
-    .entry, pre, figure { break-inside: avoid; }
+    .entry, figure { break-inside: avoid; }
 }

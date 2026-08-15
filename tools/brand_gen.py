@@ -1,14 +1,5 @@
-"""Redraw the brand rasters: og.png (1200x630), apple-touch-icon.png,
-favicon.ico.
-
-No artwork, no atmosphere. The og card is the letterhead and nothing
-else: the name in Charter over the fittings in the system mono, centered
-on flat paper. Drawn at 2x and downsampled so the type stays crisp. The
-icons are the ink plate with the paper Charter M, matching the inline
-SVG favicon on every page.
-
-Uses macOS system fonts. No webfonts here either. Edit this generator,
-not the emitted files.
+"""Generate og.png, apple-touch-icon.png, and favicon.ico from the site
+palette and macOS system fonts.
 
 Run:  uv run --with pillow --with pyoxipng python tools/brand_gen.py
 """
@@ -19,9 +10,9 @@ from PIL import Image, ImageDraw, ImageFont
 
 REPO = Path(__file__).resolve().parent.parent
 
-PAPER = (246, 243, 236)   # --paper
-INK = (33, 31, 25)        # --ink
-QUIET = (94, 91, 78)      # the quiet tone, flattened onto this paper
+PAPER = (246, 243, 236)
+INK = (33, 31, 25)
+QUIET = (94, 91, 78)
 
 CHARTER = "/System/Library/Fonts/Supplemental/Charter.ttc"
 MENLO = "/System/Library/Fonts/Menlo.ttc"
@@ -59,9 +50,6 @@ def og_card():
 
 
 def m_plate(size, radius_ratio):
-    """The ink plate with the paper Charter M, at any size; the corner
-    radius comes in as a ratio because iOS rounds the touch icon itself
-    (ratio 0) while the favicon keeps the inline SVG's 13/64."""
     img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     if radius_ratio:
@@ -80,8 +68,6 @@ def m_plate(size, radius_ratio):
 
 
 def touch_icon():
-    """Full bleed: iOS rounds the corners itself, so the source stays
-    square."""
     out = REPO / "apple-touch-icon.png"
     m_plate(180 * 4, 0).convert("RGB").resize((180, 180), Image.LANCZOS).save(out)
     crush(out)
@@ -89,8 +75,6 @@ def touch_icon():
 
 
 def favicon_ico():
-    """For the browsers that still ask for /favicon.ico; modern ones take
-    the inline SVG link instead."""
     out = REPO / "favicon.ico"
     m_plate(48 * 4, 13 / 64).resize((48, 48), Image.LANCZOS).save(
         out, format="ICO", sizes=[(48, 48), (32, 32), (16, 16)])
