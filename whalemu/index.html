@@ -4,8 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#faf8f2" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#131311" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f6f3ec">
     <meta name="description" content="WhalEmu: a real-mode x86 emulator with a step debugger, running in your browser. Fibonacci is loaded and assembled; press Step and watch the registers move.">
     <meta name="author" content="Mattias Rask">
     <title>WhalEmu &middot; Mattias Rask</title>
@@ -19,14 +18,15 @@
     <meta property="og:image" content="https://0mattias.github.io/og.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Mattias Rask: security tools, AI agents, low-level systems.">
+    <meta property="og:image:alt" content="The name Mattias Rask in serif type on warm paper, under a hairline wireframe sphere.">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="WhalEmu">
     <meta name="twitter:description" content="A real-mode x86 emulator with a step debugger, running in your browser. Press Step and watch the registers move.">
     <meta name="twitter:image" content="https://0mattias.github.io/og.png">
 
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231d1d1b'/%3E%3Crect y='27' width='32' height='5' fill='%23ff6600'/%3E%3Ctext x='50%25' y='68%25' font-family='Menlo,monospace' font-size='19' font-weight='bold' fill='%23faf8f2' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%239a4a12'/%3E%3Ctext x='32' y='47' font-family='Charter,Georgia,serif' font-size='42' fill='%23f6f3ec' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E" type="image/svg+xml">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 
     <link rel="stylesheet" href="/style.css">
@@ -37,21 +37,17 @@
 
     <a class="skip" href="#main">skip to content</a>
 
-    <header id="header">
-        <div class="masthead">
-            <p class="site-title"><a href="/">Mattias Rask<span class="cursor" aria-hidden="true"> &#9646;</span></a></p>
-            <p class="site-mail"><a href="mailto:rask@duck.com">rask@duck.com</a></p>
-        </div>
-        <p class="site-tagline">security tools &middot; AI agents &middot; low-level systems &middot; Boston, MA</p>
-        <hr class="rule">
+    <header class="letterhead letterhead-sub">
+        <p class="name"><a href="/"><img class="crest" src="/crest.svg" width="62" height="62" alt="">Mattias Rask</a></p>
     </header>
 
     <main id="main">
 
-        <p class="crumb"><a href="/">&larr; home</a></p>
-
-        <h1>WhalEmu</h1>
-        <p class="post-meta">a real-mode x86 emulator with a step debugger &middot; runs entirely in your browser</p>
+        <div class="article-head">
+            <h1>WhalEmu</h1>
+            <p class="dek">A real-mode x86 emulator with a step debugger.</p>
+            <p class="dateline">runs entirely in your browser &middot; no assembler installed, none needed</p>
+        </div>
 
         <p>Real mode is the 16-bit world an x86 processor wakes up in: eight registers, four flags, a stack, no protections. WhalEmu emulates it with a step debugger so you can watch each instruction land. The full build does real instruction encoding and stays private; this page is a working slice with a two-pass assembler and two dozen instructions.</p>
 
@@ -116,11 +112,10 @@ NOP HLT</pre>
 
     </main>
 
-    <footer id="footer">
-        <p><a href="/">&larr; home</a> &middot; &copy; <span id="year">2026</span> Mattias Rask &middot; Boston, MA</p>
+    <footer>
+        <p><a href="/">home</a> &middot; &copy; 2026 Mattias Rask &middot; Boston, MA</p>
     </footer>
 
-    <script src="/script.js"></script>
     <script src="whalemu.js"></script>
 </body>
 

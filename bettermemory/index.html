@@ -3,9 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#faf8f2" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#131311" media="(prefers-color-scheme: dark)">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#f6f3ec">
     <meta name="description" content="bettermemory: a trust layer between an AI agent and its own past. Every stored fact is a claim that keeps earning belief. A step-through demo of the staleness verdict, plus install steps.">
     <meta name="author" content="Mattias Rask">
     <title>bettermemory &middot; Mattias Rask</title>
@@ -19,14 +18,15 @@
     <meta property="og:image" content="https://0mattias.github.io/og.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Mattias Rask: security tools, AI agents, low-level systems.">
+    <meta property="og:image:alt" content="The name Mattias Rask in serif type on warm paper, under a hairline wireframe sphere.">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="bettermemory">
     <meta name="twitter:description" content="A trust layer between an AI agent and its own past. Every stored fact is a claim that keeps earning belief. A step-through demo of the staleness verdict, plus install steps.">
     <meta name="twitter:image" content="https://0mattias.github.io/og.png">
 
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231d1d1b'/%3E%3Crect y='27' width='32' height='5' fill='%23ff6600'/%3E%3Ctext x='50%25' y='68%25' font-family='Menlo,monospace' font-size='19' font-weight='bold' fill='%23faf8f2' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%239a4a12'/%3E%3Ctext x='32' y='47' font-family='Charter,Georgia,serif' font-size='42' fill='%23f6f3ec' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E" type="image/svg+xml">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 
     <link rel="stylesheet" href="/style.css">
@@ -51,21 +51,17 @@
 
     <a class="skip" href="#main">skip to content</a>
 
-    <header id="header">
-        <div class="masthead">
-            <p class="site-title"><a href="/">Mattias Rask<span class="cursor" aria-hidden="true"> &#9646;</span></a></p>
-            <p class="site-mail"><a href="mailto:rask@duck.com">rask@duck.com</a></p>
-        </div>
-        <p class="site-tagline">security tools &middot; AI agents &middot; low-level systems &middot; Boston, MA</p>
-        <hr class="rule">
+    <header class="letterhead letterhead-sub">
+        <p class="name"><a href="/"><img class="crest" src="/crest.svg" width="62" height="62" alt="">Mattias Rask</a></p>
     </header>
 
     <main id="main">
 
-        <p class="crumb"><a href="/">&larr; home</a></p>
-
-        <h1>bettermemory</h1>
-        <p class="post-meta">v3.27 &middot; updated July 22, 2026 &middot; MIT &middot; works with Claude Code, Cursor, and any MCP client</p>
+        <div class="article-head">
+            <h1>bettermemory</h1>
+            <p class="dek">A trust layer between an AI coding agent and its own past.</p>
+            <p class="dateline">v3.27 &middot; updated July 22, 2026 &middot; MIT &middot; works with Claude Code, Cursor, and any MCP client</p>
+        </div>
 
         <p>Memory tools for AI agents are good at storing facts and silent about whether a fact is still true. Files move, projects pivot, preferences change, and the stored note from March reads as gospel in November. A confidently remembered stale fact is worse than no memory at all.</p>
 
@@ -116,33 +112,21 @@ bettermemory try</pre>
             <h2>recent releases</h2>
 
             <div class="entry">
-                <div class="entry-row">
-                    <h3>v3.27</h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag"><time datetime="2026-07-20">July 20, 2026</time></span>
-                </div>
+                <h3>v3.27</h3> <span class="annot"><time datetime="2026-07-20">July 20, 2026</time></span>
                 <p>The disclosure release. Store roots were created with the caller's umask, and a memory's filename embeds the first ~43 characters of its summary, so a world-listable root handed any local account the gist of the whole store from <code>ls</code> alone. Roots are now created private and healed on open (POSIX, best-effort; <code>doctor</code> reports anything a filesystem refuses). Also fixed: BM25 priced term rarity against the wrong collection. Document frequencies now come from the index, over exactly the scoped set the search ranks, because whole-store numbers describe memories the caller cannot retrieve.</p>
             </div>
 
             <div class="entry">
-                <div class="entry-row">
-                    <h3>v3.26</h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag"><time datetime="2026-07-20">July 20, 2026</time></span>
-                </div>
+                <h3>v3.26</h3> <span class="annot"><time datetime="2026-07-20">July 20, 2026</time></span>
                 <p>The guarantees release. Event-log rotation could silently drop events under concurrent writers; archives are now shard-partitioned with a real ordering guarantee, and stores upgraded mid-line keep a best-effort fallback. <code>sync</code> gained guards on every path that could commit conflict markers as resolved content (a class found live: a push had shipped markers to the remote with no error raised). And shipped prose became testable: a checker extracts path, symbol, and count claims from the docs and asserts each against the repo, with a ratcheted allowlist so an exemption cannot outlive the defect it excuses.</p>
             </div>
 
             <div class="entry">
-                <div class="entry-row">
-                    <h3>v3.25</h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag"><time datetime="2026-07-19">July 19, 2026</time></span>
-                </div>
+                <h3>v3.25</h3> <span class="annot"><time datetime="2026-07-19">July 19, 2026</time></span>
                 <p>The provenance release. <code>migrate origin --repair</code> fixes memories whose origin was captured wrong: a write made outside a checkout claimed no repo at all, so auto-scoping quietly hid it from the project it belonged to (<code>--keep-global</code> preserves the ones that really are global). Two patches rode the same day: a Windows-only durability gap in the atomic write path, and a path-drift false positive that made healthy web-app memories look stale because bare application routes read as missing files.</p>
             </div>
 
-            <p class="small">Full history in the <a href="https://github.com/0Mattias/bettermemory/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">changelog</a>.</p>
+            <p class="small">Full history in the <a href="https://github.com/0Mattias/bettermemory/blob/main/CHANGELOG.md" target="_blank" rel="noopener noreferrer">changelog&nbsp;<span aria-hidden="true">↗</span></a>.</p>
         </section>
 
         <section>
@@ -155,16 +139,98 @@ bettermemory try</pre>
 
             <p class="small">Elsewhere: <code>uv tool install bettermemory</code> then <code>bettermemory init --client &lt;name&gt;</code></p>
 
-            <p><a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener noreferrer">source on GitHub</a> &middot; <a href="/blog/building-bettermemory/">why I built it (write-up)</a></p>
+            <p><a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener noreferrer">source on GitHub&nbsp;<span aria-hidden="true">↗</span></a> &middot; <a href="/blog/building-bettermemory/">why I built it (write-up)</a></p>
         </section>
 
     </main>
 
-    <footer id="footer">
-        <p><a href="/">&larr; home</a> &middot; &copy; <span id="year">2026</span> Mattias Rask &middot; Boston, MA</p>
+    <footer>
+        <p><a href="/">home</a> &middot; &copy; 2026 Mattias Rask &middot; Boston, MA</p>
     </footer>
 
-    <script src="/script.js"></script>
+    <script>
+    /* The verdict walkthrough: the page's one script, and the reason the
+       page has one. Everything degrades to the static search hit above. */
+    (() => {
+        const demoOut = document.getElementById('bm-demo');
+        const demoSay = document.getElementById('bm-demo-say');
+        const demoControls = document.getElementById('bm-demo-controls');
+        if (!demoOut || !demoSay || !demoControls) return;
+        demoControls.hidden = false;
+        demoSay.hidden = false;
+
+        const BEATS = [
+            {
+                say: 'An agent saves a fact about the codebase. Today, the fact is true.',
+                fields: [
+                    ['"staleness_verdict"', '"fresh"', 'ok'],
+                    ['"last_verified_at"', '"today"', null]
+                ]
+            },
+            {
+                say: 'Three weeks pass and 28 commits land in the repo. Nothing has re-checked the fact, so the verdict stops vouching for it.',
+                fields: [
+                    ['"staleness_verdict"', '"spot_check_recommended"', 'warn'],
+                    ['"commit_drift_count"', '28', null]
+                ]
+            },
+            {
+                say: 'One of those commits moved the file. The fact is wrong now, and the search hit arrives saying exactly that.',
+                fields: [
+                    ['"staleness_verdict"', '"spot_check_required"', 'hot'],
+                    ['"path_drift"', '{ "missing": ["src/auth/middleware.py"] }', null],
+                    ['"commit_drift_count"', '31', null]
+                ]
+            },
+            {
+                say: 'The agent re-reads the repo, fixes the path, and calls memory_verify. Fresh again, and this time it is earned.',
+                fields: [
+                    ['"staleness_verdict"', '"fresh"', 'ok'],
+                    ['"last_verified_at"', '"just now"', null]
+                ]
+            }
+        ];
+
+        const nextBtn = demoControls.querySelector('[data-act="next"]');
+        const resetBtn = demoControls.querySelector('[data-act="reset"]');
+        let beat = 0;
+        let prevPlain = null;
+
+        const render = () => {
+            const b = BEATS[beat];
+            demoSay.innerHTML = '<span class="stepnum">step ' + (beat + 1) + ' of ' + BEATS.length + '</span>' + b.say;
+
+            const plain = ['  "snippet": "Auth middleware lives in src/auth/middleware.py"', '  "relevance": "high"'];
+            const marked = plain.slice();
+            b.fields.forEach(f => {
+                plain.push('  ' + f[0] + ': ' + f[1]);
+                const value = f[2] ? '<b class="' + f[2] + '">' + f[1] + '</b>' : f[1];
+                marked.push('  ' + f[0] + ': ' + value);
+            });
+
+            /* Lines that changed since the previous beat flash like the
+               emulator's register highlight. First render flashes nothing. */
+            const lines = marked.map((line, i) =>
+                prevPlain && plain[i] !== prevPlain[i] ? '<span class="chg">' + line + '</span>' : line);
+            demoOut.innerHTML = '{\n' + lines.join(',\n') + '\n}';
+            prevPlain = plain;
+
+            nextBtn.disabled = beat === BEATS.length - 1;
+            resetBtn.disabled = beat === 0;
+        };
+
+        demoControls.addEventListener('click', e => {
+            const act = e.target.getAttribute('data-act');
+            if (!act) return;
+            if (act === 'next' && beat < BEATS.length - 1) beat += 1;
+            if (act === 'reset') beat = 0;
+            render();
+        });
+
+        render();
+    })();
+    </script>
+
 </body>
 
 </html>

@@ -3,9 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#faf8f2" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#131311" media="(prefers-color-scheme: dark)">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#f6f3ec">
     <meta name="description" content="Mattias Rask. Self-taught engineer in Boston. Security tools, AI agents, low-level systems, and the homelab that runs them.">
     <meta name="author" content="Mattias Rask">
     <title>Mattias Rask</title>
@@ -19,14 +18,15 @@
     <meta property="og:image" content="https://0mattias.github.io/og.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Mattias Rask: security tools, AI agents, low-level systems.">
+    <meta property="og:image:alt" content="The name Mattias Rask in serif type on warm paper, under a hairline wireframe sphere.">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Mattias Rask">
     <meta name="twitter:description" content="Mattias Rask. Self-taught engineer in Boston. Security tools, AI agents, low-level systems, and the homelab that runs them.">
     <meta name="twitter:image" content="https://0mattias.github.io/og.png">
 
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231d1d1b'/%3E%3Crect y='27' width='32' height='5' fill='%23ff6600'/%3E%3Ctext x='50%25' y='68%25' font-family='Menlo,monospace' font-size='19' font-weight='bold' fill='%23faf8f2' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%239a4a12'/%3E%3Ctext x='32' y='47' font-family='Charter,Georgia,serif' font-size='42' fill='%23f6f3ec' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E" type="image/svg+xml">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 
     <link rel="stylesheet" href="/style.css">
@@ -58,13 +58,10 @@
 
     <a class="skip" href="#main">skip to content</a>
 
-    <header id="header">
-        <div class="masthead">
-            <h1 class="site-title"><a href="/">Mattias Rask<span class="cursor" aria-hidden="true"> &#9646;</span></a></h1>
-            <p class="site-mail"><a href="mailto:rask@duck.com">rask@duck.com</a></p>
-        </div>
-        <p class="site-tagline">security tools &middot; AI agents &middot; low-level systems &middot; Boston, MA</p>
-        <hr class="rule">
+    <header class="letterhead">
+        <img class="crest" src="/crest.svg" width="118" height="118" alt="">
+        <h1 class="name">Mattias Rask</h1>
+        <p class="dateline">security tools &middot; AI agents &middot; low-level systems &middot; Boston,&nbsp;MA</p>
     </header>
 
     <main id="main">
@@ -73,35 +70,13 @@
             <p>Self-taught engineer. I build security tools, AI agents, and the low-level pieces underneath, then run them on three single-board computers in a rack by my desk.</p>
         </section>
 
-        <section id="building">
+        <section id="now">
             <h2>now</h2>
 
             <div class="entry">
-                <div class="entry-row">
-                    <h3>Verendo</h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag">Go &middot; React &middot; private</span>
-                </div>
-                <p>An IT service management platform in the ServiceNow mold: incidents, problems, changes with CAB approval, a service catalog, a knowledge base, a CMDB, and an SLA engine that precomputes every deadline, multi-tenant down to the foreign keys. Claude is in the product: a &#8984;J agent that works the queue through twenty-one validated tools and never writes without a confirmed proposal, plus an MCP server so an outside Claude can drive the console.</p>
-            </div>
-
-            <div class="entry">
-                <div class="entry-row">
-                    <h3><a href="/bettermemory/">bettermemory</a></h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag">v3.27 &middot; MIT</span>
-                </div>
+                <h3><a href="/bettermemory/">bettermemory</a></h3> <span class="annot">v3.27 &middot; MIT</span>
                 <p>A trust layer between an AI coding agent and its own past. Every stored fact is a claim that keeps earning belief: verified against the filesystem and git before the agent relies on it, attributed to the exact sentence it shaped, measured for whether it actually helped, and owed a public postmortem when a verdict is wrong.</p>
-                <p class="links"><a href="/bettermemory/">the pitch, with a demo you can step through</a> &middot; <a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener noreferrer">source on GitHub</a></p>
-            </div>
-
-            <div class="entry">
-                <div class="entry-row">
-                    <h3><a href="/blog/cml-on-google-cloud/">CCNP lab</a></h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag">CML 2.10 &middot; Google Cloud</span>
-                </div>
-                <p>Studying for the CCNP on Cisco Modeling Labs, run on a Google Cloud VM: seventeen platform images on an eight-vCPU instance that exists only on my tailnet and powers off between study sessions.</p>
+                <p class="links"><a href="/bettermemory/">the pitch, with a demo you can step through</a> &middot; <a href="https://github.com/0Mattias/bettermemory" target="_blank" rel="noopener noreferrer">source on GitHub&nbsp;<span aria-hidden="true">↗</span></a></p>
             </div>
         </section>
 
@@ -109,20 +84,7 @@
             <h2>writing</h2>
 
             <div class="entry">
-                <div class="entry-row">
-                    <h3><a href="/blog/cml-on-google-cloud/">Cisco Modeling Labs on Google Cloud</a></h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag"><time datetime="2026-07-06">July 6, 2026</time></span>
-                </div>
-                <p>How the CCNP lab went up: the nested virtualization flag GCP keeps out of the console, a headless CML install, and the two Docker bugs that kept IOL nodes from booting.</p>
-            </div>
-
-            <div class="entry">
-                <div class="entry-row">
-                    <h3><a href="/blog/building-bettermemory/">Building bettermemory</a></h3>
-                    <span class="leader" aria-hidden="true"></span>
-                    <span class="tag"><time datetime="2026-05-18">May 18, 2026</time></span>
-                </div>
+                <h3><a href="/blog/building-bettermemory/">Building bettermemory</a></h3> <span class="annot"><time datetime="2026-05-18">May 18, 2026</time></span>
                 <p>Why opt-in retrieval beats pre-loading memory into every prompt, and what the verification machinery looks like by 3.10.</p>
             </div>
         </section>
@@ -130,74 +92,13 @@
         <section id="about">
             <h2>about</h2>
 
-            <p>Two years into software, cybersecurity, and embedded systems, almost all of it hands-on. Most of what's above shipped since spring.</p>
+            <p>Two years into software, cybersecurity, and embedded systems, almost all of it hands-on. C, Rust, and Go at the bottom of the stack; Python, MCP, and the Anthropic API for agents; Axolotl for fine-tunes; TypeScript and PostgreSQL when the web calls.</p>
 
-            <p>Also on the bench: <a href="/whalemu/">WhalEmu</a>, a real-mode x86 emulator you can step through in your browser, and <a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener noreferrer">KillChain-8B</a>, Qwen3-8B fully fine-tuned on offensive red-team data. The private shelf: Chromatophore, which reshapes TCP and UDP streams until they pass for well-known protocols on the wire; PineappleGPT, passive wireless recon with Claude as the reasoning loop; a honeypot dressed as a WordPress AI blog; and the MCP server that lets Claude run the homelab from inside a conversation. I'd rather walk through those on a call than publish the source.</p>
+            <p>Also on the bench: <a href="/whalemu/">WhalEmu</a>, a real-mode x86 emulator you can step through in your browser, and <a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener noreferrer">KillChain-8B&nbsp;<span aria-hidden="true">↗</span></a>, Qwen3-8B fully fine-tuned on offensive red-team data. The private shelf: Chromatophore, which reshapes TCP and UDP streams until they pass for well-known protocols on the wire; PineappleGPT, passive wireless recon with Claude as the reasoning loop; a honeypot dressed as a WordPress AI blog; and the MCP server that lets Claude run the homelab from inside a conversation. I'd rather walk through those on a call than publish the source.</p>
 
-            <dl class="spec">
-                <div class="spec-row">
-                    <dt>systems</dt>
-                    <span class="leader" aria-hidden="true"></span>
-                    <dd>C, Rust, Go</dd>
-                </div>
-                <div class="spec-row">
-                    <dt>agents + tooling</dt>
-                    <span class="leader" aria-hidden="true"></span>
-                    <dd>Python, MCP, the Anthropic API</dd>
-                </div>
-                <div class="spec-row">
-                    <dt>models</dt>
-                    <span class="leader" aria-hidden="true"></span>
-                    <dd>Axolotl fine-tunes; Claude, Gemini, OpenAI</dd>
-                </div>
-                <div class="spec-row">
-                    <dt>web, when needed</dt>
-                    <span class="leader" aria-hidden="true"></span>
-                    <dd>TypeScript, React, PostgreSQL</dd>
-                </div>
-            </dl>
+            <p>Certified: Cisco <a href="https://www.credly.com/badges/baafdf3b-ad3c-499d-9048-1e284973c597/public_url" target="_blank" rel="noopener noreferrer">CCNA&nbsp;<span aria-hidden="true">↗</span></a>; Cisco CCST in <a href="https://www.credly.com/badges/59b8cf25-5772-4666-b70b-3b246f8f3856/public_url" target="_blank" rel="noopener noreferrer">Cybersecurity&nbsp;<span aria-hidden="true">↗</span></a>, <a href="https://www.credly.com/badges/ad5c05b2-f026-48c8-b0bf-4adf0138b74a/public_url" target="_blank" rel="noopener noreferrer">Networking&nbsp;<span aria-hidden="true">↗</span></a>, and <a href="https://www.credly.com/badges/aa0f5642-5627-4bc9-8b54-8734fc828822/public_url" target="_blank" rel="noopener noreferrer">IT Support&nbsp;<span aria-hidden="true">↗</span></a>; <a href="https://www.credly.com/badges/fe2b7793-e2ba-421e-8332-de1af03226bd/public_url" target="_blank" rel="noopener noreferrer">Network Security Support Technician&nbsp;<span aria-hidden="true">↗</span></a> (Pearson VUE); Anthropic Cyber Verification Program.</p>
 
-            <p>Certified: Cisco <a href="https://www.credly.com/badges/baafdf3b-ad3c-499d-9048-1e284973c597/public_url" target="_blank" rel="noopener noreferrer">CCNA</a>; Cisco CCST in <a href="https://www.credly.com/badges/59b8cf25-5772-4666-b70b-3b246f8f3856/public_url" target="_blank" rel="noopener noreferrer">Cybersecurity</a>, <a href="https://www.credly.com/badges/ad5c05b2-f026-48c8-b0bf-4adf0138b74a/public_url" target="_blank" rel="noopener noreferrer">Networking</a>, and <a href="https://www.credly.com/badges/aa0f5642-5627-4bc9-8b54-8734fc828822/public_url" target="_blank" rel="noopener noreferrer">IT Support</a>; <a href="https://www.credly.com/badges/fe2b7793-e2ba-421e-8332-de1af03226bd/public_url" target="_blank" rel="noopener noreferrer">Network Security Support Technician</a> (Pearson VUE); Anthropic Cyber Verification Program.</p>
-
-            <div class="badges">
-                <a href="https://www.credly.com/badges/baafdf3b-ad3c-499d-9048-1e284973c597/public_url" target="_blank" rel="noopener noreferrer"><img src="/badges/ccna.jpg" alt="Cisco Certified CCNA badge; verify on Credly" width="88" height="88" decoding="async"></a>
-                <a href="https://www.credly.com/badges/59b8cf25-5772-4666-b70b-3b246f8f3856/public_url" target="_blank" rel="noopener noreferrer"><img src="/badges/ccst-cybersecurity.jpg" alt="Cisco Certified Support Technician Cybersecurity badge; verify on Credly" width="88" height="88" decoding="async"></a>
-                <a href="https://www.credly.com/badges/ad5c05b2-f026-48c8-b0bf-4adf0138b74a/public_url" target="_blank" rel="noopener noreferrer"><img src="/badges/ccst-networking.jpg" alt="Cisco Certified Support Technician Networking badge; verify on Credly" width="88" height="88" decoding="async"></a>
-                <a href="https://www.credly.com/badges/aa0f5642-5627-4bc9-8b54-8734fc828822/public_url" target="_blank" rel="noopener noreferrer"><img src="/badges/ccst-it-support.jpg" alt="Cisco Certified Support Technician IT Support badge; verify on Credly" width="88" height="88" decoding="async"></a>
-            </div>
-
-            <div class="gallery">
-                <figure>
-                    <a href="/photos/photo-rack.jpg"><img src="/photos/thumbs/photo-rack.jpg" alt="A black networking rack on a hardwood floor with a Cisco switch, patch panel, and StarTech PDU mounted on the front." width="240" height="320" loading="lazy" decoding="async"></a>
-                    <figcaption>networking rack, pre-boards</figcaption>
-                </figure>
-                <figure>
-                    <a href="/photos/photo-homelab.jpg"><img src="/photos/thumbs/photo-homelab.jpg" alt="Three silver ZimaBoard SBCs sitting side by side in a rack with cables routed across them." width="320" height="240" loading="lazy" decoding="async"></a>
-                    <figcaption>the three ZimaBoards</figcaption>
-                </figure>
-                <figure>
-                    <a href="/photos/photo-marauder-flash.jpg"><img src="/photos/thumbs/photo-marauder-flash.jpg" alt="A custom Dual C5 ESP32 Marauder board in a translucent red case held in front of a monitor showing a flasher script and pink ASCII art output." width="240" height="320" loading="lazy" decoding="async"></a>
-                    <figcaption>custom Dual C5, mid-flash</figcaption>
-                </figure>
-                <figure>
-                    <a href="/photos/photo-arduino.jpg"><img src="/photos/thumbs/photo-arduino.jpg" alt="An Arduino UNO wired up on a breadboard with jumper wires running off-frame in front of a laptop." width="320" height="240" loading="lazy" decoding="async"></a>
-                    <figcaption>Arduino on the bench</figcaption>
-                </figure>
-                <figure>
-                    <a href="/photos/photo-marauder-laptop.jpg"><img src="/photos/thumbs/photo-marauder-laptop.jpg" alt="A Marauder held over a desk, a sticker reading 'lookin?' visible on a laptop in the background." width="240" height="320" loading="lazy" decoding="async"></a>
-                    <figcaption>before anti-detection</figcaption>
-                </figure>
-                <figure>
-                    <a href="/photos/photo-marauder-dark.jpg"><img src="/photos/thumbs/photo-marauder-dark.jpg" alt="A Marauder pointed at antennas in low light, screen reading 'Detect Pineapple'." width="240" height="320" loading="lazy" decoding="async"></a>
-                    <figcaption>after anti-detection</figcaption>
-                </figure>
-                <figure>
-                    <a href="/photos/photo-georgia.jpg"><img src="/photos/thumbs/photo-georgia.jpg" alt="Georgia, a tabby cat, sitting in front of the rack." width="240" height="320" loading="lazy" decoding="async"></a>
-                    <figcaption>Georgia</figcaption>
-                </figure>
-            </div>
-
-            <p>Off-keyboard: drawing, photo and video editing, ham radio, the outdoors, and Georgia, the cat in the last photo.</p>
+            <p>Off-keyboard: drawing, photo and video editing, ham radio, the outdoors, and Georgia, the cat.</p>
         </section>
 
         <section id="contact">
@@ -207,17 +108,16 @@
 
             <p class="mail-big"><a href="mailto:rask@duck.com">rask@duck.com</a></p>
 
-            <p class="small"><a href="https://github.com/0Mattias" target="_blank" rel="me noopener noreferrer">GitHub</a> &middot; <a href="https://www.linkedin.com/in/mattiasrask" target="_blank" rel="me noopener noreferrer">LinkedIn</a> &middot; <a href="https://huggingface.co/MrPibb" target="_blank" rel="me noopener noreferrer">Hugging Face</a></p>
+            <p class="small"><a href="https://github.com/0Mattias" target="_blank" rel="me noopener noreferrer">GitHub&nbsp;<span aria-hidden="true">↗</span></a> &middot; <a href="https://www.linkedin.com/in/mattiasrask" target="_blank" rel="me noopener noreferrer">LinkedIn&nbsp;<span aria-hidden="true">↗</span></a> &middot; <a href="https://huggingface.co/MrPibb" target="_blank" rel="me noopener noreferrer">Hugging Face&nbsp;<span aria-hidden="true">↗</span></a></p>
         </section>
 
     </main>
 
-    <footer id="footer">
-        <p>&copy; <span id="year">2026</span> Mattias Rask &middot; Boston, MA &middot; <a href="/atom.xml">atom</a></p>
-        <p class="colophon">set in Charter, fittings in the system mono &middot; no webfonts, no trackers, no build step</p>
+    <footer>
+        <p>&copy; 2026 Mattias Rask &middot; Boston, MA &middot; <a href="/atom.xml">atom</a></p>
+        <p class="colophon">set in Charter, fittings in the system mono &middot; no webfonts, no trackers, no build, no scripts</p>
     </footer>
 
-    <script src="/script.js"></script>
 </body>
 
 </html>
