@@ -9,6 +9,7 @@
     --hairline: #d8d5ce;
     --accent: #9a4a12;
     --wash: #e7d8c9;
+    --sky: #7ea9de;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -24,9 +25,6 @@ body {
     color: var(--ink);
     font: 17px/1.62 var(--serif);
     font-kerning: normal;
-    max-width: 34em;
-    margin: 0 auto;
-    padding: clamp(40px, 9vh, 84px) 24px clamp(40px, 7vh, 64px);
 }
 
 ::selection { background: var(--wash); color: var(--ink); }
@@ -77,24 +75,102 @@ h1, h2, h3 { text-wrap: balance; }
 .skip:focus { left: 12px; }
 
 .letterhead {
+    position: relative;
+    height: 100vh;
+    height: 100svh;
+    min-height: 480px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
-    margin-bottom: clamp(44px, 8vh, 68px);
+    padding: 0 24px;
+    background: var(--sky);
+    color: var(--paper);
+    transition: background-color 1.2s ease;
+}
+
+#sky {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    opacity: 0;
+    transition: opacity 1s ease;
+}
+
+#sky.drawn { opacity: 1; }
+
+.letterhead .words {
+    position: relative;
+    transform: translateY(-4vh);
 }
 
 .letterhead .name {
-    font: 400 clamp(29px, 5vw, 38px)/1.1 var(--serif);
-    letter-spacing: -0.01em;
+    font: 400 clamp(38px, 6.4vw, 72px)/1.08 var(--serif);
+    letter-spacing: -0.012em;
+    text-shadow: 0 2px 18px rgba(20, 30, 60, 0.22);
 }
-
-.letterhead .name a { text-decoration: none; color: var(--ink); }
-.letterhead .name a:hover { color: var(--accent); }
 
 .dateline {
-    margin-top: 10px;
-    font: 15px/1.6 var(--serif);
-    color: var(--quiet);
+    margin-top: 14px;
+    font: 400 clamp(15px, 1.6vw, 18px)/1.6 var(--serif);
+    color: rgba(246, 243, 236, 0.88);
+    text-shadow: 0 1px 10px rgba(20, 30, 60, 0.22);
     text-wrap: balance;
 }
+
+.looks {
+    position: absolute;
+    left: max(22px, env(safe-area-inset-left));
+    bottom: max(22px, env(safe-area-inset-bottom));
+    display: none;
+    gap: 10px;
+}
+
+html.sky .looks { display: flex; }
+
+.looks button {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(246, 243, 236, 0.55);
+    background: var(--sw);
+    color: transparent;
+    font-size: 0;
+    cursor: pointer;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.looks button:hover { transform: scale(1.15); }
+
+.looks button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--paper); }
+
+.looks button:focus-visible {
+    outline: 2px solid var(--paper);
+    outline-offset: 3px;
+}
+
+.phase {
+    position: absolute;
+    right: max(22px, env(safe-area-inset-right));
+    bottom: max(20px, env(safe-area-inset-bottom));
+    font: 13px/1.6 var(--serif);
+    color: rgba(246, 243, 236, 0.8);
+    text-shadow: 0 1px 8px rgba(20, 30, 60, 0.25);
+}
+
+main, footer {
+    max-width: 34em;
+    margin: 0 auto;
+    padding-left: 24px;
+    padding-right: 24px;
+}
+
+main { padding-top: clamp(44px, 8vh, 72px); }
 
 section { margin-bottom: clamp(40px, 7vh, 56px); scroll-margin-top: 24px; }
 
@@ -167,6 +243,7 @@ p:last-child { margin-bottom: 0; }
 
 footer {
     margin-top: clamp(48px, 9vh, 80px);
+    padding-bottom: clamp(40px, 7vh, 64px);
     text-align: center;
     font-size: 13px;
     color: var(--quiet);
@@ -175,14 +252,21 @@ footer {
 footer a { color: inherit; }
 
 @media (max-width: 540px) {
-    body { font-size: 16px; padding-left: 20px; padding-right: 20px; }
+    body { font-size: 16px; }
+    main, footer { padding-left: 20px; padding-right: 20px; }
+    .letterhead { padding: 0 20px; }
     .intro p { font-size: 17px; }
     .annot { white-space: normal; }
 }
 
 @media print {
-    body { max-width: none; padding: 0; background: #fff; }
-    .skip { display: none; }
+    body { background: #fff; }
+    main, footer { max-width: none; padding: 0; }
+    .skip, #sky, .looks, .phase { display: none; }
+    .letterhead { height: auto; min-height: 0; padding: 0 0 32px; background: #fff; color: #000; }
+    .letterhead .words { transform: none; }
+    .letterhead .name, .dateline { text-shadow: none; }
+    .dateline { color: var(--quiet); }
     a { color: #000; text-decoration: none; }
     #contact a[href^="http"]::after {
         content: " (" attr(href) ")";

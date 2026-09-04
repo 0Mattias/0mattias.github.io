@@ -30,6 +30,7 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 
     <link rel="stylesheet" href="/style.css">
+    <script src="/sky.js" defer></script>
 
     <script type="application/ld+json">
     {
@@ -58,8 +59,17 @@
     <a class="skip" href="#main">skip to content</a>
 
     <header class="letterhead">
-        <h1 class="name">Mattias Rask</h1>
-        <p class="dateline">security tools &middot; AI agents &middot; low-level systems &middot; Boston,&nbsp;MA</p>
+        <canvas id="sky" aria-hidden="true"></canvas>
+        <div class="words">
+            <h1 class="name">Mattias Rask</h1>
+            <p class="dateline">security tools &middot; AI agents &middot; low-level systems &middot; Boston,&nbsp;MA</p>
+        </div>
+        <div class="looks" role="group" aria-label="Time of day">
+            <button type="button" data-look="day" title="Day" aria-pressed="false" style="--sw: #7ea9de">day</button>
+            <button type="button" data-look="dusk" title="Dusk" aria-pressed="false" style="--sw: #e2a27c">dusk</button>
+            <button type="button" data-look="night" title="Night" aria-pressed="false" style="--sw: #1a2237">night</button>
+        </div>
+        <p class="phase"></p>
     </header>
 
     <main id="main">
