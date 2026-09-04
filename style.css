@@ -154,15 +154,6 @@ html.sky .looks { display: flex; }
     outline-offset: 3px;
 }
 
-.phase {
-    position: absolute;
-    right: max(22px, env(safe-area-inset-right));
-    bottom: max(20px, env(safe-area-inset-bottom));
-    font: 13px/1.6 var(--serif);
-    color: rgba(246, 243, 236, 0.8);
-    text-shadow: 0 1px 8px rgba(20, 30, 60, 0.25);
-}
-
 main, footer {
     max-width: 34em;
     margin: 0 auto;
@@ -262,7 +253,7 @@ footer a { color: inherit; }
 @media print {
     body { background: #fff; }
     main, footer { max-width: none; padding: 0; }
-    .skip, #sky, .looks, .phase { display: none; }
+    .skip, #sky, .looks { display: none; }
     .letterhead { height: auto; min-height: 0; padding: 0 0 32px; background: #fff; color: #000; }
     .letterhead .words { transform: none; }
     .letterhead .name, .dateline { text-shadow: none; }

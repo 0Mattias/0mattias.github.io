@@ -19,7 +19,6 @@
 var hero = document.querySelector('.letterhead');
 var words = document.querySelector('.letterhead .words');
 var canvas = document.getElementById('sky');
-var caption = document.querySelector('.phase');
 var buttons = Array.prototype.slice.call(document.querySelectorAll('.looks button'));
 if (!hero || !canvas) return;
 
@@ -482,20 +481,37 @@ function seg(ctx, x0, y0, cx, cy, x1, y1, wid, lx, ly) {
 function drawLeaf(ctx, x, y, size, rot, hue, lx, ly) {
   var facing = Math.cos(rot) * lx + Math.sin(rot) * ly;
   var r = Math.round(60 + 175 * (0.5 + 0.5 * facing));
-  ctx.fillStyle = 'rgb(' + r + ',255,' + Math.round(hue * 255) + ')';
   ctx.save();
   ctx.translate(x, y);
   ctx.rotate(rot);
+  ctx.strokeStyle = 'rgb(90,0,0)';
+  ctx.lineWidth = Math.max(size * 0.09, 0.8);
   ctx.beginPath();
-  ctx.ellipse(0, 0, size, size * 0.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-  for (var i = -1; i <= 1; i++) {
-    ctx.beginPath();
-    ctx.arc(i * size * 0.55, size * 0.36, size * 0.3, 0, Math.PI * 2);
-    ctx.arc(i * size * 0.55, -size * 0.36, size * 0.3, 0, Math.PI * 2);
-    ctx.fill();
+  ctx.moveTo(-size, 0);
+  ctx.lineTo(-size * 1.35, 0);
+  ctx.stroke();
+  ctx.fillStyle = 'rgb(' + r + ',255,' + Math.round(hue * 255) + ')';
+  ctx.beginPath();
+  var n = 30, i, t, w;
+  for (i = 0; i <= n; i++) {
+    t = i / n;
+    w = leafWidth(t, size);
+    if (i === 0) ctx.moveTo(-size, 0); else ctx.lineTo(-size + 2 * size * t, -w);
   }
+  for (i = n; i >= 0; i--) {
+    t = i / n;
+    w = leafWidth(t, size);
+    ctx.lineTo(-size + 2 * size * t, w);
+  }
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
+}
+
+function leafWidth(t, size) {
+  var env = Math.pow(t, 0.55) * Math.pow(1 - t, 0.4) * 1.9;
+  var lobe = 0.5 + 0.5 * Math.pow(Math.abs(Math.sin(Math.PI * 4.0 * t + 0.4)), 0.7);
+  return size * 0.62 * env * lobe;
 }
 
 function cluster(ctx, x, y, size, n, rnd, lx, ly) {
@@ -562,7 +578,7 @@ function spawn(lf, rnd, anywhere) {
   var fromCrown = rnd() < 0.6;
   lf.x = fromCrown ? w * (0.55 + rnd() * 0.55) : w * (rnd() * 1.3 - 0.1);
   lf.y = anywhere ? h * (rnd() * 1.1 - 0.1) : (fromCrown ? h * (rnd() * 0.7 - 0.1) : -h * 0.08);
-  lf.size = d * (lf.layer === 'near' ? 0.024 : 0.014) * (0.75 + 0.5 * rnd());
+  lf.size = d * (lf.layer === 'near' ? 0.026 : 0.016) * (0.75 + 0.5 * rnd());
   lf.hue = rnd();
   lf.rot = rnd() * Math.PI * 2;
   lf.spin = (rnd() - 0.5) * 3.0;
@@ -623,17 +639,6 @@ function drawForeground(t, px, py) {
 function phase(date) {
   var d = (date - Date.UTC(2000, 0, 6, 18, 14)) / 86400000 / 29.530588853;
   return d - Math.floor(d);
-}
-
-function phaseName(p) {
-  if (p < 0.02 || p > 0.98) return 'new moon';
-  if (p < 0.23) return 'waxing crescent';
-  if (p < 0.27) return 'first quarter';
-  if (p < 0.48) return 'waxing gibbous';
-  if (p < 0.52) return 'full moon';
-  if (p < 0.73) return 'waning gibbous';
-  if (p < 0.77) return 'last quarter';
-  return 'waning crescent';
 }
 
 var P = phase(new Date());
@@ -929,10 +934,6 @@ try { initial = new URLSearchParams(location.search).get('look') || initial; } c
 if (!LOOKS[initial]) initial = 'day';
 cur = LOOKS[initial];
 document.documentElement.classList.add('sky');
-if (caption) {
-  var name = phaseName(P);
-  caption.textContent = name + (/moon$/.test(name) ? '' : ' moon') + ' · ' + Math.round((1 - Math.cos(P * 2 * Math.PI)) * 50) + '%';
-}
 setLook(initial, true);
 resize();
 
