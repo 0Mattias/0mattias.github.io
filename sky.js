@@ -3,14 +3,16 @@
    21-degree lens looks up through the crown at a cloud deck lit from
    the sun's side, a moon at tonight's real phase that dissolves into
    the sky on its shadow side, stars once it is dark. The oak is grown
-   by a small L-system and hung with russet, orange and gold; its
-   leaves let go and tumble down on the wind, the near ones soft, the
-   mid ones passing through focus. Sky, near foliage and falling
-   leaves render to their own targets, each is defocused through a
-   72-tap bokeh disc (bright spots bloom), then composited under an
-   ACES grade, a vignette and film grain. Three looks: the page opens
-   on the sunset, and the dots at the bottom left move the sun.
-   WebGL2, no libraries, no build step. */
+   by a small L-system and hung with russet, orange and gold; gusts
+   run through the crown, leaves let go and tumble down on the wind,
+   and a monarch rests on a twig in the focus plane, opening its wings
+   in the sun, taking off now and then (or when clicked) to flutter
+   about and land again. Sky, near foliage and the focus plane render
+   to their own targets, each is defocused through a 72-tap bokeh disc
+   (bright spots bloom), then composited under an ACES grade, a
+   vignette and film grain. Three looks: the page opens on the sunset,
+   and the dots at the bottom left move the sun. WebGL2, no
+   libraries, no build step. */
 
 'use strict';
 
@@ -31,8 +33,8 @@ if (!gl) return;
 var HDR = !!gl.getExtension('EXT_color_buffer_float');
 var reduced = matchMedia('(prefers-reduced-motion: reduce)');
 
-var SKY_RES = 0.4;    // sky pass, as a fraction of the canvas
-var HALF = 0.5;       // bokeh targets and the branch layer
+var SKY_RES = 0.4;
+var HALF = 0.5;
 var FOV = 21 * Math.PI / 180;
 var PITCH = 14 * Math.PI / 180;
 var MOON_R = 2.05 * Math.PI / 180;
@@ -81,6 +83,11 @@ var PAL = {
   }
 };
 
+var LEAF = {};
+['day', 'dusk', 'night'].forEach(function (k) {
+  LEAF[k] = PAL[k].leaf.map(function (h) { return h.map(scene); });
+});
+
 var MOON = (function () {
   var el = 20 * Math.PI / 180, az = 3 * Math.PI / 180;
   return [Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el)];
@@ -113,7 +120,6 @@ var HEAD = `#version 300 es
 precision highp float;
 precision highp int;
 in vec2 uv;
-out vec4 o;
 float hash12(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
   p3 += dot(p3, p3.yzx + 33.33);
@@ -160,13 +166,23 @@ float fbm3d(vec3 p) {
   for (int i = 0; i < 4; i++) { v += a * vn3(p); p *= 2.13; a *= 0.5; }
   return v;
 }
+vec3 camDir(vec2 uv, vec4 cam) {
+  vec2 p = uv * 2.0 - 1.0;
+  vec3 d = normalize(vec3(p.x * cam.x, p.y * cam.y, 1.0));
+  float cp = cos(cam.z), sp = sin(cam.z);
+  vec3 dir = vec3(d.x, d.y * cp + d.z * sp, -d.y * sp + d.z * cp);
+  float cy = cos(cam.w), sy = sin(cam.w);
+  return vec3(dir.x * cy + dir.z * sy, dir.y, -dir.x * sy + dir.z * cy);
+}
 `;
 
 var SKY = HEAD + `
+layout(location = 0) out vec4 o0;
+layout(location = 1) out vec4 o1;
 uniform vec2 R;
-uniform float T, NIGHT, DUSK, MOONR, PH, COVER, SHEL, MGAIN, SCALE;
+uniform float T, NIGHT, DUSK, COVER, SHEL, SCALE;
 uniform vec4 CAM, BOX;
-uniform vec3 SUN, MOON, ZEN, HOR, DMID, DFAR, GLOW, CLIT, CSHD;
+uniform vec3 SUN, ZEN, HOR, DMID, DFAR, GLOW, CLIT, CSHD;
 uniform vec2 LD;
 ` + NOISE + `
 
@@ -225,14 +241,96 @@ vec4 deck(vec3 dir, vec2 p0, vec2 drift, vec2 sc, float seed, float th0, float s
 }
 
 void main() {
-  vec2 p = uv * 2.0 - 1.0;
-  vec3 d = normalize(vec3(p.x * CAM.x, p.y * CAM.y, 1.0));
-  float cp = cos(CAM.z), sp = sin(CAM.z);
-  vec3 dir = vec3(d.x, d.y * cp + d.z * sp, -d.y * sp + d.z * cp);
-  float cy = cos(CAM.w), sy = sin(CAM.w);
-  dir = vec3(dir.x * cy + dir.z * sy, dir.y, -dir.x * sy + dir.z * cy);
-
+  vec3 dir = camDir(uv, CAM);
   vec3 col = skyColor(dir);
+  float cov = 0.0;
+  if (dir.y > -0.05) {
+    vec2 p0 = dir.xz / (max(dir.y, 0.0) + 0.5) * 0.85;
+    vec2 drift = T * vec2(0.005, 0.002);
+    float th0 = mix(0.62, 0.40, COVER);
+    vec2 s = vec2(R.x / R.y, 1.0);
+    vec2 warp = (vec2(fbm3(p0 * 1.6 + drift + 5.0), fbm3(p0 * 1.6 + drift + 19.0)) - 0.5) * 0.08
+              + (vec2(fbm3(p0 * 4.5 + drift * 1.2 + 83.0), fbm3(p0 * 4.5 + drift * 1.2 + 97.0)) - 0.5) * 0.04;
+    float shelter = SHEL * (1.0 - smoothstep(-0.04, 0.42, boxDist(uv * s + warp, BOX, s)));
+    vec4 far = deck(dir, p0, drift * 0.6, vec2(2.2, 4.8), 5.0, th0 + 0.08, shelter);
+    vec4 near = deck(dir, p0, drift, vec2(1.0, 1.0), 0.0, th0, shelter);
+    col = mix(col, far.rgb, far.a * 0.6);
+    col = mix(col, near.rgb, near.a);
+    cov = min(near.a + far.a * 0.6 * (1.0 - near.a), 1.0);
+  }
+  o0 = vec4(col * SCALE, 1.0);
+  o1 = vec4(cov, 0.0, 0.0, 1.0);
+}`;
+
+var BOKEH = HEAD + `
+out vec4 o;
+uniform sampler2D SRC;
+uniform vec2 TEXEL;
+uniform float RAD, BOOST, SCALE;
+const vec2 K[72] = vec2[72](` + TAPS.join(',') + `);
+void main() {
+  float kang = hash12(uv * 517.3) * 6.2831853;
+  float kc = cos(kang), ks = sin(kang);
+  mat2 ROT = mat2(kc, ks, -ks, kc);
+  vec4 acc = vec4(0.0);
+  for (int i = 0; i < 72; i++) {
+    vec4 s = texture(SRC, uv + (ROT * K[i]) * RAD * TEXEL);
+    s.rgb *= 1.0 + BOOST * smoothstep(1.15, 2.6, dot(s.rgb, vec3(0.3333)) / SCALE) * 0.7;
+    acc += vec4(s.rgb * s.a, s.a);
+  }
+  o = acc / 72.0;
+}`;
+
+var COMP = HEAD + `
+out vec4 o;
+uniform sampler2D SKYB, FGB, MIDB, COVT;
+uniform float T, G, NIGHT, DUSK, EXPO, SCALE, MOONR, PH, MGAIN;
+uniform vec2 R;
+uniform vec4 CAM;
+uniform vec3 BLIT, BDRK, LL0, LL1, LL2, LD0, LD1, LD2, SUN, MOON;
+` + NOISE + `
+vec3 aces(vec3 x) {
+  return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
+}
+vec3 leafCol(float hue, float lit) {
+  vec3 l = hue < 0.5 ? mix(LL0, LL1, hue * 2.0) : mix(LL1, LL2, hue * 2.0 - 1.0);
+  vec3 d = hue < 0.5 ? mix(LD0, LD1, hue * 2.0) : mix(LD1, LD2, hue * 2.0 - 1.0);
+  return mix(d, l, lit);
+}
+vec4 layerCol(vec4 t, vec3 bg) {
+  float cov = clamp(t.a, 0.0, 1.0);
+  float lit = clamp(t.r / max(t.a, 1e-4), 0.0, 1.0);
+  float leaf = clamp(t.g / max(t.a, 1e-4), 0.0, 1.0);
+  float hue = clamp(t.b / max(t.a, 1e-4), 0.0, 1.0);
+  vec3 c = mix(mix(BDRK, BLIT, lit), leafCol(hue, lit), leaf);
+  c += bg * 0.22 * (1.0 - cov);
+  return vec4(c, cov);
+}
+void main() {
+  vec3 dir = camDir(uv, CAM);
+  vec4 bgB = texture(SKYB, uv);
+  vec3 bg = bgB.rgb / max(bgB.a, 1e-4) / SCALE;
+  float cloud = texture(COVT, uv).r;
+
+  if (NIGHT > 0.001) {
+    vec2 ae = vec2(atan(dir.x, -dir.z), asin(clamp(dir.y, -1.0, 1.0))) * 114.6;
+    vec2 c = floor(ae);
+    vec2 f = fract(ae) - 0.5;
+    float hs = hash3(vec3(c, 1.0));
+    vec2 off = vec2(hash3(vec3(c, 7.3)), hash3(vec3(c, 13.9))) - 0.5;
+    float mag = fract(hs * 41.7);
+    float rad = 0.028 + 0.035 * mag * mag;
+    float dd = length(f - off * 0.7);
+    float core = smoothstep(rad, rad * 0.25, dd);
+    float skirt = smoothstep(rad * 4.0, 0.0, dd) * 0.08 * mag * mag;
+    float star = (core + skirt) * step(0.955, hs);
+    float tw = 0.93 + 0.07 * sin(T * (0.8 + 1.2 * hs) + hs * 80.0);
+    float bright = (0.16 + 0.9 * mag * mag) * tw;
+    float g = pow(max(dot(dir, SUN), 0.0), 14.0);
+    float dark = smoothstep(0.09, 0.025, dot(bg, vec3(0.3333)));
+    bg += mix(vec3(0.78, 0.85, 1.0), vec3(1.0, 0.95, 0.85), fract(hs * 9.1))
+        * star * bright * NIGHT * dark * smoothstep(-0.02, 0.2, dir.y) * (1.0 - g * 0.85);
+  }
 
   float ang = acos(clamp(dot(dir, MOON), -1.0, 1.0));
   if (ang < MOONR * 1.05) {
@@ -254,109 +352,18 @@ void main() {
       float craters = (0.07 + 0.10 * term) * smoothstep(0.50, 0.85, fbm3d(n * 17.0 + 3.0)) + 0.06 * fbm3d(n * 9.0);
       float highland = 0.11 * smoothstep(0.52, 0.72, fbm3d(n * 2.3 + 13.0)) + 0.05 * smoothstep(0.58, 0.80, fbm3d(n * 5.1 + 27.0));
       float detail = 1.0 - mare - craters + highland;
-      vec3 daySurf = mix(col, vec3(0.50, 0.50, 0.52), 0.8);
+      vec3 daySurf = mix(bg, vec3(0.50, 0.50, 0.52), 0.8);
       vec3 nightSurf = vec3(0.30, 0.29, 0.26) * MGAIN;
       vec3 surf = mix(daySurf, nightSurf, NIGHT) * detail;
       float rim = pow(1.0 - abs(edge), 1.6);
       surf = mix(surf, surf * vec3(1.13, 1.12, 1.09), rim);
-      surf = mix(surf, mix(surf, col, 0.30), (1.0 - rim) * (1.0 - NIGHT));
+      surf = mix(surf, mix(surf, bg, 0.30), (1.0 - rim) * (1.0 - NIGHT));
       float limb = smoothstep(0.0, mix(0.34, 0.24, NIGHT), abs(edge));
       float alpha = smoothstep(0.02, mix(0.16, 0.12, NIGHT), abs(edge)) * lit * (limb * 0.97 + 0.03);
-      col = mix(col, surf, alpha);
+      bg = mix(bg, surf, alpha * (1.0 - cloud * 0.9));
     }
   }
 
-  if (dir.y > -0.05) {
-    vec2 p0 = dir.xz / (max(dir.y, 0.0) + 0.5) * 0.85;
-    vec2 drift = T * vec2(0.005, 0.002);
-    float th0 = mix(0.62, 0.40, COVER);
-    vec2 s = vec2(R.x / R.y, 1.0);
-    vec2 warp = (vec2(fbm3(p0 * 1.6 + drift + 5.0), fbm3(p0 * 1.6 + drift + 19.0)) - 0.5) * 0.08
-              + (vec2(fbm3(p0 * 4.5 + drift * 1.2 + 83.0), fbm3(p0 * 4.5 + drift * 1.2 + 97.0)) - 0.5) * 0.04;
-    float shelter = SHEL * (1.0 - smoothstep(-0.04, 0.42, boxDist(uv * s + warp, BOX, s)));
-    vec4 far = deck(dir, p0, drift * 0.6, vec2(2.2, 4.8), 5.0, th0 + 0.08, shelter);
-    vec4 near = deck(dir, p0, drift, vec2(1.0, 1.0), 0.0, th0, shelter);
-    col = mix(col, far.rgb, far.a * 0.6);
-    col = mix(col, near.rgb, near.a);
-  }
-  o = vec4(col * SCALE, 1.0);
-}`;
-
-var BOKEH = HEAD + `
-uniform sampler2D SRC;
-uniform vec2 TEXEL;
-uniform float RAD, BOOST, SCALE;
-const vec2 K[72] = vec2[72](` + TAPS.join(',') + `);
-void main() {
-  float kang = hash12(uv * 517.3) * 6.2831853;
-  float kc = cos(kang), ks = sin(kang);
-  mat2 ROT = mat2(kc, ks, -ks, kc);
-  vec4 acc = vec4(0.0);
-  for (int i = 0; i < 72; i++) {
-    vec4 s = texture(SRC, uv + (ROT * K[i]) * RAD * TEXEL);
-    s.rgb *= 1.0 + BOOST * smoothstep(1.15, 2.6, dot(s.rgb, vec3(0.3333)) / SCALE) * 0.7;
-    acc += vec4(s.rgb * s.a, s.a);
-  }
-  o = acc / 72.0;
-}`;
-
-var COMP = HEAD + `
-uniform sampler2D SKYB, FGB, MIDB;
-uniform float T, G, NIGHT, DUSK, EXPO, SCALE;
-uniform vec2 R;
-uniform vec4 CAM;
-uniform vec3 BLIT, BDRK, LL0, LL1, LL2, LD0, LD1, LD2, SUN;
-vec3 leafCol(float hue, float lit) {
-  vec3 l = hue < 0.5 ? mix(LL0, LL1, hue * 2.0) : mix(LL1, LL2, hue * 2.0 - 1.0);
-  vec3 d = hue < 0.5 ? mix(LD0, LD1, hue * 2.0) : mix(LD1, LD2, hue * 2.0 - 1.0);
-  return mix(d, l, lit);
-}
-vec4 layerCol(vec4 t, vec3 bg) {
-  float cov = clamp(t.a, 0.0, 1.0);
-  float lit = clamp(t.r / max(t.a, 1e-4), 0.0, 1.0);
-  float leaf = clamp(t.g / max(t.a, 1e-4), 0.0, 1.0);
-  float hue = clamp(t.b / max(t.a, 1e-4), 0.0, 1.0);
-  vec3 c = mix(mix(BDRK, BLIT, lit), leafCol(hue, lit), leaf);
-  c += bg * 0.22 * (1.0 - cov);
-  return vec4(c, cov);
-}
-vec3 aces(vec3 x) {
-  return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
-}
-float hash3(vec3 p) {
-  uvec3 q = uvec3(ivec3(floor(p))) * uvec3(1597334673u, 3812015801u, 2798796415u);
-  uint n = (q.x ^ q.y ^ q.z) * 1597334673u;
-  return float(n) * (1.0 / 4294967295.0);
-}
-void main() {
-  vec4 bgB = texture(SKYB, uv);
-  vec3 bg = bgB.rgb / max(bgB.a, 1e-4) / SCALE;
-
-  if (NIGHT > 0.001) {
-    vec2 p = uv * 2.0 - 1.0;
-    vec3 d = normalize(vec3(p.x * CAM.x, p.y * CAM.y, 1.0));
-    float cp = cos(CAM.z), sp = sin(CAM.z);
-    vec3 dir = vec3(d.x, d.y * cp + d.z * sp, -d.y * sp + d.z * cp);
-    float cy = cos(CAM.w), sy = sin(CAM.w);
-    dir = vec3(dir.x * cy + dir.z * sy, dir.y, -dir.x * sy + dir.z * cy);
-    vec2 ae = vec2(atan(dir.x, -dir.z), asin(clamp(dir.y, -1.0, 1.0))) * 114.6;
-    vec2 c = floor(ae);
-    vec2 f = fract(ae) - 0.5;
-    float hs = hash3(vec3(c, 1.0));
-    vec2 off = vec2(hash3(vec3(c, 7.3)), hash3(vec3(c, 13.9))) - 0.5;
-    float mag = fract(hs * 41.7);
-    float rad = 0.028 + 0.035 * mag * mag;
-    float dd = length(f - off * 0.7);
-    float core = smoothstep(rad, rad * 0.25, dd);
-    float skirt = smoothstep(rad * 4.0, 0.0, dd) * 0.08 * mag * mag;
-    float star = (core + skirt) * step(0.955, hs);
-    float tw = 0.93 + 0.07 * sin(T * (0.8 + 1.2 * hs) + hs * 80.0);
-    float bright = (0.16 + 0.9 * mag * mag) * tw;
-    float g = pow(max(dot(dir, SUN), 0.0), 14.0);
-    float dark = smoothstep(0.09, 0.025, dot(bg, vec3(0.3333)));
-    bg += mix(vec3(0.78, 0.85, 1.0), vec3(1.0, 0.95, 0.85), fract(hs * 9.1))
-        * star * bright * NIGHT * dark * smoothstep(-0.02, 0.2, dir.y) * (1.0 - g * 0.85);
-  }
   vec4 m = layerCol(texture(MIDB, uv), bg);
   vec3 col = mix(bg, m.rgb, m.a);
   vec4 f = layerCol(texture(FGB, uv), col);
@@ -402,30 +409,12 @@ function program(fragSrc, names) {
   return { p: prog, u: u };
 }
 
-var skyProg = program(SKY, ['R', 'T', 'NIGHT', 'DUSK', 'MOONR', 'PH', 'COVER', 'SHEL', 'MGAIN', 'SCALE', 'CAM', 'BOX', 'SUN', 'MOON', 'ZEN', 'HOR', 'DMID', 'DFAR', 'GLOW', 'CLIT', 'CSHD', 'LD']);
+var skyProg = program(SKY, ['R', 'T', 'NIGHT', 'DUSK', 'COVER', 'SHEL', 'SCALE', 'CAM', 'BOX', 'SUN', 'ZEN', 'HOR', 'DMID', 'DFAR', 'GLOW', 'CLIT', 'CSHD', 'LD']);
 var bokehProg = program(BOKEH, ['SRC', 'TEXEL', 'RAD', 'BOOST', 'SCALE']);
-var compProg = program(COMP, ['SKYB', 'FGB', 'MIDB', 'T', 'G', 'NIGHT', 'DUSK', 'EXPO', 'SCALE', 'R', 'CAM', 'BLIT', 'BDRK', 'LL0', 'LL1', 'LL2', 'LD0', 'LD1', 'LD2', 'SUN']);
+var compProg = program(COMP, ['SKYB', 'FGB', 'MIDB', 'COVT', 'T', 'G', 'NIGHT', 'DUSK', 'EXPO', 'SCALE', 'MOONR', 'PH', 'MGAIN', 'R', 'CAM', 'BLIT', 'BDRK', 'LL0', 'LL1', 'LL2', 'LD0', 'LD1', 'LD2', 'SUN', 'MOON']);
 if (!skyProg || !bokehProg || !compProg) return;
 
 var SCALE = HDR ? 1.0 : 0.5;
-
-function target(w, h, hdr) {
-  var t = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, t);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  if (hdr) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
-  else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-  var f = gl.createFramebuffer();
-  gl.bindFramebuffer(gl.FRAMEBUFFER, f);
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  return { tex: t, fbo: f, w: w, h: h };
-}
-
-var skyT = null, skyB = null, fgB = null, midB = null;
 
 function layerTex() {
   var t = gl.createTexture();
@@ -437,6 +426,35 @@ function layerTex() {
   return t;
 }
 
+function storage(t, w, h, hdr) {
+  gl.bindTexture(gl.TEXTURE_2D, t);
+  if (hdr) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, w, h, 0, gl.RGBA, gl.HALF_FLOAT, null);
+  else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+}
+
+function target(w, h, hdr, withCov) {
+  var r = { tex: layerTex(), fbo: gl.createFramebuffer(), w: w, h: h, cov: null };
+  storage(r.tex, w, h, hdr);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, r.fbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, r.tex, 0);
+  if (withCov) {
+    r.cov = layerTex();
+    storage(r.cov, w, h, false);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, r.cov, 0);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  return r;
+}
+
+function drop(r) {
+  if (!r) return;
+  gl.deleteTexture(r.tex);
+  if (r.cov) gl.deleteTexture(r.cov);
+  gl.deleteFramebuffer(r.fbo);
+}
+
+var skyT = null, skyB = null, fgB = null, midB = null;
 var fgTex = layerTex();
 var midTex = layerTex();
 gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -446,7 +464,7 @@ var fgctx = fg.getContext('2d');
 var mid = document.createElement('canvas');
 var midctx = mid.getContext('2d');
 
-/* ------------------------------------------------------------ branches */
+/* ------------------------------------------------------------ the oak */
 
 function mulberry32(a) {
   return function () {
@@ -478,51 +496,64 @@ function seg(ctx, x0, y0, cx, cy, x1, y1, wid, lx, ly) {
   ctx.stroke();
 }
 
-function drawLeaf(ctx, x, y, size, rot, hue, lx, ly) {
-  var facing = Math.cos(rot) * lx + Math.sin(rot) * ly;
-  var r = Math.round(60 + 175 * (0.5 + 0.5 * facing));
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(rot);
-  ctx.strokeStyle = 'rgb(90,0,0)';
-  ctx.lineWidth = Math.max(size * 0.09, 0.8);
-  ctx.beginPath();
-  ctx.moveTo(-size, 0);
-  ctx.lineTo(-size * 1.35, 0);
-  ctx.stroke();
-  ctx.fillStyle = 'rgb(' + r + ',255,' + Math.round(hue * 255) + ')';
-  ctx.beginPath();
-  var n = 30, i, t, w;
-  for (i = 0; i <= n; i++) {
-    t = i / n;
-    w = leafWidth(t, size);
-    if (i === 0) ctx.moveTo(-size, 0); else ctx.lineTo(-size + 2 * size * t, -w);
-  }
-  for (i = n; i >= 0; i--) {
-    t = i / n;
-    w = leafWidth(t, size);
-    ctx.lineTo(-size + 2 * size * t, w);
-  }
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
-function leafWidth(t, size) {
-  var env = Math.pow(t, 0.55) * Math.pow(1 - t, 0.4) * 1.9;
-  var lobe = 0.5 + 0.5 * Math.pow(Math.abs(Math.sin(Math.PI * 4.0 * t + 0.4)), 0.7);
+function leafWidth(t, size, k) {
+  var env = Math.pow(t, 0.5) * Math.pow(1 - t, 0.45) / 0.52;
+  var lobe = 0.62 + 0.38 * Math.pow(Math.abs(Math.sin(Math.PI * (4.0 + k) * t + k * 2.0)), 0.6);
   return size * 0.62 * env * lobe;
 }
 
-function cluster(ctx, x, y, size, n, rnd, lx, ly) {
-  for (var i = 0; i < n; i++) {
-    var a = rnd() * Math.PI * 2, r = rnd() * size * 2.4;
-    drawLeaf(ctx, x + Math.cos(a) * r, y + Math.sin(a) * r, size * (0.7 + 0.6 * rnd()), rnd() * Math.PI * 2, rnd(), lx, ly);
+function drawLeaf(ctx, x, y, size, rot, hue, lx, ly, k, squash) {
+  var facing = Math.cos(rot) * lx + Math.sin(rot) * ly;
+  var r = Math.round(60 + 175 * (0.5 + 0.5 * facing));
+  var b = Math.round(hue * 255);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rot);
+  ctx.scale(1, squash);
+  ctx.strokeStyle = 'rgb(90,0,0)';
+  ctx.lineWidth = Math.max(size * 0.08, 0.8);
+  ctx.beginPath();
+  ctx.moveTo(-size, 0);
+  ctx.lineTo(-size * 1.3, 0);
+  ctx.stroke();
+  ctx.fillStyle = 'rgb(' + r + ',255,' + b + ')';
+  ctx.beginPath();
+  var n = 32, i, t;
+  ctx.moveTo(-size, 0);
+  for (i = 1; i <= n; i++) { t = i / n; ctx.lineTo(-size + 2 * size * t, -leafWidth(t, size, k)); }
+  for (i = n - 1; i >= 1; i--) { t = i / n; ctx.lineTo(-size + 2 * size * t, leafWidth(t, size, k)); }
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgb(' + Math.round(r * 0.55) + ',255,' + b + ')';
+  ctx.lineWidth = Math.max(size * 0.05, 0.6);
+  ctx.beginPath();
+  ctx.moveTo(-size, 0);
+  ctx.lineTo(size * 0.92, 0);
+  for (i = 1; i <= 3; i++) {
+    var vt = 0.2 + 0.2 * i, vx = -size + 2 * size * vt, vw = leafWidth(vt + 0.08, size, k) * 0.85;
+    ctx.moveTo(vx, 0);
+    ctx.lineTo(vx + size * 0.35, -vw);
+    ctx.moveTo(vx, 0);
+    ctx.lineTo(vx + size * 0.35, vw);
   }
+  ctx.stroke();
+  ctx.restore();
 }
 
-function oak(ctx, x, y, ang, len, wid, depth, rnd, lx, ly, leafSize) {
-  if (depth <= 0 || len < 2) return;
+function makeCluster(size, n, rnd, lx, ly) {
+  var cs = Math.ceil(size * 6.5);
+  var c = document.createElement('canvas');
+  c.width = cs; c.height = cs;
+  var ctx = c.getContext('2d');
+  for (var i = 0; i < n; i++) {
+    var a = rnd() * Math.PI * 2, r = rnd() * size * 2.2;
+    drawLeaf(ctx, cs / 2 + Math.cos(a) * r, cs / 2 + Math.sin(a) * r, size * (0.7 + 0.6 * rnd()), rnd() * Math.PI * 2, rnd(), lx, ly, rnd(), 0.8 + 0.2 * rnd());
+  }
+  return { c: c, cs: cs };
+}
+
+function oak(ctx, x, y, ang, len, wid, depth, rnd, lx, ly, leafSize, out) {
+  if (depth <= 0 || len < 2) return null;
   var bend = (rnd() - 0.5) * 0.9;
   var ex = x + Math.cos(ang) * len, ey = y - Math.sin(ang) * len;
   var cx = x + Math.cos(ang + bend) * len * 0.5, cy = y - Math.sin(ang + bend) * len * 0.5;
@@ -533,14 +564,17 @@ function oak(ctx, x, y, ang, len, wid, depth, rnd, lx, ly, leafSize) {
     var px = s * s * x + 2 * s * t * cx + t * t * ex;
     var py = s * s * y + 2 * s * t * cy + t * t * ey;
     var side = rnd() < 0.5 ? 1 : -1;
-    oak(ctx, px, py, ang + side * (0.6 + rnd() * 0.7), len * (0.5 + rnd() * 0.3), wid * 0.6, depth - 1, rnd, lx, ly, leafSize);
+    oak(ctx, px, py, ang + side * (0.6 + rnd() * 0.7), len * (0.5 + rnd() * 0.3), wid * 0.6, depth - 1, rnd, lx, ly, leafSize, out);
   }
   var next = ang + bend * 0.7 + (rnd() - 0.5) * 0.8;
-  oak(ctx, ex, ey, next, len * (0.72 + rnd() * 0.16), wid * 0.78, depth - 1, rnd, lx, ly, leafSize);
-  if (depth <= 3) cluster(ctx, ex, ey, leafSize * (0.8 + 0.4 * rnd()), 5 + Math.floor(rnd() * 9), rnd, lx, ly);
+  var tip = oak(ctx, ex, ey, next, len * (0.72 + rnd() * 0.16), wid * 0.78, depth - 1, rnd, lx, ly, leafSize, out);
+  if (depth <= 3) {
+    out.push({ x: ex, y: ey, sprite: makeCluster(leafSize * (0.8 + 0.4 * rnd()), 5 + Math.floor(rnd() * 9), rnd, lx, ly), ph: rnd() * 6.2832 });
+  }
+  return tip || [ex, ey];
 }
 
-var systems = [];
+var systems = [], clusters = [], twig = null, perch = { x: 0, y: 0 };
 var leaves = [];
 var lightNow = [-0.85, 0.5];
 var LEAF_N = { near: 16, mid: 44 };
@@ -552,6 +586,7 @@ function buildForeground(lx, ly) {
   var lean = portrait ? -0.1 : 0;
   var rnd = mulberry32(20261031);
   lightNow = [lx, ly];
+  clusters = [];
   var specs = [
     [w * 1.05, h * 0.50, Math.PI * (0.85 + lean), d * 0.20, d * 0.030, 7],
     [w * 0.95, h * 1.05, Math.PI * (0.62 - lean), d * 0.17, d * 0.026, 7],
@@ -563,28 +598,54 @@ function buildForeground(lx, ly) {
     var ctx = c.getContext('2d');
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    oak(ctx, sp[0], sp[1], sp[2], sp[3], sp[4], sp[5], rnd, lx, ly, d * 0.012);
+    var out = [];
+    oak(ctx, sp[0], sp[1], sp[2], sp[3], sp[4], sp[5], rnd, lx, ly, d * 0.012, out);
+    out.forEach(function (cl) { cl.sys = i; clusters.push(cl); });
     return { c: c, ax: sp[0], ay: sp[1], k: 1 + 0.3 * i, ph: i * 1.7 };
   });
+  var tc = document.createElement('canvas');
+  tc.width = w; tc.height = h;
+  var tctx = tc.getContext('2d');
+  tctx.lineCap = 'round';
+  tctx.lineJoin = 'round';
+  var tout = [];
+  var dd = Math.min(h, w * 0.9);
+  var tip = oak(tctx, -w * 0.02, h * 0.82, Math.PI * 0.08, dd * 0.11, dd * 0.011, 4, rnd, lx, ly, dd * 0.008, tout);
+  twig = { c: tc, clusters: tout, ax: -w * 0.02, ay: h * 0.82 };
+  perch = { x: tip[0], y: tip[1] };
   if (!leaves.length) {
     var r2 = mulberry32(20261101);
     for (var n = 0; n < LEAF_N.near + LEAF_N.mid; n++) leaves.push(spawn({ layer: n < LEAF_N.near ? 'near' : 'mid' }, r2, true));
   }
+  if (!bf) initButterfly();
+  bf.S = dd * 0.115;
+  if (bf.state === 'perched') { bf.x = perch.x; bf.y = perch.y; }
 }
+
+/* ------------------------------------------------------------- leaves */
 
 function spawn(lf, rnd, anywhere) {
   var w = fg.width, h = fg.height;
   var d = Math.min(h, w * 0.9);
-  var fromCrown = rnd() < 0.6;
-  lf.x = fromCrown ? w * (0.55 + rnd() * 0.55) : w * (rnd() * 1.3 - 0.1);
-  lf.y = anywhere ? h * (rnd() * 1.1 - 0.1) : (fromCrown ? h * (rnd() * 0.7 - 0.1) : -h * 0.08);
+  if (anywhere) {
+    lf.x = w * (rnd() * 1.2 - 0.1);
+    lf.y = h * (rnd() * 1.1 - 0.1);
+  } else if (rnd() < 0.55) {
+    lf.x = w * (rnd() * 1.5 - 0.15);
+    lf.y = -h * (0.08 + rnd() * 0.3);
+  } else {
+    lf.x = w * (1.03 + rnd() * 0.15);
+    lf.y = h * (rnd() * 0.7 - 0.1);
+  }
   lf.size = d * (lf.layer === 'near' ? 0.026 : 0.016) * (0.75 + 0.5 * rnd());
   lf.hue = rnd();
+  lf.k = rnd();
   lf.rot = rnd() * Math.PI * 2;
   lf.spin = (rnd() - 0.5) * 3.0;
   lf.ph = rnd() * Math.PI * 2;
   lf.fall = h * (lf.layer === 'near' ? 0.11 : 0.075) * (0.8 + 0.4 * rnd());
   lf.side = 0.5 + rnd();
+  lf.age = anywhere ? 1 : 0;
   return lf;
 }
 
@@ -600,36 +661,202 @@ function stepLeaves(t, dt) {
     lf.x -= (w * (0.05 + 0.06 * gust) * near + w * 0.03 * flutter * lf.side) * dt;
     lf.y += lf.fall * (0.75 + 0.35 * Math.sin(t * 3.1 + lf.ph * 1.3)) * dt;
     lf.rot += (lf.spin + 1.5 * flutter) * dt;
+    lf.age += dt;
     if (lf.y > h * 1.1 || lf.x < -w * 0.1) spawn(lf, leafRnd, false);
   }
 }
 
-function drawLeaves(ctx, layer, px, py) {
+function drawLeaves(ctx, layer, t, px, py) {
   for (var i = 0; i < leaves.length; i++) {
     var lf = leaves[i];
     if (lf.layer !== layer) continue;
-    drawLeaf(ctx, lf.x + px, lf.y + py, lf.size, lf.rot, lf.hue, lightNow[0], lightNow[1]);
+    ctx.globalAlpha = Math.min(1, lf.age / 0.6);
+    var squash = 0.72 + 0.28 * Math.abs(Math.cos(t * 1.7 + lf.ph));
+    drawLeaf(ctx, lf.x + px, lf.y + py, lf.size, lf.rot, lf.hue, lightNow[0], lightNow[1], lf.k, squash);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------------------------------------------------------- the monarch */
+
+var bf = null;
+
+function initButterfly() {
+  bf = { state: 'perched', x: perch.x, y: perch.y, heading: -0.35, open: 1, dir: 0, gx: 0, gy: 0, gt: 0, until: 9 + 10 * Math.random(), ph: Math.random() * 6.2832, S: 30 };
+}
+
+function newGoal(t) {
+  var w = fg.width, h = fg.height;
+  var high = Math.random() < 0.5;
+  bf.gx = w * (0.06 + (high ? 0.4 : 0.5) * Math.random());
+  bf.gy = h * (high ? 0.06 + 0.26 * Math.random() : 0.62 + 0.24 * Math.random());
+  bf.gt = t + 1.5 + 2.5 * Math.random();
+}
+
+function takeoff(t) {
+  if (!bf || bf.state !== 'perched') return;
+  bf.state = 'flying';
+  bf.dir = -1.2;
+  bf.until = t + 7 + 8 * Math.random();
+  newGoal(t);
+  wake();
+}
+
+function stepButterfly(t, dt) {
+  var w = fg.width;
+  if (bf.state === 'perched') {
+    var o = 0.5 + 0.5 * Math.sin(t * 0.7 + bf.ph);
+    o = Math.pow(o, 3.0);
+    bf.open = 1.0 - 0.75 * o;
+    bf.heading = -0.35 + 0.04 * Math.sin(t * 1.3);
+    bf.x = perch.x;
+    bf.y = perch.y;
+    if (t > bf.until) takeoff(t);
+    return;
+  }
+  var home = bf.state === 'returning';
+  if (!home && t > bf.until) { bf.state = 'returning'; home = true; }
+  var gx = home ? perch.x : bf.gx, gy = home ? perch.y : bf.gy;
+  if (!home && t > bf.gt) newGoal(t);
+  var dx = gx - bf.x, dy = gy - bf.y, dist = Math.hypot(dx, dy) || 1;
+  var want = Math.atan2(dy, dx);
+  var da = want - bf.dir;
+  da = Math.atan2(Math.sin(da), Math.cos(da));
+  bf.dir += da * Math.min(1, dt * 3.0);
+  var close = home && dist < w * 0.08;
+  var wob = (Math.sin(t * 3.3 + bf.ph) * 0.9 + Math.sin(t * 7.1 + bf.ph * 2.0) * 0.5) * (close ? 0.2 : 1.0);
+  var ang = bf.dir + wob;
+  var speed = w * (close ? 0.05 : 0.10);
+  bf.x += Math.cos(ang) * speed * dt;
+  bf.y += Math.sin(ang) * speed * dt;
+  bf.heading = ang + Math.PI / 2;
+  var glide = Math.sin(t * 0.9 + bf.ph) > 0.45 && !close;
+  bf.open = glide ? 1 : 0.3 + 0.7 * Math.abs(Math.sin(t * 6.2832 * 8 + bf.ph));
+  if (home && dist < bf.S * 0.25) {
+    bf.state = 'perched';
+    bf.x = perch.x;
+    bf.y = perch.y;
+    bf.until = t + 10 + 14 * Math.random();
   }
 }
+
+function drawMonarch(ctx, x, y, S, heading, open) {
+  var W = S * 0.5 * Math.max(open, 0.12), H = S * 0.42;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(heading);
+  ctx.lineJoin = 'round';
+  for (var side = -1; side <= 1; side += 2) {
+    ctx.save();
+    ctx.scale(side, 1);
+    ctx.fillStyle = 'rgb(232,255,128)';
+    ctx.strokeStyle = 'rgb(18,0,0)';
+    ctx.lineWidth = S * 0.028;
+    ctx.beginPath();
+    ctx.moveTo(0, -H * 0.1);
+    ctx.bezierCurveTo(W * 0.35, -H * 0.95, W * 1.08, -H * 0.85, W, -H * 0.3);
+    ctx.bezierCurveTo(W * 0.85, -H * 0.02, W * 0.45, H * 0.06, 0, H * 0.06);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.bezierCurveTo(W * 0.55, 0, W * 0.82, H * 0.35, W * 0.55, H * 0.75);
+    ctx.bezierCurveTo(W * 0.35, H * 0.98, W * 0.05, H * 0.82, 0, H * 0.45);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.lineWidth = S * 0.013;
+    ctx.beginPath();
+    for (var k = 0; k < 4; k++) {
+      ctx.moveTo(0, -H * 0.05);
+      ctx.lineTo(W * (0.45 + 0.17 * k), -H * (0.82 - 0.24 * k));
+      ctx.moveTo(0, H * 0.1);
+      ctx.lineTo(W * (0.15 + 0.15 * k), H * (0.85 - 0.12 * k));
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.fillStyle = 'rgb(18,0,0)';
+  ctx.beginPath();
+  ctx.ellipse(0, H * 0.12, S * 0.028, H * 0.5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgb(18,0,0)';
+  ctx.lineWidth = S * 0.015;
+  ctx.beginPath();
+  ctx.moveTo(0, -H * 0.35);
+  ctx.lineTo(-S * 0.12, -H * 0.75);
+  ctx.moveTo(0, -H * 0.35);
+  ctx.lineTo(S * 0.12, -H * 0.75);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ------------------------------------------------------- foreground */
 
 function drawForeground(t, px, py) {
   var w = fg.width, h = fg.height;
   fgctx.clearRect(0, 0, w, h);
-  for (var i = 0; i < systems.length; i++) {
-    var s = systems[i];
-    var sway = (Math.sin(t * 0.35 + s.ph) * 0.006 + Math.sin(t * 0.9 + s.ph * 2.0) * 0.002) * s.k;
+  var sways = systems.map(function (s) {
+    return (Math.sin(t * 0.35 + s.ph) * 0.006 + Math.sin(t * 0.9 + s.ph * 2.0) * 0.002) * s.k;
+  });
+  var i, s, cl, cs, ca, sa, rx, ry;
+  for (i = 0; i < systems.length; i++) {
+    s = systems[i];
     fgctx.save();
     fgctx.translate(s.ax + px, s.ay + py);
-    fgctx.rotate(sway);
+    fgctx.rotate(sways[i]);
     fgctx.translate(-s.ax, -s.ay);
     fgctx.drawImage(s.c, 0, 0);
     fgctx.restore();
   }
-  drawLeaves(fgctx, 'near', px, py);
+  for (i = 0; i < clusters.length; i++) {
+    cl = clusters[i];
+    s = systems[cl.sys];
+    ca = Math.cos(sways[cl.sys]); sa = Math.sin(sways[cl.sys]);
+    rx = s.ax + (cl.x - s.ax) * ca - (cl.y - s.ay) * sa;
+    ry = s.ay + (cl.x - s.ax) * sa + (cl.y - s.ay) * ca;
+    var burst = 0.5 + 0.5 * Math.sin(t * 0.55 - (cl.x + cl.y) * 0.004 + cl.ph);
+    var amp = cl.sprite.cs * 0.022 * (0.25 + 0.75 * burst);
+    cs = cl.sprite.cs;
+    fgctx.save();
+    fgctx.translate(rx + px + amp * Math.sin(t * (2.2 + cl.ph * 0.3) + cl.ph), ry + py + amp * 0.6 * Math.sin(t * 3.1 + cl.ph * 2.0));
+    fgctx.rotate(sways[cl.sys] + 0.06 * burst * Math.sin(t * 1.7 + cl.ph));
+    fgctx.drawImage(cl.sprite.c, -cs / 2, -cs / 2);
+    fgctx.restore();
+  }
+  drawLeaves(fgctx, 'near', t, px, py);
   gl.bindTexture(gl.TEXTURE_2D, fgTex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, fg);
+
   midctx.clearRect(0, 0, w, h);
-  drawLeaves(midctx, 'mid', px * 0.5, py * 0.5);
+  var tsway = Math.sin(t * 0.5 + 0.7) * 0.004;
+  midctx.save();
+  midctx.translate(twig.ax + px * 0.5, twig.ay + py * 0.5);
+  midctx.rotate(tsway);
+  midctx.translate(-twig.ax, -twig.ay);
+  midctx.drawImage(twig.c, 0, 0);
+  midctx.restore();
+  ca = Math.cos(tsway); sa = Math.sin(tsway);
+  for (i = 0; i < twig.clusters.length; i++) {
+    cl = twig.clusters[i];
+    rx = twig.ax + (cl.x - twig.ax) * ca - (cl.y - twig.ay) * sa;
+    ry = twig.ay + (cl.x - twig.ax) * sa + (cl.y - twig.ay) * ca;
+    cs = cl.sprite.cs;
+    midctx.save();
+    midctx.translate(rx + px * 0.5 + cs * 0.015 * Math.sin(t * 2.4 + cl.ph), ry + py * 0.5 + cs * 0.01 * Math.sin(t * 3.3 + cl.ph));
+    midctx.rotate(tsway + 0.04 * Math.sin(t * 1.9 + cl.ph));
+    midctx.drawImage(cl.sprite.c, -cs / 2, -cs / 2);
+    midctx.restore();
+  }
+  var bob = bf.state === 'perched' ? 0 : Math.sin(t * 6.2832 * 8 + bf.ph) * bf.S * 0.12;
+  var bx = bf.x, by = bf.y;
+  if (bf.state === 'perched') {
+    bx = twig.ax + (perch.x - twig.ax) * ca - (perch.y - twig.ay) * sa;
+    by = twig.ay + (perch.x - twig.ax) * sa + (perch.y - twig.ay) * ca;
+  }
+  drawMonarch(midctx, bx + px * 0.5, by + py * 0.5 + bob, bf.S, bf.heading, bf.open);
+  drawLeaves(midctx, 'mid', t, px * 0.5, py * 0.5);
   gl.bindTexture(gl.TEXTURE_2D, midTex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, mid);
 }
@@ -660,8 +887,6 @@ function blend(key, w) {
   return [0, 1, 2].map(function (i) { return a[i] * w.d + b[i] * w.u + c[i] * w.n; });
 }
 
-var LEAF = { day: PAL.day.leaf.map(function (h) { return h.map(scene); }), dusk: PAL.dusk.leaf.map(function (h) { return h.map(scene); }), night: PAL.night.leaf.map(function (h) { return h.map(scene); }) };
-
 function blendLeaf(hue, which, w) {
   var a = LEAF.day[hue][which], b = LEAF.dusk[hue][which], c = LEAF.night[hue][which];
   return [0, 1, 2].map(function (i) { return a[i] * w.d + b[i] * w.u + c[i] * w.n; });
@@ -682,7 +907,7 @@ function lightScreen(w) {
 
 var look, cur, tw = null;
 var mx = 0, my = 0, tx = 0, ty = 0;
-var running = false, raf = 0, last = 0, frameNo = 0;
+var running = false, raf = 0, last = 0, frameNo = 0, lastT = 0;
 var visible = !document.hidden, inView = true;
 var box = [0, 0, 0, 0];
 
@@ -717,6 +942,16 @@ function measure() {
 
 function u3(loc, v) { gl.uniform3f(loc, v[0], v[1], v[2]); }
 
+function bokeh(src, texelW, texelH, dst, rad, boost) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
+  gl.viewport(0, 0, dst.w, dst.h);
+  gl.bindTexture(gl.TEXTURE_2D, src);
+  gl.uniform2f(bokehProg.u.TEXEL, 1 / texelW, 1 / texelH);
+  gl.uniform1f(bokehProg.u.RAD, rad);
+  gl.uniform1f(bokehProg.u.BOOST, boost);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
 function draw(now) {
   if (tw) {
     var k = Math.min(1, (now - tw.t0) / tw.dur);
@@ -725,10 +960,12 @@ function draw(now) {
     if (k >= 1) tw = null;
   }
   var still = reduced.matches;
+  var dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
   var l = still ? 1 : 1 - Math.exp(-(now - last) / 160);
   mx += (tx - mx) * l;
   my += (ty - my) * l;
   var t = still ? 1000 : now / 1000;
+  lastT = t;
   var w = weights(cur);
   var sun = sunDir(w);
   var ld = [sun[0], sun[2]];
@@ -736,8 +973,9 @@ function draw(now) {
   ld = [ld[0] / ll, ld[1] / ll];
   var aspect = canvas.width / canvas.height;
   var tanH = Math.tan(FOV / 2);
+  var cam = [tanH * aspect, tanH, PITCH + my * 0.008 + (still ? 0 : 0.0025 * Math.sin(t * 0.23)), mx * 0.010 + (still ? 0 : 0.003 * Math.sin(t * 0.17 + 1.0))];
 
-  if (!still) stepLeaves(t, Math.min(0.05, Math.max(0, (now - last) / 1000)));
+  if (!still) { stepLeaves(t, dt); stepButterfly(t, dt); }
   drawForeground(still ? 0 : t, -mx * fg.width * 0.012, my * fg.height * 0.012);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, skyT.fbo);
@@ -748,16 +986,12 @@ function draw(now) {
   gl.uniform1f(u.T, t);
   gl.uniform1f(u.NIGHT, w.n);
   gl.uniform1f(u.DUSK, w.u);
-  gl.uniform1f(u.MOONR, MOON_R);
-  gl.uniform1f(u.PH, P);
   gl.uniform1f(u.COVER, blend('cover', w));
   gl.uniform1f(u.SHEL, 0.30);
-  gl.uniform1f(u.MGAIN, blend('mgain', w));
   gl.uniform1f(u.SCALE, SCALE);
-  gl.uniform4f(u.CAM, tanH * aspect, tanH, PITCH + my * 0.008, mx * 0.010);
+  gl.uniform4f(u.CAM, cam[0], cam[1], cam[2], cam[3]);
   gl.uniform4f(u.BOX, box[0], box[1], box[2], box[3]);
   u3(u.SUN, sun);
-  u3(u.MOON, MOON);
   u3(u.ZEN, blend('zen', w));
   u3(u.HOR, blend('hor', w));
   u3(u.DMID, blend('dmid', w));
@@ -769,32 +1003,12 @@ function draw(now) {
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 
   gl.useProgram(bokehProg.p);
-  u = bokehProg.u;
-  gl.uniform1i(u.SRC, 0);
-  gl.uniform1f(u.SCALE, SCALE);
+  gl.uniform1i(bokehProg.u.SRC, 0);
+  gl.uniform1f(bokehProg.u.SCALE, SCALE);
   gl.activeTexture(gl.TEXTURE0);
-
-  gl.bindFramebuffer(gl.FRAMEBUFFER, skyB.fbo);
-  gl.viewport(0, 0, skyB.w, skyB.h);
-  gl.bindTexture(gl.TEXTURE_2D, skyT.tex);
-  gl.uniform2f(u.TEXEL, 1 / skyT.w, 1 / skyT.h);
-  gl.uniform1f(u.RAD, 3.2);
-  gl.uniform1f(u.BOOST, 1.0);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
-
-  gl.bindFramebuffer(gl.FRAMEBUFFER, fgB.fbo);
-  gl.viewport(0, 0, fgB.w, fgB.h);
-  gl.bindTexture(gl.TEXTURE_2D, fgTex);
-  gl.uniform2f(u.TEXEL, 1 / fg.width, 1 / fg.height);
-  gl.uniform1f(u.RAD, 5.0);
-  gl.uniform1f(u.BOOST, 0.0);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
-
-  gl.bindFramebuffer(gl.FRAMEBUFFER, midB.fbo);
-  gl.viewport(0, 0, midB.w, midB.h);
-  gl.bindTexture(gl.TEXTURE_2D, midTex);
-  gl.uniform1f(u.RAD, 1.6);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  bokeh(skyT.tex, skyT.w, skyT.h, skyB, 3.2, 1.0);
+  bokeh(fgTex, fg.width, fg.height, fgB, 5.0, 0.0);
+  bokeh(midTex, mid.width, mid.height, midB, 1.3, 0.0);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, canvas.width, canvas.height);
@@ -806,18 +1020,25 @@ function draw(now) {
   gl.bindTexture(gl.TEXTURE_2D, fgB.tex);
   gl.activeTexture(gl.TEXTURE2);
   gl.bindTexture(gl.TEXTURE_2D, midB.tex);
+  gl.activeTexture(gl.TEXTURE3);
+  gl.bindTexture(gl.TEXTURE_2D, skyT.cov);
   gl.uniform1i(u.SKYB, 0);
   gl.uniform1i(u.FGB, 1);
   gl.uniform1i(u.MIDB, 2);
+  gl.uniform1i(u.COVT, 3);
   gl.uniform1f(u.G, still ? 0.37 : (frameNo++ % 977) * 0.013);
   gl.uniform1f(u.T, t);
   gl.uniform2f(u.R, canvas.width, canvas.height);
-  gl.uniform4f(u.CAM, tanH * aspect, tanH, PITCH + my * 0.008, mx * 0.010);
-  u3(u.SUN, sun);
+  gl.uniform4f(u.CAM, cam[0], cam[1], cam[2], cam[3]);
   gl.uniform1f(u.NIGHT, w.n);
   gl.uniform1f(u.DUSK, w.u);
   gl.uniform1f(u.EXPO, blend('expo', w));
   gl.uniform1f(u.SCALE, SCALE);
+  gl.uniform1f(u.MOONR, MOON_R);
+  gl.uniform1f(u.PH, P);
+  gl.uniform1f(u.MGAIN, blend('mgain', w));
+  u3(u.SUN, sun);
+  u3(u.MOON, MOON);
   u3(u.BLIT, blend('blit', w));
   u3(u.BDRK, blend('bdrk', w));
   for (var li = 0; li < 3; li++) {
@@ -863,17 +1084,17 @@ function resize() {
     canvas.height = ch;
     var hw = Math.max(1, Math.round(cw * HALF)), hh = Math.max(1, Math.round(ch * HALF));
     var sw = Math.max(1, Math.round(cw * SKY_RES)), sh = Math.max(1, Math.round(ch * SKY_RES));
-    [skyT, skyB, fgB].forEach(function (r) { if (r) { gl.deleteTexture(r.tex); gl.deleteFramebuffer(r.fbo); } });
-    skyT = target(sw, sh, HDR);
-    skyB = target(hw, hh, HDR);
-    fgB = target(hw, hh, false);
-    if (midB) { gl.deleteTexture(midB.tex); gl.deleteFramebuffer(midB.fbo); }
-    midB = target(hw, hh, false);
+    drop(skyT); drop(skyB); drop(fgB); drop(midB);
+    skyT = target(sw, sh, HDR, true);
+    skyB = target(hw, hh, HDR, false);
+    fgB = target(hw, hh, false, false);
+    midB = target(hw, hh, false, false);
     fg.width = hw;
     fg.height = hh;
     mid.width = hw;
     mid.height = hh;
     leaves = [];
+    bf = null;
     var ls = lightScreen(weights(LOOKS[look] || cur));
     buildForeground(ls[0], ls[1]);
   }
@@ -891,6 +1112,11 @@ buttons.forEach(function (b) {
     try { sessionStorage.setItem('look', n); } catch (err) {}
     setLook(n, false);
   });
+});
+
+hero.addEventListener('click', function (ev) {
+  if (ev.target.closest('.looks') || reduced.matches) return;
+  takeoff(lastT);
 });
 
 hero.addEventListener('pointermove', function (ev) {
