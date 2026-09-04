@@ -319,7 +319,7 @@ void main() {
 var COMP = HEAD + `
 out vec4 o;
 uniform sampler2D SKYB, FGB, MIDB, COVT;
-uniform vec4 FGMAP;
+uniform vec4 FGMAP, MIDMAP;
 uniform float T, G, NIGHT, DUSK, EXPO, SCALE, MOONR, PH, MGAIN, CTON, CTP, CTAGE, METON, METP, METS, METL;
 uniform vec2 R;
 uniform vec4 CAM, CT, MET;
@@ -339,6 +339,10 @@ float cap(vec2 p, vec2 a, vec2 b, float r0, float r1) {
   return length(p - a - ab * h) - mix(r0, r1, h);
 }
 const float JS = 1.3;
+float spot(vec2 q, vec2 c, float sig) {
+  vec2 d = q - c;
+  return exp(-dot(d, d) / (2.0 * sig * sig));
+}
 float jetSdf(vec2 q) {
   q /= JS;
   float d = cap(q, vec2(-1.25, 0.0), vec2(1.3, 0.0), 0.12, 0.09);
@@ -384,7 +388,7 @@ void main() {
         * star * bright * 1.3 * NIGHT * dark * smoothstep(-0.02, 0.2, dir.y) * (1.0 - g * 0.85);
   }
 
-  if (CTON > 0.5 && NIGHT < 0.99) {
+  if (CTON > 0.5) {
     vec2 ae = vec2(atan(dir.x, dir.z), asin(clamp(dir.y, -1.0, 1.0)));
     vec2 ab = CT.zw - CT.xy;
     float s = clamp(dot(ae - CT.xy, ab) / max(dot(ab, ab), 1e-9), 0.0, 1.0);
@@ -413,6 +417,17 @@ void main() {
       float body = 1.0 - smoothstep(-0.12, 0.12, dj);
       vec3 jetCol = mix(vec3(0.72, 0.74, 0.80), vec3(1.0, 0.86, 0.76), DUSK * 0.8);
       bg = mix(bg, jetCol, body * (1.0 - NIGHT) * (1.0 - cloud * 0.9));
+      float lk = mix(0.12, 1.0, NIGHT) * (1.0 - cloud * 0.9);
+      float sp = fract(T / 1.25);
+      float strobe = (sp < 0.045 || (sp > 0.11 && sp < 0.155)) ? 1.0 : 0.0;
+      float bp = fract(T / 0.92 + 0.37);
+      float beacon = smoothstep(0.0, 0.04, bp) * (1.0 - smoothstep(0.08, 0.14, bp));
+      vec2 wl = vec2(-0.5, 0.55) * JS, wr = vec2(-0.5, -0.55) * JS;
+      bg += vec3(1.0, 0.98, 0.95) * 2.6 * strobe * spot(q, vec2(-0.3 * JS, 0.0), 0.36) * lk;
+      bg += vec3(1.0, 0.12, 0.08) * 1.3 * beacon * spot(q, vec2(0.1 * JS, 0.0), 0.32) * lk;
+      bg += vec3(1.0, 0.15, 0.1) * 0.22 * spot(q, wl, 0.28) * lk;
+      bg += vec3(0.2, 1.0, 0.35) * 0.22 * spot(q, wr, 0.28) * lk;
+      bg += vec3(1.0) * 0.15 * spot(q, vec2(-1.1 * JS, 0.0), 0.28) * lk;
     }
   }
 
@@ -465,10 +480,9 @@ void main() {
     }
   }
 
-  vec2 uvF = uv * FGMAP.xy + FGMAP.zw;
-  vec4 m = layerCol(texture(MIDB, uvF), bg, 0.32);
+  vec4 m = layerCol(texture(MIDB, uv * MIDMAP.xy + MIDMAP.zw), bg, 0.32);
   vec3 col = mix(bg, m.rgb, m.a);
-  vec4 f = layerCol(texture(FGB, uvF), col, 0.22);
+  vec4 f = layerCol(texture(FGB, uv * FGMAP.xy + FGMAP.zw), col, 0.22);
   float cov = f.a;
   col = mix(col, f.rgb, cov);
   col += max(bg - 1.15, 0.0) * 0.30 * (1.0 - cov) * (1.0 - m.a);
@@ -514,7 +528,7 @@ function program(fragSrc, names) {
 
 var skyProg = program(SKY, ['R', 'CLT', 'NIGHT', 'DUSK', 'COVER', 'REACH', 'FINE', 'SCALE', 'CAM', 'BOX', 'SHIFT', 'SUN', 'MOON', 'ZEN', 'HOR', 'DMID', 'DFAR', 'GLOW', 'CLIT', 'CMID', 'CSHD', 'LD']);
 var bokehProg = program(BOKEH, ['SRC', 'TEXEL', 'RAD', 'BOOST', 'SCALE']);
-var compProg = program(COMP, ['SKYB', 'FGB', 'MIDB', 'COVT', 'FGMAP', 'T', 'G', 'NIGHT', 'DUSK', 'EXPO', 'SCALE', 'MOONR', 'PH', 'MGAIN', 'R', 'CAM', 'BLIT', 'BDRK', 'LL0', 'LL1', 'LL2', 'LD0', 'LD1', 'LD2', 'SUN', 'MOON', 'CTON', 'CTP', 'CTAGE', 'CT', 'METON', 'METP', 'METS', 'METL', 'MET']);
+var compProg = program(COMP, ['SKYB', 'FGB', 'MIDB', 'COVT', 'FGMAP', 'MIDMAP', 'T', 'G', 'NIGHT', 'DUSK', 'EXPO', 'SCALE', 'MOONR', 'PH', 'MGAIN', 'R', 'CAM', 'BLIT', 'BDRK', 'LL0', 'LL1', 'LL2', 'LD0', 'LD1', 'LD2', 'SUN', 'MOON', 'CTON', 'CTP', 'CTAGE', 'CT', 'METON', 'METP', 'METS', 'METL', 'MET']);
 if (!skyProg || !bokehProg || !compProg) return;
 
 var SCALE = HDR ? 1.0 : 0.5;
@@ -712,7 +726,7 @@ var sets = { day: null, dusk: null, night: null };
 var leaves = [];
 var lightNow = [-0.85, 0.5];
 var LEAF_N = { near: 7, mid: 16 };
-var FW = 1, FH = 1, MX = 0, MY = 0;
+var FW = 1, FH = 1, LH = 1, LY0 = 0, MX = 0, MY = 0, FBLUR = 6.5, REACH = 0.24, FOVK = 1;
 
 function perchOn(sg, u) {
   var s = 1 - u;
@@ -729,32 +743,16 @@ function perchOn(sg, u) {
 }
 
 function buildForeground(lx, ly) {
-  var w = FW, h = FH, ox = MX, oy = MY;
-  var portrait = h > w;
+  var w = FW, h = LH, ox = MX, oy = MY + LY0;
   var rnd = mulberry32(20261031);
   var clusters = [];
-  var d, specs, leafSize, lf;
-  if (portrait) {
-    d = Math.min(h, w * 0.9) * 0.7;
-    leafSize = d * 0.015;
-    lf = 1.25;
-    specs = [
-      [w * 1.06, h * 0.44, Math.PI * 0.85, d * 0.20, d * 0.042, 7],
-      [w * 0.98, h * 1.05, Math.PI * 0.62, d * 0.17, d * 0.036, 7],
-      [w * 1.03, h * 0.08, Math.PI * 1.18, d * 0.13, d * 0.025, 6],
-      [w * 1.05, h * 0.70, Math.PI * 0.94, d * 0.16, d * 0.034, 6],
-      [w * 1.02, h * 0.24, Math.PI * 1.04, d * 0.14, d * 0.028, 6]
-    ];
-  } else {
-    d = Math.min(h, w * 0.9);
-    leafSize = d * 0.012;
-    lf = 1;
-    specs = [
-      [w * 1.05, h * 0.50, Math.PI * 0.85, d * 0.20, d * 0.030, 7],
-      [w * 0.95, h * 1.05, Math.PI * 0.62, d * 0.17, d * 0.026, 7],
-      [w * 1.02, h * 0.08, Math.PI * 1.18, d * 0.13, d * 0.018, 6]
-    ];
-  }
+  var d = Math.min(h, w * 0.9);
+  var bx = LY0 + h * 1.05 < FH ? 1.04 : 0.95;
+  var specs = [
+    [w * 1.05, h * 0.50, Math.PI * 0.85, d * 0.20, d * 0.030, 7],
+    [w * bx, h * 1.05, Math.PI * 0.62, d * 0.17, d * 0.026, 7],
+    [w * 1.02, h * 0.08, Math.PI * 1.18, d * 0.13, d * 0.018, 6]
+  ];
   var systems = specs.map(function (sp, i) {
     var c = document.createElement('canvas');
     c.width = fg.width; c.height = fg.height;
@@ -762,7 +760,7 @@ function buildForeground(lx, ly) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     var out = [];
-    oak(ctx, ox + sp[0], oy + sp[1], sp[2], sp[3], sp[4], sp[5], rnd, lx, ly, leafSize, out, lf);
+    oak(ctx, ox + sp[0], oy + sp[1], sp[2], sp[3], sp[4], sp[5], rnd, lx, ly, d * 0.012, out, 1);
     out.forEach(function (cl) { cl.sys = i; clusters.push(cl); });
     return { c: c, ax: ox + sp[0], ay: oy + sp[1], k: 1 + 0.3 * i, ph: i * 1.7 };
   });
@@ -772,10 +770,10 @@ function buildForeground(lx, ly) {
   tctx.lineCap = 'round';
   tctx.lineJoin = 'round';
   var tout = [], trec = [];
-  var dd = Math.min(h, w * 0.9);
-  var tax = ox - w * 0.02, tay = oy + h * 0.82;
+  var dd = d;
+  var tax = MX - FW * 0.02, tay = MY + FH * 0.82;
   oak(tctx, tax, tay, Math.PI * 0.08, dd * 0.11, dd * 0.011, 4, rnd, lx, ly, dd * 0.011, tout, 0.45, trec);
-  var cs = dd * (portrait ? 0.1 : 0.085);
+  var cs = dd * 0.085;
   var perch = trec.length > 1 ? perchOn(trec[1], 0.5) : (trec.length ? perchOn(trec[0], 0.8) : null);
   if (perch) tout = tout.filter(function (cl) { return Math.hypot(cl.x - perch.x, cl.y - perch.y) > cs; });
   return { systems: systems, clusters: clusters, twig: { c: tc, clusters: tout, ax: tax, ay: tay, perch: perch, cs: cs } };
@@ -812,7 +810,7 @@ function seedLeaves() {
 
 function spawn(lf, rnd, anywhere, set) {
   var w = FW, h = FH, ox = MX, oy = MY;
-  var d = Math.min(h, w * 0.9);
+  var d = Math.min(LH, w * 0.9);
   lf.on = true;
   lf.wait = 0;
   if (anywhere) {
@@ -1044,8 +1042,7 @@ function drawSet(set, alpha, t, px, py, wind, night, env) {
   fgctx.globalAlpha = 1;
 
   var twig = set.twig;
-  var ms = mid.width / w;
-  var tpx = px * 0.5 * ms, tpy = py * 0.5 * ms;
+  var tpx = px * 0.5, tpy = py * 0.5;
   var tsway = (Math.sin(t * 0.5 + 0.7) * 0.004 + Math.sin(t * 1.3 + 2.0) * 0.0015) * breeze;
   midctx.globalAlpha = alpha;
   midctx.save();
@@ -1081,7 +1078,7 @@ function drawForeground(t, px, py, from, to, k, wind, night, env) {
   drawSet(sets[from], 1, t, px, py, wind, night, env);
   if (to !== from && k > 0) drawSet(ensureSet(to), k, t, px, py, wind, night, env);
   drawLeaves(fgctx, 'near', t, px, py, 1, wind);
-  drawLeaves(midctx, 'mid', t, px * 0.5, py * 0.5, mid.width / w, wind);
+  drawLeaves(midctx, 'mid', t, px * 0.5, py * 0.5, 1, wind);
   gl.bindTexture(gl.TEXTURE_2D, fgTex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, fg);
   gl.bindTexture(gl.TEXTURE_2D, midTex);
@@ -1095,7 +1092,7 @@ var meteor = { on: false, a: [0, 0], d: [0, 0], t0: 0, life: 0.7, speed: 0.3, ne
 var evRnd = mulberry32(31);
 
 function stepEvents(t, w) {
-  if (!jet.on && w.n < 0.5 && t > jet.next) {
+  if (!jet.on && t > jet.next) {
     var ltr = evRnd() < 0.5;
     var el0 = 0.29 + evRnd() * 0.04, el1 = el0 + (evRnd() - 0.5) * 0.04;
     jet.a = [ltr ? -0.34 : 0.34, el0];
@@ -1259,7 +1256,7 @@ function draw(now) {
   var ll = Math.hypot(ld[0], ld[1]) || 1;
   ld = [ld[0] / ll, ld[1] / ll];
   var aspect = canvas.width / canvas.height;
-  var tanH = Math.tan(FOV / 2);
+  var tanH = Math.tan(FOV * FOVK / 2);
   var cam = [tanH * aspect, tanH, PITCH + my * 0.008 + (still ? 0 : 0.0025 * Math.sin(t * 0.23)), mx * 0.010 + (still ? 0 : 0.003 * Math.sin(t * 0.17 + 1.0))];
   var shift = [0, 0];
   if (box[2] > box[0]) {
@@ -1282,7 +1279,7 @@ function draw(now) {
   gl.uniform1f(u.NIGHT, w.n);
   gl.uniform1f(u.DUSK, w.u);
   gl.uniform1f(u.COVER, Math.min(1, Math.max(0, blend('cover', w) + coverBoost)));
-  gl.uniform1f(u.REACH, 0.24);
+  gl.uniform1f(u.REACH, REACH);
   gl.uniform1f(u.FINE, fine);
   gl.uniform1f(u.SCALE, SCALE);
   gl.uniform4f(u.CAM, cam[0], cam[1], cam[2], cam[3]);
@@ -1306,8 +1303,8 @@ function draw(now) {
   gl.uniform1f(bokehProg.u.SCALE, SCALE);
   gl.activeTexture(gl.TEXTURE0);
   bokeh(skyT.tex, skyT.w, skyT.h, skyB, 4.5, 1.0);
-  bokeh(fgTex, fg.width, fg.height, fgB, 6.5, 0.0);
-  bokeh(midTex, mid.width, mid.height, midB, 6.5, 0.0);
+  bokeh(fgTex, fg.width, fg.height, fgB, FBLUR, 0.0);
+  bokeh(midTex, mid.width, mid.height, midB, FBLUR, 0.0);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, canvas.width, canvas.height);
@@ -1326,6 +1323,7 @@ function draw(now) {
   gl.uniform1i(u.MIDB, 2);
   gl.uniform1i(u.COVT, 3);
   gl.uniform4f(u.FGMAP, FW / fg.width, FH / fg.height, MX / fg.width, MY / fg.height);
+  gl.uniform4f(u.MIDMAP, FW / mid.width, FH / mid.height, MX / mid.width, MY / mid.height);
   gl.uniform1f(u.G, still ? 0.37 : (frameNo++ % 977) * 0.013);
   gl.uniform1f(u.T, t);
   gl.uniform2f(u.R, canvas.width, canvas.height);
@@ -1394,21 +1392,26 @@ function resize() {
     var hw = Math.max(1, Math.round(cw * HALF)), hh = Math.max(1, Math.round(ch * HALF));
     var sw = Math.max(1, Math.round(cw * SKY_RES)), sh = Math.max(1, Math.round(ch * SKY_RES));
     FW = hw; FH = hh;
+    var portrait = hh > hw;
+    LH = portrait ? Math.round(hw / 1.69) : hh;
+    LY0 = portrait ? Math.round(hh * 0.34) : 0;
+    FBLUR = Math.max(3.0, 6.5 * LH / hh);
+    REACH = portrait ? 0.18 : 0.24;
+    FOVK = portrait ? 1.15 : 1;
     MX = Math.round(hw * 0.05); MY = Math.round(hh * 0.05);
     fg.width = hw + 2 * MX;
     fg.height = hh + 2 * MY;
-    mid.width = fg.width;
-    mid.height = fg.height;
+    mid.width = hw + 2 * MX;
+    mid.height = hh + 2 * MY;
     drop(skyT); drop(skyB); drop(fgB); drop(midB);
     skyT = target(sw, sh, HDR, true);
     skyB = target(hw, hh, HDR, false);
     fgB = target(fg.width, fg.height, false, false);
-    midB = target(fg.width, fg.height, false, false);
+    midB = target(mid.width, mid.height, false, false);
     var ar = cw / ch;
     var narrow = Math.min(1, Math.max(0, (16 / 9 - ar) / (16 / 9 - 1)));
-    var tall = Math.min(1, Math.max(0, (1 - ar) / 0.5));
-    fine = (1 + 0.8 * narrow) + (2 - (1 + 0.8 * narrow)) * tall;
-    coverBoost = -0.18 * narrow + (0.06 + 0.18 * narrow) * tall;
+    fine = portrait ? 1.3 : 1 + 0.8 * narrow;
+    coverBoost = portrait ? 0 : -0.18 * narrow;
     sets = { day: null, dusk: null, night: null };
     seedLeaves();
     ensureSet(look);
