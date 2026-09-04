@@ -5,9 +5,8 @@
    the sky on its shadow side, stars once it is dark. The oak is grown
    by a small L-system and hung with russet, rust and old gold; gusts
    run through the crown, a leaf lets go now and then and tumbles down
-   on the wind, and a chickadee sits on a twig in the focus plane,
-   looking about, flying off now and then (or when clicked) and coming
-   back to land. Sky, near foliage and the focus plane render
+   on the wind past a twig that sits in the focus plane. Sky, near
+   foliage and the focus plane render
    to their own targets, each is defocused through a 72-tap bokeh disc
    (bright spots bloom), then composited under an ACES grade, a
    vignette and film grain. Three looks: the page opens on the sunset,
@@ -298,13 +297,13 @@ vec3 leafCol(float hue, float lit) {
   vec3 d = hue < 0.5 ? mix(LD0, LD1, hue * 2.0) : mix(LD1, LD2, hue * 2.0 - 1.0);
   return mix(d, l, lit);
 }
-vec4 layerCol(vec4 t, vec3 bg) {
+vec4 layerCol(vec4 t, vec3 bg, float wrap) {
   float cov = clamp(t.a, 0.0, 1.0);
   float lit = clamp(t.r / max(t.a, 1e-4), 0.0, 1.0);
   float leaf = clamp(t.g / max(t.a, 1e-4), 0.0, 1.0);
   float hue = clamp(t.b / max(t.a, 1e-4), 0.0, 1.0);
   vec3 c = mix(mix(BDRK, BLIT, lit), leafCol(hue, lit), leaf);
-  c += bg * 0.22 * (1.0 - cov);
+  c += bg * wrap * (1.0 - cov);
   return vec4(c, cov);
 }
 void main() {
@@ -365,9 +364,9 @@ void main() {
     }
   }
 
-  vec4 m = layerCol(texture(MIDB, uv), bg);
+  vec4 m = layerCol(texture(MIDB, uv), bg, 0.32);
   vec3 col = mix(bg, m.rgb, m.a);
-  vec4 f = layerCol(texture(FGB, uv), col);
+  vec4 f = layerCol(texture(FGB, uv), col, 0.22);
   float cov = f.a;
   col = mix(col, f.rgb, cov);
   col += max(bg - 1.15, 0.0) * 0.30 * (1.0 - cov) * (1.0 - m.a);
@@ -568,8 +567,8 @@ function makeCluster(size, n, rnd, lx, ly) {
   return { c: c, cs: cs };
 }
 
-function oak(ctx, x, y, ang, len, wid, depth, rnd, lx, ly, leafSize, out) {
-  if (depth <= 0 || len < 2) return null;
+function oak(ctx, x, y, ang, len, wid, depth, rnd, lx, ly, leafSize, out, lf) {
+  if (depth <= 0 || len < 2) return;
   var bend = (rnd() - 0.5) * 0.9;
   var ex = x + Math.cos(ang) * len, ey = y - Math.sin(ang) * len;
   var cx = x + Math.cos(ang + bend) * len * 0.5, cy = y - Math.sin(ang + bend) * len * 0.5;
@@ -580,17 +579,16 @@ function oak(ctx, x, y, ang, len, wid, depth, rnd, lx, ly, leafSize, out) {
     var px = s * s * x + 2 * s * t * cx + t * t * ex;
     var py = s * s * y + 2 * s * t * cy + t * t * ey;
     var side = rnd() < 0.5 ? 1 : -1;
-    oak(ctx, px, py, ang + side * (0.6 + rnd() * 0.7), len * (0.5 + rnd() * 0.3), wid * 0.6, depth - 1, rnd, lx, ly, leafSize, out);
+    oak(ctx, px, py, ang + side * (0.6 + rnd() * 0.7), len * (0.5 + rnd() * 0.3), wid * 0.6, depth - 1, rnd, lx, ly, leafSize, out, lf);
   }
   var next = ang + bend * 0.7 + (rnd() - 0.5) * 0.8;
-  var tip = oak(ctx, ex, ey, next, len * (0.72 + rnd() * 0.16), wid * 0.78, depth - 1, rnd, lx, ly, leafSize, out);
+  oak(ctx, ex, ey, next, len * (0.72 + rnd() * 0.16), wid * 0.78, depth - 1, rnd, lx, ly, leafSize, out, lf);
   if (depth <= 3) {
-    out.push({ x: ex, y: ey, sprite: makeCluster(leafSize * (0.8 + 0.4 * rnd()), 9 + Math.floor(rnd() * 10), rnd, lx, ly), ph: rnd() * 6.2832 });
+    out.push({ x: ex, y: ey, sprite: makeCluster(leafSize * (0.8 + 0.4 * rnd()), Math.max(3, Math.round((9 + rnd() * 10) * lf)), rnd, lx, ly), ph: rnd() * 6.2832 });
   }
-  return tip || [ex, ey];
 }
 
-var systems = [], clusters = [], twig = null, perch = { x: 0, y: 0 };
+var systems = [], clusters = [], twig = null;
 var leaves = [];
 var lightNow = [-0.85, 0.5];
 var LEAF_N = { near: 5, mid: 14 };
@@ -615,7 +613,7 @@ function buildForeground(lx, ly) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     var out = [];
-    oak(ctx, sp[0], sp[1], sp[2], sp[3], sp[4], sp[5], rnd, lx, ly, d * 0.012, out);
+    oak(ctx, sp[0], sp[1], sp[2], sp[3], sp[4], sp[5], rnd, lx, ly, d * 0.012, out, 1);
     out.forEach(function (cl) { cl.sys = i; clusters.push(cl); });
     return { c: c, ax: sp[0], ay: sp[1], k: 1 + 0.3 * i, ph: i * 1.7 };
   });
@@ -626,16 +624,12 @@ function buildForeground(lx, ly) {
   tctx.lineJoin = 'round';
   var tout = [];
   var dd = Math.min(h, w * 0.9);
-  var tip = oak(tctx, -w * 0.02, h * 0.82, Math.PI * 0.08, dd * 0.11, dd * 0.011, 4, rnd, lx, ly, dd * 0.008, tout);
+  oak(tctx, -w * 0.02, h * 0.82, Math.PI * 0.08, dd * 0.11, dd * 0.011, 4, rnd, lx, ly, dd * 0.008, tout, 0.45);
   twig = { c: tc, clusters: tout, ax: -w * 0.02, ay: h * 0.82 };
-  perch = { x: tip[0], y: tip[1] };
   if (!leaves.length) {
     var r2 = mulberry32(20261101);
     for (var n = 0; n < LEAF_N.near + LEAF_N.mid; n++) leaves.push(spawn({ layer: n < LEAF_N.near ? 'near' : 'mid' }, r2, true));
   }
-  if (!bf) initButterfly();
-  bf.S = dd * 0.085;
-  if (bf.state === 'perched') { bf.x = perch.x; bf.y = perch.y; }
 }
 
 /* ------------------------------------------------------------- leaves */
@@ -700,174 +694,6 @@ function drawLeaves(ctx, layer, t, px, py) {
   ctx.globalAlpha = 1;
 }
 
-/* -------------------------------------------------------- the chickadee */
-
-var bf = null;
-
-function initButterfly() {
-  bf = { state: 'perched', x: perch.x, y: perch.y, vx: 0, vy: 0, head: 0, headT: 0, next: 0, tail: 0, tailT: 0,
-         until: 14 + 22 * Math.random(), ph: Math.random() * 6.2832, S: 30, gone: 0, face: -1 };
-}
-
-function takeoff(t) {
-  if (!bf || bf.state !== 'perched') return;
-  bf.state = 'flying';
-  var w = fg.width, h = fg.height;
-  var up = Math.random() < 0.6;
-  bf.tx = up ? w * (0.5 + 0.7 * Math.random()) : -w * 0.2;
-  bf.ty = up ? -h * 0.25 : h * (0.1 + 0.4 * Math.random());
-  bf.face = bf.tx > bf.x ? 1 : -1;
-  bf.vx = 0; bf.vy = -h * 0.15;
-  bf.until = t + 6;
-  wake();
-}
-
-function stepButterfly(t, dt) {
-  var w = fg.width, h = fg.height;
-  if (bf.state === 'perched') {
-    if (t > bf.headT) {
-      bf.head = (Math.random() - 0.5) * 1.1;
-      bf.headT = t + 0.6 + 2.2 * Math.random();
-    }
-    if (t > bf.tailT) {
-      bf.tail = (Math.random() - 0.5) * 0.5;
-      bf.tailT = t + 0.9 + 3.0 * Math.random();
-    }
-    bf.x = perch.x;
-    bf.y = perch.y;
-    if (t > bf.until) takeoff(t);
-    return;
-  }
-  if (bf.state === 'flying') {
-    var dx = bf.tx - bf.x, dy = bf.ty - bf.y, dist = Math.hypot(dx, dy) || 1;
-    var sp = w * 0.55;
-    bf.vx += (dx / dist * sp - bf.vx) * Math.min(1, dt * 2.5);
-    bf.vy += (dy / dist * sp - bf.vy) * Math.min(1, dt * 2.5);
-    bf.x += bf.vx * dt;
-    bf.y += bf.vy * dt + Math.sin(t * 6.2832 * 9 + bf.ph) * h * 0.004;
-    bf.face = bf.vx >= 0 ? 1 : -1;
-    if (bf.x < -w * 0.15 || bf.x > w * 1.15 || bf.y < -h * 0.15 || t > bf.until) {
-      bf.state = 'away';
-      bf.gone = t + 8 + 16 * Math.random();
-    }
-    return;
-  }
-  if (bf.state === 'away') {
-    if (t > bf.gone) {
-      bf.state = 'returning';
-      var fromRight = Math.random() < 0.7;
-      bf.x = fromRight ? w * 1.1 : -w * 0.1;
-      bf.y = fromRight ? h * (0.05 + 0.3 * Math.random()) : h * (0.2 + 0.3 * Math.random());
-      bf.vx = 0; bf.vy = 0;
-      bf.face = perch.x > bf.x ? 1 : -1;
-    }
-    return;
-  }
-  if (bf.state === 'returning') {
-    var ddx = perch.x - bf.x, ddy = perch.y - bf.y, dd = Math.hypot(ddx, ddy) || 1;
-    var spd = w * (dd < w * 0.12 ? 0.18 : 0.5);
-    bf.vx += (ddx / dd * spd - bf.vx) * Math.min(1, dt * 3.0);
-    bf.vy += (ddy / dd * spd - bf.vy) * Math.min(1, dt * 3.0);
-    bf.x += bf.vx * dt;
-    bf.y += bf.vy * dt + Math.sin(t * 6.2832 * 9 + bf.ph) * h * 0.003;
-    bf.face = bf.vx >= 0 ? 1 : -1;
-    if (dd < bf.S * 0.12) {
-      bf.state = 'perched';
-      bf.x = perch.x;
-      bf.y = perch.y;
-      bf.face = -1;
-      bf.until = t + 14 + 22 * Math.random();
-    }
-  }
-}
-
-function drawBird(ctx, x, y, S, t) {
-  var flying = bf.state === 'flying' || bf.state === 'returning';
-  var face = bf.face;
-  var lx = lightNow[0] * face, ly = lightNow[1];
-  var rim = 'rgb(' + Math.round(40 + 60 * Math.max(0, -lx)) + ',0,0)';
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(face, 1);
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  var gr = ctx.createLinearGradient(-S * 0.3, -S * 0.4, S * 0.2, S * 0.3);
-  gr.addColorStop(0, ly < 0 ? rim : 'rgb(22,0,0)');
-  gr.addColorStop(0.5, 'rgb(20,0,0)');
-  gr.addColorStop(1, ly >= 0 ? rim : 'rgb(16,0,0)');
-  ctx.fillStyle = gr;
-  ctx.strokeStyle = 'rgb(18,0,0)';
-  if (flying) {
-    var flap = Math.cos(t * 6.2832 * 8 + bf.ph);
-    var span = S * 0.95 * (0.5 + 0.5 * Math.abs(flap));
-    var sweep = flap * S * 0.25;
-    ctx.rotate(-0.12);
-    for (var wsd = -1; wsd <= 1; wsd += 2) {
-      ctx.beginPath();
-      ctx.moveTo(-S * 0.2, 0);
-      ctx.quadraticCurveTo(S * 0.05 + sweep * 0.5, wsd * span * 0.55, -S * 0.02 + sweep, wsd * span);
-      ctx.quadraticCurveTo(S * 0.28 + sweep * 0.3, wsd * span * 0.45, S * 0.3, 0);
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.beginPath();
-    ctx.ellipse(0, 0, S * 0.42, S * 0.17, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.ellipse(S * 0.42, -S * 0.04, S * 0.15, S * 0.14, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(-S * 0.42, 0);
-    ctx.lineTo(-S * 0.9, -S * 0.15);
-    ctx.lineTo(-S * 0.9, S * 0.15);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-    return;
-  }
-  ctx.lineWidth = Math.max(S * 0.03, 0.8);
-  ctx.beginPath();
-  ctx.moveTo(S * 0.02, S * 0.3);
-  ctx.lineTo(S * 0.06, S * 0.52);
-  ctx.moveTo(S * 0.14, S * 0.3);
-  ctx.lineTo(S * 0.2, S * 0.52);
-  ctx.stroke();
-  ctx.save();
-  ctx.translate(-S * 0.42, S * 0.06);
-  ctx.rotate(0.45 + bf.tail);
-  ctx.beginPath();
-  ctx.moveTo(0, -S * 0.05);
-  ctx.lineTo(-S * 0.55, -S * 0.02);
-  ctx.lineTo(-S * 0.55, S * 0.1);
-  ctx.lineTo(0, S * 0.08);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-  ctx.beginPath();
-  ctx.ellipse(0, 0, S * 0.5, S * 0.33, -0.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.save();
-  ctx.translate(S * 0.36, -S * 0.2);
-  ctx.rotate(bf.head * 0.35);
-  ctx.beginPath();
-  ctx.ellipse(0, 0, S * 0.24, S * 0.22, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(S * 0.2, -S * 0.04);
-  ctx.lineTo(S * 0.38, 0.0);
-  ctx.lineTo(S * 0.2, S * 0.05);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = 'rgb(120,0,0)';
-  ctx.globalAlpha = 0.35;
-  ctx.beginPath();
-  ctx.ellipse(S * 0.04, S * 0.03, S * 0.13, S * 0.09, 0.2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-  ctx.restore();
-  ctx.restore();
-}
-
 /* ------------------------------------------------------- foreground */
 
 function drawForeground(t, px, py) {
@@ -925,15 +751,6 @@ function drawForeground(t, px, py) {
     midctx.drawImage(cl.sprite.c, -cs / 2, -cs / 2);
     midctx.restore();
   }
-  if (bf.state !== 'away') {
-    var bx = bf.x, by = bf.y;
-    if (bf.state === 'perched') {
-      bx = twig.ax + (perch.x - twig.ax) * ca - (perch.y - twig.ay) * sa;
-      by = twig.ay + (perch.x - twig.ax) * sa + (perch.y - twig.ay) * ca;
-      by -= bf.S * 0.5;
-    }
-    drawBird(midctx, bx + px * 0.5, by + py * 0.5, bf.S, t);
-  }
   drawLeaves(midctx, 'mid', t, px * 0.5, py * 0.5);
   gl.bindTexture(gl.TEXTURE_2D, midTex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, mid);
@@ -985,7 +802,7 @@ function lightScreen(w) {
 
 var look, cur, tw = null;
 var mx = 0, my = 0, tx = 0, ty = 0;
-var running = false, raf = 0, last = 0, frameNo = 0, lastT = 0;
+var running = false, raf = 0, last = 0, frameNo = 0;
 var visible = !document.hidden, inView = true;
 var box = [0, 0, 0, 0];
 
@@ -1043,7 +860,6 @@ function draw(now) {
   mx += (tx - mx) * l;
   my += (ty - my) * l;
   var t = still ? 1000 : now / 1000;
-  lastT = t;
   var w = weights(cur);
   var sun = sunDir(w);
   var ld = [sun[0], sun[2]];
@@ -1053,7 +869,7 @@ function draw(now) {
   var tanH = Math.tan(FOV / 2);
   var cam = [tanH * aspect, tanH, PITCH + my * 0.008 + (still ? 0 : 0.0025 * Math.sin(t * 0.23)), mx * 0.010 + (still ? 0 : 0.003 * Math.sin(t * 0.17 + 1.0))];
 
-  if (!still) { stepLeaves(t, dt); stepButterfly(t, dt); }
+  if (!still) stepLeaves(t, dt);
   drawForeground(still ? 0 : t, -mx * fg.width * 0.012, my * fg.height * 0.012);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, skyT.fbo);
@@ -1086,7 +902,7 @@ function draw(now) {
   gl.activeTexture(gl.TEXTURE0);
   bokeh(skyT.tex, skyT.w, skyT.h, skyB, 4.5, 1.0);
   bokeh(fgTex, fg.width, fg.height, fgB, 6.5, 0.0);
-  bokeh(midTex, mid.width, mid.height, midB, 1.3, 0.0);
+  bokeh(midTex, mid.width, mid.height, midB, 1.7, 0.0);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, canvas.width, canvas.height);
@@ -1172,7 +988,6 @@ function resize() {
     mid.width = hw;
     mid.height = hh;
     leaves = [];
-    bf = null;
     var ls = lightScreen(weights(LOOKS[look] || cur));
     buildForeground(ls[0], ls[1]);
   }
@@ -1190,11 +1005,6 @@ buttons.forEach(function (b) {
     try { sessionStorage.setItem('look', n); } catch (err) {}
     setLook(n, false);
   });
-});
-
-hero.addEventListener('click', function (ev) {
-  if (ev.target.closest('.looks') || reduced.matches) return;
-  takeoff(lastT);
 });
 
 hero.addEventListener('pointermove', function (ev) {
