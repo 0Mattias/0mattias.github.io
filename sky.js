@@ -64,14 +64,14 @@ var PAL = {
     glow: [0.8, 0.76, 0.64], clit: [1.04, 1.03, 1.0], cshd: scene('#8fa1ba'),
     blit: scene('#6e6155'), bdrk: scene('#1c1815'),
     leaf: [['#8e4a2c', '#3e1f12'], ['#c07838', '#5c3315'], ['#c39c44', '#6a541c']],
-    cover: 0.5, expo: 1.0, mgain: 1.0
+    cover: 0.55, expo: 1.0, mgain: 1.0
   },
   dusk: {
-    zen: scene('#6876ae'), hor: scene('#dcab88'), dmid: scene('#e69f68'), dfar: scene('#b596ac'),
-    glow: [1.0, 0.6, 0.32], clit: [1.06, 0.88, 0.72], cshd: scene('#93819f'),
+    zen: scene('#7180b5'), hor: scene('#d8b09a'), dmid: scene('#e5a778'), dfar: scene('#b79cb4'),
+    glow: [1.0, 0.62, 0.36], clit: [1.08, 0.91, 0.78], cshd: scene('#9c8db0'),
     blit: scene('#735646'), bdrk: scene('#1a1310'),
-    leaf: [['#a8522c', '#3f1a0e'], ['#d0803a', '#582b10'], ['#d1a548', '#634916']],
-    cover: 0.48, expo: 1.0, mgain: 1.0
+    leaf: [['#a8522c', '#4a2214'], ['#d0803a', '#603315'], ['#d1a548', '#6a501c']],
+    cover: 0.56, expo: 1.0, mgain: 1.0
   },
   night: {
     zen: scene('#0a1024'), hor: scene('#1b2439'), dmid: scene('#1e2740'), dfar: scene('#141b30'),
@@ -198,17 +198,17 @@ vec3 skyColor(vec3 dir) {
   float sd = max(dot(dir, SUN), 0.0);
   col += GLOW * pow(sd, 14.0) * (mix(0.22, 0.06, NIGHT) + 0.28 * DUSK);
   col += GLOW * pow(sd, 4.0) * 0.14 * DUSK;
-  col += GLOW * pow(sd, 40.0) * 0.9 * DUSK;
+  col += GLOW * pow(sd, 40.0) * 0.6 * DUSK;
   col *= 1.0 + 0.011 * sin(dir.x * 4.1 + dir.y * 6.3) * sin(dir.y * 3.7 - dir.x * 2.3)
              + 0.006 * sin(dir.x * 11.0) * sin(dir.y * 9.0);
   return col;
 }
 
 float cloudField(vec2 p, vec2 drift, float seed) {
-  float base = fbm5(p * 2.4 + drift + seed);
-  float fine = 0.14 * (fbm5(p * 4.2 - drift * 1.4 + 4.0 + seed) - 0.5);
-  float billow = 1.0 - abs(2.0 * fbm3(p * 8.5 + drift * 0.6 + 9.0 + seed) - 1.0);
-  float grain = 0.05 * (fbm3(p * 20.0 + drift * 0.3 + 23.0 + seed) - 0.5);
+  float base = fbm5(p * 2.1 + drift + seed);
+  float fine = 0.14 * (fbm5(p * 3.8 - drift * 1.4 + 4.0 + seed) - 0.5);
+  float billow = 1.0 - abs(2.0 * fbm3(p * 7.5 + drift * 0.6 + 9.0 + seed) - 1.0);
+  float grain = 0.05 * (fbm3(p * 18.0 + drift * 0.3 + 23.0 + seed) - 0.5);
   return 0.48 + (base - 0.48) * 1.35 + fine + 0.12 * (billow - 0.5) + grain;
 }
 
@@ -225,7 +225,7 @@ vec4 deck(vec3 dir, vec2 p0, vec2 drift, vec2 sc, float seed, float th0, float s
   float weather = fbm3(p * 1.3 + seed * 3.1 + drift * 0.5);
   float th = th0 + 0.15 * (0.5 - weather) + shelter;
   float f = cloudField(p, drift, seed);
-  float dens = smoothstep(th, th + 0.30, f);
+  float dens = smoothstep(th, th + 0.34, f);
   if (dens <= 0.0) return vec4(0.0);
   float thick = smoothstep(th + 0.14, th + 0.55, f);
   float fl = cloudField(p + LD * 0.045, drift, seed);
@@ -255,9 +255,9 @@ void main() {
     float shelter = SHEL * (1.0 - smoothstep(-0.04, 0.42, boxDist(uv * s + warp, BOX, s)));
     vec4 far = deck(dir, p0, drift * 0.6, vec2(2.2, 4.8), 5.0, th0 + 0.08, shelter);
     vec4 near = deck(dir, p0, drift, vec2(1.0, 1.0), 0.0, th0, shelter);
-    col = mix(col, far.rgb, far.a * 0.45);
+    col = mix(col, far.rgb, far.a * 0.5);
     col = mix(col, near.rgb, near.a);
-    cov = min(near.a + far.a * 0.45 * (1.0 - near.a), 1.0);
+    cov = min(near.a + far.a * 0.5 * (1.0 - near.a), 1.0);
   }
   o0 = vec4(col * SCALE, 1.0);
   o1 = vec4(cov, 0.0, 0.0, 1.0);
@@ -304,6 +304,7 @@ vec4 layerCol(vec4 t, vec3 bg, float wrap) {
   float leaf = clamp(t.g / max(t.a, 1e-4), 0.0, 1.0);
   float hue = clamp(t.b / max(t.a, 1e-4), 0.0, 1.0);
   vec3 c = mix(mix(BDRK, BLIT, lit), leafCol(hue, lit), leaf);
+  c = mix(c, bg, 0.06);
   c += bg * wrap * (1.0 - cov);
   return vec4(c, cov);
 }
@@ -585,7 +586,7 @@ function oak(ctx, x, y, ang, len, wid, depth, rnd, lx, ly, leafSize, out, lf) {
   var next = ang + bend * 0.7 + (rnd() - 0.5) * 0.8;
   oak(ctx, ex, ey, next, len * (0.72 + rnd() * 0.16), wid * 0.78, depth - 1, rnd, lx, ly, leafSize, out, lf);
   if (depth <= 3) {
-    out.push({ x: ex, y: ey, sprite: makeCluster(leafSize * (0.8 + 0.4 * rnd()), Math.max(3, Math.round((9 + rnd() * 10) * lf)), rnd, lx, ly), ph: rnd() * 6.2832 });
+    out.push({ x: ex, y: ey, sprite: makeCluster(leafSize * (0.8 + 0.4 * rnd()), Math.max(3, Math.round((7 + rnd() * 7) * lf)), rnd, lx, ly), ph: rnd() * 6.2832 });
   }
 }
 
