@@ -1,7 +1,6 @@
 :root {
     color-scheme: light;
     --serif: Charter, 'Bitstream Charter', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
-    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
     --paper: #f6f3ec;
     --ink: #211f19;
     --quiet: rgba(33, 31, 25, 0.62);
@@ -45,8 +44,8 @@ a:hover {
 }
 
 a[target="_blank"] span[aria-hidden="true"] {
-    font-family: var(--mono);
-    font-size: 0.72em;
+    font-size: 0.8em;
+    opacity: 0.7;
 }
 
 a:focus-visible {
@@ -68,7 +67,7 @@ h1, h2, h3 { text-wrap: balance; }
     background: var(--ink);
     color: var(--paper);
     padding: 6px 12px;
-    font: 12px/1.6 var(--mono);
+    font: 14px/1.6 var(--serif);
     text-decoration: none;
 }
 
@@ -193,8 +192,8 @@ p:last-child { margin-bottom: 0; }
 
 
 .small {
-    font: 12px/1.8 var(--mono);
-    color: var(--quiet);
+    font: 400 15px/1.8 var(--serif);
+    color: rgba(33, 31, 25, 0.62);
 }
 
 .entry { margin-bottom: 26px; }
@@ -210,9 +209,8 @@ p:last-child { margin-bottom: 0; }
 .entry h3 a:hover { color: var(--accent); }
 
 .annot {
-    font: 11.5px/1.7 var(--mono);
-    letter-spacing: 0.02em;
-    color: var(--quiet);
+    font: 400 14px/1.7 var(--serif);
+    color: rgba(33, 31, 25, 0.62);
     white-space: nowrap;
 }
 
