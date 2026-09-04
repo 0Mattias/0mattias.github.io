@@ -301,6 +301,21 @@ vec3 leafCol(float hue, float lit) {
   vec3 d = hue < 0.5 ? mix(LD0, LD1, hue * 2.0) : mix(LD1, LD2, hue * 2.0 - 1.0);
   return mix(d, l, lit);
 }
+float cap(vec2 p, vec2 a, vec2 b, float r0, float r1) {
+  vec2 ab = b - a;
+  float h = clamp(dot(p - a, ab) / dot(ab, ab), 0.0, 1.0);
+  return length(p - a - ab * h) - mix(r0, r1, h);
+}
+const float JS = 1.3;
+float jetSdf(vec2 q) {
+  q /= JS;
+  float d = cap(q, vec2(-1.25, 0.0), vec2(1.3, 0.0), 0.12, 0.09);
+  d = min(d, cap(q, vec2(0.25, 0.0), vec2(-0.75, 1.55), 0.17, 0.05));
+  d = min(d, cap(q, vec2(0.25, 0.0), vec2(-0.75, -1.55), 0.17, 0.05));
+  d = min(d, cap(q, vec2(-1.05, 0.0), vec2(-1.45, 0.6), 0.09, 0.04));
+  d = min(d, cap(q, vec2(-1.05, 0.0), vec2(-1.45, -0.6), 0.09, 0.04));
+  return d * JS;
+}
 vec4 layerCol(vec4 t, vec3 bg, float wrap) {
   float cov = clamp(t.a, 0.0, 1.0);
   float lit = clamp(t.r / max(t.a, 1e-4), 0.0, 1.0);
@@ -342,24 +357,30 @@ void main() {
     vec2 ab = CT.zw - CT.xy;
     float s = clamp(dot(ae - CT.xy, ab) / max(dot(ab, ab), 1e-9), 0.0, 1.0);
     float head = min(CTP, 1.0);
-    vec2 nrm = normalize(vec2(-ab.y, ab.x));
+    float L = max(length(ab), 1e-6);
+    vec2 fwd = ab / L;
+    vec2 nrm = vec2(-fwd.y, fwd.x);
     float sd = dot(ae - (CT.xy + ab * s), nrm);
-    if (s < head) {
+    float back = 0.0011 * JS / L;
+    if (s < head - back) {
       float age = (CTP - s) * CTAGE;
       float grow = clamp(age / 45.0, 0.0, 1.0);
       float sig = 0.00025 + 0.0009 * grow;
       float sep = 0.0006 + 0.0003 * grow;
       float lines = exp(-(sd - sep) * (sd - sep) / (2.0 * sig * sig)) + exp(-(sd + sep) * (sd + sep) / (2.0 * sig * sig));
       float rag = 0.7 + 0.3 * vn(vec2(s * 400.0, age * 0.08));
-      float fade = (1.0 - smoothstep(18.0, 50.0, age)) * smoothstep(0.0, 0.004, head - s);
+      float fade = (1.0 - smoothstep(18.0, 50.0, age)) * smoothstep(0.0, 0.003, head - back - s);
       float ct = min(lines, 1.0) * rag * fade * (0.5 - 0.25 * grow) * (1.0 - NIGHT) * (1.0 - cloud * 0.9);
       vec3 ctCol = mix(vec3(1.0, 0.99, 0.97), vec3(1.0, 0.8, 0.7), DUSK * 0.7);
       bg = mix(bg, ctCol * 0.95, ct);
     }
     if (CTP <= 1.0) {
-      vec2 hp = CT.xy + ab * CTP;
-      float dh = length(ae - hp);
-      bg += vec3(0.95, 0.95, 1.0) * exp(-dh * dh / (2.0 * 0.0003 * 0.0003)) * 0.5 * (1.0 - NIGHT);
+      vec2 rel = ae - (CT.xy + ab * CTP);
+      vec2 q = vec2(dot(rel, fwd), dot(rel, nrm)) * 1000.0;
+      float dj = jetSdf(q);
+      float body = 1.0 - smoothstep(-0.12, 0.12, dj);
+      vec3 jetCol = mix(vec3(0.72, 0.74, 0.80), vec3(1.0, 0.86, 0.76), DUSK * 0.8);
+      bg = mix(bg, jetCol, body * (1.0 - NIGHT) * (1.0 - cloud * 0.9));
     }
   }
 
@@ -725,7 +746,10 @@ function spawn(lf, rnd, anywhere) {
   lf.tw = 0;
   lf.twTotal = 0;
   lf.twDir = 1;
-  lf.twAt = 4 + 18 * rnd();
+  var temper = rnd();
+  lf.twKind = temper < 0.3 ? 0 : (temper < 0.78 ? 1 : 2);
+  lf.twRate = lf.twKind === 2 ? 8.0 + 3.0 * rnd() : 5.5 + 2.5 * rnd();
+  lf.twAt = lf.twKind === 0 ? 1e9 : (lf.twKind === 2 ? 1 + 4 * rnd() : 4 + 18 * rnd());
   lf.ph = rnd() * Math.PI * 2;
   lf.fall = h * (lf.layer === 'near' ? 0.085 : 0.06) * (0.8 + 0.4 * rnd());
   lf.vx = 0;
@@ -750,14 +774,18 @@ function stepLeaves(t, dt) {
     lf.x += lf.vx * dt;
     lf.y += lf.vy * dt;
     if (twirling) {
-      var step = 7.5 * dt;
+      var step = lf.twRate * dt;
       lf.rot += lf.twDir * step;
       lf.tw -= step;
-      if (lf.tw <= 0) { lf.tw = 0; lf.twAt = lf.age + 10 + 16 * leafRnd(); }
+      if (lf.tw <= 0) {
+        lf.tw = 0;
+        lf.twAt = lf.age + (lf.twKind === 2 ? 1.5 + 4.5 * leafRnd() : 10 + 16 * leafRnd());
+      }
     } else {
       lf.rot += (lf.spin + 1.5 * flutter) * dt;
       if (lf.age > lf.twAt) {
-        lf.twTotal = Math.PI * 2 * (leafRnd() < 0.55 ? 1 : 2);
+        var spins = lf.twKind === 2 ? 1 + Math.floor(leafRnd() * 4) : (leafRnd() < 0.55 ? 1 : 2);
+        lf.twTotal = Math.PI * 2 * spins;
         lf.tw = lf.twTotal;
         lf.twDir = leafRnd() < 0.5 ? -1 : 1;
       }
