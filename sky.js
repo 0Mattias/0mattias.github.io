@@ -293,28 +293,6 @@ uniform vec3 BLIT, BDRK, LL0, LL1, LL2, LD0, LD1, LD2, SUN, MOON;
 vec3 aces(vec3 x) {
   return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
 }
-const float D2R = 0.01745329;
-float mare(float lat, float lon, vec2 c, vec2 r, float ang, float nz) {
-  vec2 d = vec2((lon - c.y * D2R) * cos(c.x * D2R), lat - c.x * D2R);
-  float ca = cos(ang), sa = sin(ang);
-  d = vec2(d.x * ca - d.y * sa, d.x * sa + d.y * ca);
-  float e = length(d / (r * D2R));
-  return 1.0 - smoothstep(0.9, 1.1, e + nz);
-}
-float crater(float lat, float lon, vec2 c, float r, float rayLen, float seed) {
-  vec2 d = vec2((lon - c.y * D2R) * cos(c.x * D2R), lat - c.x * D2R);
-  float dist = length(d);
-  float rr = r * D2R;
-  float core = 1.0 - smoothstep(rr * 0.5, rr * 1.3, dist);
-  float halo = exp(-dist / (rr * 2.5)) * 0.35;
-  vec2 dir = d / max(dist, 1e-4);
-  float rays = smoothstep(0.6, 0.86, vn(dir * 5.0 + seed)) * exp(-dist / (rayLen * D2R)) * smoothstep(rr, rr * 2.0, dist);
-  return core + halo + rays * 0.55;
-}
-float floorDark(float lat, float lon, vec2 c, float r) {
-  vec2 d = vec2((lon - c.y * D2R) * cos(c.x * D2R), lat - c.x * D2R);
-  return 1.0 - smoothstep(r * D2R * 0.7, r * D2R * 1.15, length(d));
-}
 vec3 leafCol(float hue, float lit) {
   vec3 l = hue < 0.5 ? mix(LL0, LL1, hue * 2.0) : mix(LL1, LL2, hue * 2.0 - 1.0);
   vec3 d = hue < 0.5 ? mix(LD0, LD1, hue * 2.0) : mix(LD1, LD2, hue * 2.0 - 1.0);
@@ -362,68 +340,27 @@ void main() {
     vec2 q = vec2(dot(dir, ex), dot(dir, ey)) / sin(MOONR);
     float rr = dot(q, q);
     if (rr < 1.0) {
+      vec3 n = vec3(q, sqrt(1.0 - rr));
+      float edge = n.z;
       float ph = PH * 6.2831853;
-      float tilt = -0.35 * sign(sin(ph) + 1e-6);
-      float ct = cos(tilt), st = sin(tilt);
-      vec2 qm = vec2(ct * q.x - st * q.y, st * q.x + ct * q.y);
-      vec3 nm = vec3(qm, sqrt(max(1.0 - dot(qm, qm), 0.0)));
-      float edge = nm.z;
-      float lat = asin(clamp(nm.y, -1.0, 1.0));
-      float lon = atan(nm.x, nm.z);
-      vec3 L = vec3(sin(ph), 0.0, -cos(ph));
-      float litRaw = dot(nm, L);
-
-      float nz = (fbm3d(nm * 5.0 + 1.0) - 0.5) * 0.5 + (fbm3d(nm * 13.0 + 7.0) - 0.5) * 0.18;
-      float m = 0.0;
-      m = max(m, mare(lat, lon, vec2(32.8, -15.6), vec2(19.0, 17.0), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(28.0, 17.5), vec2(11.5, 10.5), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(8.5, 31.4), vec2(14.0, 11.0), 0.4, nz));
-      m = max(m, mare(lat, lon, vec2(17.0, 59.1), vec2(9.5, 7.5), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(-7.8, 51.3), vec2(10.0, 14.0), -0.35, nz));
-      m = max(m, mare(lat, lon, vec2(-15.2, 35.5), vec2(6.0, 6.0), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(-21.3, -16.6), vec2(12.0, 9.5), 0.2, nz));
-      m = max(m, mare(lat, lon, vec2(-24.4, -38.6), vec2(7.0, 6.5), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(20.0, -55.0), vec2(16.0, 34.0), -0.12, nz));
-      m = max(m, mare(lat, lon, vec2(2.0, -45.0), vec2(9.0, 9.0), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(-12.0, -50.0), vec2(7.0, 10.0), 0.3, nz));
-      m = max(m, mare(lat, lon, vec2(24.0, -35.0), vec2(9.0, 7.0), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(58.0, 1.4), vec2(27.0, 3.6), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(13.3, 3.6), vec2(4.5, 4.0), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(7.5, -30.9), vec2(9.0, 7.0), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(-10.0, -23.0), vec2(6.0, 5.0), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(10.9, -8.8), vec2(5.0, 4.0), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(56.8, 81.5), vec2(6.0, 5.0), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(13.3, 86.1), vec2(5.0, 6.0), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(1.3, 87.5), vec2(6.0, 6.0), 0.0, nz));
-      m = max(m, mare(lat, lon, vec2(44.1, -31.5), vec2(5.0, 4.5), 0.0, nz));
-      float maria = clamp(m, 0.0, 1.0);
-
-      float hi = 0.92 + 0.16 * (fbm3d(nm * 9.0 + 4.0) - 0.5) + 0.05 * smoothstep(-0.15, -0.6, lat);
-      hi += 0.10 * (fbm3d(nm * 40.0 + 11.0) - 0.5);
-      float mareTone = 0.56 + 0.12 * (fbm3d(nm * 14.0 + 8.0) - 0.5) * 2.0 + 0.04 * (fbm3d(nm * 40.0 + 11.0) - 0.5);
-      float alb = mix(hi, hi * mareTone, maria);
-      float term = smoothstep(-0.05, 0.12, litRaw) * smoothstep(0.6, 0.2, litRaw);
-      float cr = smoothstep(0.52, 0.85, fbm3d(nm * 22.0 + 3.0));
-      float cr2 = smoothstep(0.55, 0.9, fbm3d(nm * 60.0 + 5.0));
-      alb *= 1.0 - cr * (0.10 + 0.18 * term) - cr2 * (0.05 + 0.12 * term) * (1.0 - 0.5 * maria);
-      alb += 0.26 * crater(lat, lon, vec2(-43.3, -11.4), 1.6, 34.0, 9.0);
-      alb += 0.18 * crater(lat, lon, vec2(9.6, -20.1), 1.5, 15.0, 3.0);
-      alb += 0.14 * crater(lat, lon, vec2(8.1, -38.0), 0.7, 7.0, 5.0);
-      alb += 0.16 * crater(lat, lon, vec2(23.7, -47.4), 0.8, 5.0, 7.0);
-      alb += 0.08 * crater(lat, lon, vec2(16.1, 46.8), 0.6, 4.0, 2.0);
-      alb *= 1.0 - 0.35 * floorDark(lat, lon, vec2(51.6, -9.4), 1.7);
-      alb *= 1.0 - 0.40 * floorDark(lat, lon, vec2(-5.2, -68.6), 2.8);
-      alb *= 1.0 - 0.18 * floorDark(lat, lon, vec2(29.7, -4.0), 1.4);
-
-      float lit = smoothstep(-0.02, 0.22, litRaw) * (0.72 + 0.28 * smoothstep(0.2, 1.0, litRaw));
+      vec3 L = normalize(vec3(sin(ph) * 0.9, abs(sin(ph)) * 0.44, -cos(ph)));
+      float litRaw = dot(n, L);
+      float lit = smoothstep(-0.22, 0.58, litRaw);
+      lit = lit * lit * (3.0 - 2.0 * lit);
+      float m = fbm3d(n * 3.1 + 7.0), m2 = fbm3d(n * 1.6 + 2.0);
+      float mare = 0.30 * smoothstep(0.44, 0.66, m) + 0.16 * smoothstep(0.48, 0.72, m2);
+      float term = smoothstep(-0.15, 0.15, litRaw) * smoothstep(0.75, 0.35, litRaw);
+      float craters = (0.07 + 0.10 * term) * smoothstep(0.50, 0.85, fbm3d(n * 17.0 + 3.0)) + 0.06 * fbm3d(n * 9.0);
+      float highland = 0.11 * smoothstep(0.52, 0.72, fbm3d(n * 2.3 + 13.0)) + 0.05 * smoothstep(0.58, 0.80, fbm3d(n * 5.1 + 27.0));
+      float detail = 1.0 - mare - craters + highland;
       vec3 daySurf = mix(bg, vec3(0.50, 0.50, 0.52), 0.8);
       vec3 nightSurf = vec3(0.30, 0.29, 0.26) * MGAIN;
-      vec3 surf = mix(daySurf, nightSurf, NIGHT) * alb;
+      vec3 surf = mix(daySurf, nightSurf, NIGHT) * detail;
       float rim = pow(1.0 - abs(edge), 1.6);
-      surf = mix(surf, surf * vec3(1.10, 1.09, 1.07), rim);
+      surf = mix(surf, surf * vec3(1.13, 1.12, 1.09), rim);
       surf = mix(surf, mix(surf, bg, 0.30), (1.0 - rim) * (1.0 - NIGHT));
-      float limb = smoothstep(0.0, mix(0.30, 0.20, NIGHT), abs(edge));
-      float alpha = smoothstep(0.02, mix(0.14, 0.10, NIGHT), abs(edge)) * lit * (limb * 0.97 + 0.03);
+      float limb = smoothstep(0.0, mix(0.34, 0.24, NIGHT), abs(edge));
+      float alpha = smoothstep(0.02, mix(0.16, 0.12, NIGHT), abs(edge)) * lit * (limb * 0.97 + 0.03);
       bg = mix(bg, surf, alpha * (1.0 - cloud * 0.9));
     }
   }
