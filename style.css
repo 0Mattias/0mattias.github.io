@@ -43,10 +43,6 @@ a:hover {
     text-decoration-color: currentColor;
 }
 
-a[target="_blank"] span[aria-hidden="true"] {
-    font-size: 0.8em;
-    opacity: 0.7;
-}
 
 a:focus-visible {
     outline: 2px solid var(--accent);
