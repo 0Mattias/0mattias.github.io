@@ -1,28 +1,30 @@
 /* 0mattias.github.io · the sky
    An autumn oak against the sky, photographed rather than drawn: a
-   21-degree lens focused on a twig at the lower left looks up through
-   the crown at two decks of cumulus lit from the sun's side (each puff
-   bright where it faces the light, dark in its hollows and under its
-   neighbours' bellies), a moon at tonight's real phase that dissolves
-   into the sky on its shadow side, stars once it is dark. The oak is
-   grown by a small L-system and hung with russet, rust and old gold.
-   The wind is a noise signal with real lulls and gusts: it runs through
-   the crown, carries the clouds slowly leftward, and when it rises
-   leaves let go of the clusters and blow down past the twig, some
-   flipping end over end the whole way; by day a jet crosses the high
-   sky now and then and its contrail widens and dissolves behind it. At
-   night the wind drops: the clouds stand, the crown goes still, no leaf
-   falls, a meteor falls instead, and a cricket sits on the twig and
-   chirps, wings raised and shivering. The crown and the sky render to
-   their own targets and are defocused through a 72-tap bokeh disc (the
-   sky less, bright spots bloom); the twig, the cricket and the leaves
-   that fall past them sit in the focus plane and stay nearly sharp;
-   all of it is composited under an ACES grade, a vignette and film
-   grain. Phones see the same picture: the crown keeps its scale and
-   fills the right of the frame. Three looks, each with its own
-   prebuilt foliage so a switch crossfades at once: the page opens on
-   the sunset, and the dots at the bottom left move the sun. WebGL2, no
-   libraries, no build step. */
+   21-degree lens looks up through the crown at two decks of cumulus lit
+   from the sun's side (each puff bright where it faces the light, dark
+   in its hollows and under its neighbours' bellies), a moon at
+   tonight's real phase that dissolves into the sky on its shadow side,
+   stars once it is dark. The oak is grown by a small L-system, three
+   limbs reaching in from the right and one from the lower left, and
+   hung with russet, rust and old gold. The wind is a noise signal with
+   real lulls and gusts: it runs through the crown, carries the clouds
+   slowly leftward, and when it rises leaves let go of the clusters and
+   blow down through the picture, some flipping end over end the whole
+   way; by day a jet crosses the high sky now and then and its contrail
+   widens and dissolves behind it. At night the wind drops: the clouds
+   stand, the crown goes still, no leaf falls, a meteor falls instead,
+   and a cricket sits on the left limb and chirps, wings raised and
+   shivering. The crown and the sky render to their own targets and are
+   defocused through a 72-tap bokeh disc (the sky less, bright spots
+   bloom); the lens is focused a little short of the tree, so only the
+   leaves falling through that plane stay sharp; all of it is
+   composited under an ACES grade, a vignette and film grain. Phones
+   turn the camera toward the tree: the limbs hang in from the upper
+   right at full size and the moon stands to the left of the words.
+   Three looks, each with its own prebuilt foliage, blended by weight
+   so a switch crossfades at once and a click mid-fade bends the fade:
+   the page opens on the sunset, and the dots at the bottom left move
+   the sun. WebGL2, no libraries, no build step. */
 
 'use strict';
 
@@ -51,7 +53,7 @@ var MOON_R = 2.05 * Math.PI / 180;
 
 var LOOKS = { day: { d: 1, u: 0, n: 0 }, dusk: { d: 0, u: 1, n: 0 }, night: { d: 0, u: 0, n: 1 } };
 var FLAT = { day: '#648bba', dusk: '#b07f8a', night: '#141b30' };
-var THEME = { day: '#5482bd', dusk: '#5e6fae', night: '#0a1024' };
+var THEME = { day: srgb('#5482bd'), dusk: srgb('#5e6fae'), night: srgb('#0a1024') };
 
 /* ------------------------------------------------------------- colour */
 
@@ -314,8 +316,7 @@ var COMP = HEAD + `
 out vec4 o;
 uniform sampler2D SKYB, FGB, MIDB, COVT;
 uniform vec4 FGMAP, MIDMAP;
-uniform float T, G, NIGHT, DUSK, EXPO, SCALE, MOONR, PH, MGAIN, CTON, CTP, CTAGE, METON, METP, METS, METL;
-uniform vec2 R;
+uniform float T, G, NIGHT, DUSK, EXPO, SCALE, MOONR, PH, MGAIN, STARS, CTON, CTP, CTAGE, METON, METP, METS, METL;
 uniform vec4 CAM, CT, MET;
 uniform vec3 BLIT, BDRK, LL0, LL1, LL2, LD0, LD1, LD2, SUN, MOON;
 ` + NOISE + `
@@ -369,11 +370,11 @@ void main() {
     float hs = hash3(vec3(c, 1.0));
     vec2 off = vec2(hash3(vec3(c, 7.3)), hash3(vec3(c, 13.9))) - 0.5;
     float mag = fract(hs * 41.7);
-    float rad = 0.028 + 0.035 * mag * mag;
+    float rad = (0.028 + 0.035 * mag * mag) * (0.8 + 0.2 * STARS);
     float dd = length(f - off * 0.7);
     float core = smoothstep(rad, rad * 0.25, dd);
     float skirt = smoothstep(rad * 4.0, 0.0, dd) * 0.08 * mag * mag;
-    float star = (core + skirt) * step(0.955, hs);
+    float star = (core + skirt) * step(1.0 - 0.045 * STARS, hs);
     float tw = 0.93 + 0.07 * sin(T * (0.8 + 1.2 * hs) + hs * 80.0);
     float bright = (0.16 + 0.9 * mag * mag) * tw;
     float g = pow(max(dot(dir, SUN), 0.0), 14.0);
@@ -522,7 +523,7 @@ function program(fragSrc, names) {
 
 var skyProg = program(SKY, ['R', 'CLT', 'NIGHT', 'DUSK', 'COVER', 'REACH', 'FINE', 'SCALE', 'CAM', 'BOX', 'SHIFT', 'SUN', 'MOON', 'ZEN', 'HOR', 'DMID', 'DFAR', 'GLOW', 'CLIT', 'CMID', 'CSHD', 'LD']);
 var bokehProg = program(BOKEH, ['SRC', 'TEXEL', 'RAD', 'BOOST', 'SCALE']);
-var compProg = program(COMP, ['SKYB', 'FGB', 'MIDB', 'COVT', 'FGMAP', 'MIDMAP', 'T', 'G', 'NIGHT', 'DUSK', 'EXPO', 'SCALE', 'MOONR', 'PH', 'MGAIN', 'R', 'CAM', 'BLIT', 'BDRK', 'LL0', 'LL1', 'LL2', 'LD0', 'LD1', 'LD2', 'SUN', 'MOON', 'CTON', 'CTP', 'CTAGE', 'CT', 'METON', 'METP', 'METS', 'METL', 'MET']);
+var compProg = program(COMP, ['SKYB', 'FGB', 'MIDB', 'COVT', 'FGMAP', 'MIDMAP', 'T', 'G', 'NIGHT', 'DUSK', 'EXPO', 'SCALE', 'MOONR', 'PH', 'MGAIN', 'STARS', 'CAM', 'BLIT', 'BDRK', 'LL0', 'LL1', 'LL2', 'LD0', 'LD1', 'LD2', 'SUN', 'MOON', 'CTON', 'CTP', 'CTAGE', 'CT', 'METON', 'METP', 'METS', 'METL', 'MET']);
 if (!skyProg || !bokehProg || !compProg) return;
 
 var SCALE = HDR ? 1.0 : 0.5;
@@ -574,6 +575,8 @@ var fg = document.createElement('canvas');
 var fgctx = fg.getContext('2d');
 var mid = document.createElement('canvas');
 var midctx = mid.getContext('2d');
+var scratch = document.createElement('canvas');
+var sctx = scratch.getContext('2d');
 
 /* ------------------------------------------------------------ the oak */
 
@@ -694,129 +697,55 @@ function makeCluster(size, n, rnd, lx, ly) {
   return { c: c, cs: cs };
 }
 
-function oak(ctx, x, y, ang, len, wid, depth, rnd, lx, ly, leafSize, out, lf) {
+function oak(ctx, x, y, ang, len, wid, depth, rnd, lx, ly, leafSize, out, trunk) {
   if (depth <= 0 || len < 2) return;
   var bend = (rnd() - 0.5) * 0.9;
   var ex = x + Math.cos(ang) * len, ey = y - Math.sin(ang) * len;
   var cx = x + Math.cos(ang + bend) * len * 0.5, cy = y - Math.sin(ang + bend) * len * 0.5;
   seg(ctx, x, y, cx, cy, ex, ey, wid, lx, ly);
+  if (trunk) trunk.push({ x0: x, y0: y, cx: cx, cy: cy, x1: ex, y1: ey, wid: wid });
   var nSide = depth > 4 ? (rnd() < 0.7 ? 1 : 2) : (rnd() < 0.55 ? 1 : 0);
   for (var i = 0; i < nSide; i++) {
     var t = 0.3 + rnd() * 0.6, s = 1 - t;
     var px = s * s * x + 2 * s * t * cx + t * t * ex;
     var py = s * s * y + 2 * s * t * cy + t * t * ey;
     var side = rnd() < 0.5 ? 1 : -1;
-    oak(ctx, px, py, ang + side * (0.6 + rnd() * 0.7), len * (0.5 + rnd() * 0.3), wid * 0.6, depth - 1, rnd, lx, ly, leafSize, out, lf);
+    oak(ctx, px, py, ang + side * (0.6 + rnd() * 0.7), len * (0.5 + rnd() * 0.3), wid * 0.6, depth - 1, rnd, lx, ly, leafSize, out, null);
   }
   var next = ang + bend * 0.7 + (rnd() - 0.5) * 0.8;
-  oak(ctx, ex, ey, next, len * (0.72 + rnd() * 0.16), wid * 0.78, depth - 1, rnd, lx, ly, leafSize, out, lf);
+  oak(ctx, ex, ey, next, len * (0.72 + rnd() * 0.16), wid * 0.78, depth - 1, rnd, lx, ly, leafSize, out, trunk);
   if (depth <= 3) {
-    out.push({ x: ex, y: ey, sprite: makeCluster(leafSize * (0.8 + 0.4 * rnd()), Math.max(3, Math.round((7 + rnd() * 7) * lf)), rnd, lx, ly), ph: rnd() * 6.2832 });
+    out.push({ x: ex, y: ey, sprite: makeCluster(leafSize * (0.8 + 0.4 * rnd()), Math.round(7 + rnd() * 7), rnd, lx, ly), ph: rnd() * 6.2832 });
   }
 }
 
-/* ---------------------------------------------------------------- twig */
-/* The focus-plane twig is grown on its own: a tapered stem entering
-   from the left with two short side shoots and a spur, leaves
-   alternating along the outer half of every shoot and fanning at the
-   tips, sized like the leaves that fall past it. Each node is a sprite
-   so the wind can move it; the cricket perches on the bare inner stem. */
-
-function taper(ctx, x0, y0, cx, cy, x1, y1, w0, w1, lx, ly) {
-  var n = 8, i, t, s, x, y, dx, dy, l, w, up = [], dn = [];
-  for (i = 0; i <= n; i++) {
-    t = i / n; s = 1 - t;
-    x = s * s * x0 + 2 * s * t * cx + t * t * x1;
-    y = s * s * y0 + 2 * s * t * cy + t * t * y1;
-    dx = 2 * s * (cx - x0) + 2 * t * (x1 - cx);
-    dy = 2 * s * (cy - y0) + 2 * t * (y1 - cy);
-    l = Math.hypot(dx, dy) || 1;
-    w = (w0 + (w1 - w0) * t) * 0.5;
-    up.push([x - dy / l * w, y + dx / l * w]);
-    dn.push([x + dy / l * w, y - dx / l * w]);
-  }
-  var tx = x1 - x0, ty = y1 - y0, tl = Math.hypot(tx, ty) || 1;
-  var nx = -ty / tl, ny = tx / tl;
-  var sg = (nx * lx + ny * ly) >= 0 ? 1 : -1;
-  var mx = (x0 + 2 * cx + x1) / 4, my = (y0 + 2 * cy + y1) / 4, hw = Math.max(w0 * 0.5, 1);
-  var gr = ctx.createLinearGradient(mx + nx * sg * hw, my + ny * sg * hw, mx - nx * sg * hw, my - ny * sg * hw);
-  gr.addColorStop(0, 'rgb(235,0,0)');
-  gr.addColorStop(0.45, 'rgb(120,0,0)');
-  gr.addColorStop(1, 'rgb(28,0,0)');
-  ctx.fillStyle = gr;
-  ctx.strokeStyle = gr;
-  ctx.lineWidth = 0.8;
-  ctx.beginPath();
-  ctx.moveTo(up[0][0], up[0][1]);
-  for (i = 1; i <= n; i++) ctx.lineTo(up[i][0], up[i][1]);
-  for (i = n; i >= 0; i--) ctx.lineTo(dn[i][0], dn[i][1]);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-}
-
-function shoot(ctx, x, y, ang, len, w0, w1, nseg, lift, rnd, lx, ly) {
-  var segs = [], a = ang, L = len / nseg, i;
-  for (i = 0; i < nseg; i++) {
-    var bend = (rnd() - 0.5) * 0.5;
-    var ex = x + Math.cos(a) * L, ey = y - Math.sin(a) * L;
-    var cx = x + Math.cos(a + bend) * L * 0.5, cy = y - Math.sin(a + bend) * L * 0.5;
-    var wa = w0 + (w1 - w0) * (i / nseg), wb = w0 + (w1 - w0) * ((i + 1) / nseg);
-    taper(ctx, x, y, cx, cy, ex, ey, wa, wb, lx, ly);
-    segs.push({ x0: x, y0: y, cx: cx, cy: cy, x1: ex, y1: ey, wid: (wa + wb) / 2 });
-    x = ex; y = ey;
-    a += bend * 0.5 + lift + (rnd() - 0.5) * 0.3;
-  }
-  return segs;
-}
-
-function along(segs, s) {
-  var q = Math.min(0.9999, Math.max(0, s)) * segs.length, i = Math.floor(q), u = q - i, sg = segs[i], v = 1 - u;
-  var x = v * v * sg.x0 + 2 * v * u * sg.cx + u * u * sg.x1;
-  var y = v * v * sg.y0 + 2 * v * u * sg.cy + u * u * sg.y1;
-  var tx = 2 * v * (sg.cx - sg.x0) + 2 * u * (sg.x1 - sg.cx);
-  var ty = 2 * v * (sg.cy - sg.y0) + 2 * u * (sg.y1 - sg.cy);
-  return { x: x, y: y, rot: Math.atan2(ty, tx), wid: sg.wid };
-}
-
-function leafNode(p, items, rnd, lx, ly) {
-  var r = 0, i;
-  for (i = 0; i < items.length; i++) r = Math.max(r, items[i].size * 2.4);
-  var cs = Math.ceil(r * 2 + 6);
-  var c = document.createElement('canvas');
-  c.width = cs; c.height = cs;
-  var ctx = c.getContext('2d');
-  for (i = 0; i < items.length; i++) {
-    var it = items[i];
-    drawLeaf(ctx, cs / 2 + Math.cos(it.rot) * it.size * 1.3, cs / 2 + Math.sin(it.rot) * it.size * 1.3, it.size, it.rot, it.hue, lx, ly, it.k, it.squash, it.shade);
-  }
-  return { x: p.x, y: p.y, sprite: { c: c, cs: cs }, ph: rnd() * 6.2832 };
-}
-
-function dress(segs, s0, step, tipN, leafSize, rnd, lx, ly, out) {
-  var side = rnd() < 0.5 ? 1 : -1, s, j;
-  for (s = s0; s < 0.97; s += step * (0.85 + 0.3 * rnd())) {
-    var p = along(segs, s), items = [], n = rnd() < 0.25 ? 2 : 1;
-    for (j = 0; j < n; j++) {
-      var sd = j ? -side : side;
-      items.push({ rot: p.rot + sd * (0.55 + 0.55 * rnd()), size: leafSize * (0.8 + 0.4 * rnd()), squash: 0.5 + 0.5 * rnd(), hue: rnd(), k: rnd(), shade: 0.85 + 0.15 * rnd() });
-    }
-    out.push(leafNode(p, items, rnd, lx, ly));
-    side = -side;
-  }
-  var tip = along(segs, 0.995), fan = [];
-  for (j = 0; j < tipN; j++) {
-    var f = tipN === 1 ? 0 : (j / (tipN - 1) - 0.5) * 1.5;
-    fan.push({ rot: tip.rot + f + (rnd() - 0.5) * 0.25, size: leafSize * (0.85 + 0.3 * rnd()), squash: 0.55 + 0.45 * rnd(), hue: rnd(), k: rnd(), shade: 0.9 + 0.1 * rnd() });
-  }
-  out.push(leafNode(tip, fan, rnd, lx, ly));
-}
+/* -------------------------------------------------------------- layout */
+/* The oak is four limbs of one tree: three reach in from the right and
+   one from the lower left, and the cricket perches on the second bare
+   stretch of that one. Every limb is placed in frame fractions, so a
+   phone rearranges the picture rather than shrinking it: the camera
+   has turned toward the tree, the right-hand limbs hang in from the
+   top and the moon stands to the left of the words. D is the scale of
+   the picture, the height of a landscape frame or the width of a
+   portrait one, and everything grown here is sized from it. */
 
 var sets = { day: null, dusk: null, night: null };
 var leaves = [];
 var lightNow = [-0.85, 0.5];
 var LEAF_N = { near: 7, mid: 16 };
-var FW = 1, FH = 1, LH = 1, LY0 = 0, MX = 0, MY = 0, FBLUR = 6.5, MBLUR = 3.0, REACH = 0.42, FOVK = 1;
+var FW = 1, FH = 1, D = 1, MX = 0, MY = 0, FBLUR = 6.5, MBLUR = 3.0, REACH = 0.42, FOVK = 1, YAW0 = 0, STARS = 1;
+var LIMBS = [];
+
+function layout(portrait) {
+  var w = FW, h = FH, d = D, ox = MX, oy = MY;
+  var ys = portrait ? [0.16, 0.30, -0.02] : [0.50, 1.05, 0.08];
+  LIMBS = [
+    { x: ox + w * 1.05, y: oy + h * ys[0], ang: Math.PI * 0.85, len: d * 0.20, wid: d * 0.030, depth: 7, k: 1.0, ph: 0 },
+    { x: ox + w * (portrait ? 1.04 : 0.95), y: oy + h * ys[1], ang: Math.PI * 0.62, len: d * 0.17, wid: d * 0.026, depth: 7, k: 1.3, ph: 1.7 },
+    { x: ox + w * 1.02, y: oy + h * ys[2], ang: Math.PI * 1.18, len: d * 0.13, wid: d * 0.018, depth: 6, k: 1.6, ph: 3.4 },
+    { x: ox - w * 0.04, y: oy + h * 0.84, ang: Math.PI * 0.06, len: d * 0.15, wid: d * 0.020, depth: 6, k: 1.1, ph: 5.1, seed: 20261104 }
+  ];
+}
 
 function perchOn(sg, u) {
   var s = 1 - u;
@@ -833,47 +762,22 @@ function perchOn(sg, u) {
 }
 
 function buildForeground(lx, ly) {
-  var w = FW, h = LH, ox = MX, oy = MY + LY0;
   var rnd = mulberry32(20261031);
-  var clusters = [];
-  var d = Math.min(h, w * 0.9);
-  var bx = LY0 + h * 1.05 < FH ? 1.04 : 0.95;
-  var specs = [
-    [w * 1.05, h * 0.50, Math.PI * 0.85, d * 0.20, d * 0.030, 7],
-    [w * bx, h * 1.05, Math.PI * 0.62, d * 0.17, d * 0.026, 7],
-    [w * 1.02, h * 0.08, Math.PI * 1.18, d * 0.13, d * 0.018, 6]
-  ];
-  var systems = specs.map(function (sp, i) {
+  var clusters = [], trunk = [], last = LIMBS.length - 1;
+  var systems = LIMBS.map(function (sp, i) {
     var c = document.createElement('canvas');
     c.width = fg.width; c.height = fg.height;
     var ctx = c.getContext('2d');
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     var out = [];
-    oak(ctx, ox + sp[0], oy + sp[1], sp[2], sp[3], sp[4], sp[5], rnd, lx, ly, d * 0.012, out, 1);
+    oak(ctx, sp.x, sp.y, sp.ang, sp.len, sp.wid, sp.depth, sp.seed ? mulberry32(sp.seed) : rnd, lx, ly, D * 0.012, out, i === last ? trunk : null);
     out.forEach(function (cl) { cl.sys = i; clusters.push(cl); });
-    return { c: c, ax: ox + sp[0], ay: oy + sp[1], k: 1 + 0.3 * i, ph: i * 1.7 };
+    return { c: c, ax: sp.x, ay: sp.y, k: sp.k, ph: sp.ph };
   });
-  var tc = document.createElement('canvas');
-  tc.width = mid.width; tc.height = mid.height;
-  var tctx = tc.getContext('2d');
-  tctx.lineCap = 'round';
-  tctx.lineJoin = 'round';
-  var tout = [];
-  var dd = d;
-  var tax = MX - FW * 0.02, tay = MY + FH * 0.82;
-  var TL = dd * 0.30, TW = dd * 0.0075, TS = dd * 0.017;
-  var stem = shoot(tctx, tax, tay, Math.PI * 0.08, TL, TW, TW * 0.22, 3, 0.09, rnd, lx, ly);
-  var j2 = along(stem, 0.55), j3 = along(stem, 0.8);
-  var sB = shoot(tctx, j2.x, j2.y, -j2.rot - 0.6, TL * 0.3, j2.wid * 0.6, TW * 0.18, 2, -0.05, rnd, lx, ly);
-  var sC = shoot(tctx, j3.x, j3.y, -j3.rot + 0.7, TL * 0.13, j3.wid * 0.55, TW * 0.16, 1, 0, rnd, lx, ly);
-  dress(stem, 0.56, 0.12, 3, TS, rnd, lx, ly, tout);
-  dress(sB, 0.5, 0.3, 2, TS * 0.9, rnd, lx, ly, tout);
-  dress(sC, 1, 1, 2, TS * 0.85, rnd, lx, ly, tout);
-  var cs = dd * 0.06;
-  var perch = perchOn(stem[1], 0.14);
-  tout = tout.filter(function (cl) { return Math.hypot(cl.x - perch.x, cl.y - perch.y) > cs * 0.55; });
-  return { systems: systems, clusters: clusters, twig: { c: tc, clusters: tout, ax: tax, ay: tay, perch: perch, cs: cs } };
+  var perch = perchOn(trunk[1] || trunk[0], 0.5);
+  perch.sys = last;
+  return { systems: systems, clusters: clusters, perch: perch, cs: D * 0.06 };
 }
 
 function ensureSet(name) {
@@ -907,7 +811,7 @@ function seedLeaves() {
 
 function spawn(lf, rnd, anywhere, set) {
   var w = FW, h = FH, ox = MX, oy = MY;
-  var d = Math.min(LH, w * 0.9);
+  var d = D;
   lf.on = true;
   lf.wait = 0;
   if (anywhere) {
@@ -969,7 +873,7 @@ function stepLeaves(t, dt, env, set) {
   }
 }
 
-function drawLeaves(ctx, layer, t, px, py, sc, vis) {
+function drawLeaves(ctx, layer, t, px, py, vis) {
   if (vis <= 0.002) return;
   for (var i = 0; i < leaves.length; i++) {
     var lf = leaves[i];
@@ -977,7 +881,7 @@ function drawLeaves(ctx, layer, t, px, py, sc, vis) {
     var fade = Math.min(1, lf.age / 0.6) * vis;
     var squash = lf.flip ? 0.2 + 0.8 * Math.abs(Math.cos(lf.flipA)) : 0.72 + 0.28 * Math.abs(Math.cos(t * 1.7 + lf.ph));
     ctx.globalAlpha = fade;
-    drawLeaf(ctx, (lf.x + px) * sc, (lf.y + py) * sc, lf.size * sc, lf.rot, lf.hue, lightNow[0], lightNow[1], lf.k, squash);
+    drawLeaf(ctx, lf.x + px, lf.y + py, lf.size, lf.rot, lf.hue, lightNow[0], lightNow[1], lf.k, squash);
   }
   ctx.globalAlpha = 1;
 }
@@ -1103,23 +1007,21 @@ function drawCricket(ctx, s, t, alpha) {
 
 /* ------------------------------------------------------- foreground */
 
-function drawSet(set, alpha, t, px, py, wind, night, env) {
-  var w = fg.width, h = fg.height;
+function drawSet(set, ctx, t, px, py, wind, night, env) {
   var calm = 0.05 + 0.95 * wind;
   var breeze = calm * (0.35 + 0.65 * env);
-  fgctx.globalAlpha = alpha;
   var sways = set.systems.map(function (sy) {
     return (Math.sin(t * 0.35 + sy.ph) * 0.006 + Math.sin(t * 0.9 + sy.ph * 2.0) * 0.002) * sy.k * breeze;
   });
   var i, sy, cl, cs, ca, sa, rx, ry;
   for (i = 0; i < set.systems.length; i++) {
     sy = set.systems[i];
-    fgctx.save();
-    fgctx.translate(sy.ax + px, sy.ay + py);
-    fgctx.rotate(sways[i]);
-    fgctx.translate(-sy.ax, -sy.ay);
-    fgctx.drawImage(sy.c, 0, 0);
-    fgctx.restore();
+    ctx.save();
+    ctx.translate(sy.ax + px, sy.ay + py);
+    ctx.rotate(sways[i]);
+    ctx.translate(-sy.ax, -sy.ay);
+    ctx.drawImage(sy.c, 0, 0);
+    ctx.restore();
   }
   for (i = 0; i < set.clusters.length; i++) {
     cl = set.clusters[i];
@@ -1130,52 +1032,51 @@ function drawSet(set, alpha, t, px, py, wind, night, env) {
     var burst = 0.5 + 0.5 * Math.sin(t * 0.55 - (cl.x + cl.y) * 0.004 + cl.ph);
     var amp = cl.sprite.cs * 0.022 * (0.25 + 0.75 * burst) * breeze;
     cs = cl.sprite.cs;
-    fgctx.save();
-    fgctx.translate(rx + px + amp * Math.sin(t * (2.2 + cl.ph * 0.3) + cl.ph), ry + py + amp * 0.6 * Math.sin(t * 3.1 + cl.ph * 2.0));
-    fgctx.rotate(sways[cl.sys] + 0.06 * burst * breeze * Math.sin(t * 1.7 + cl.ph));
-    fgctx.drawImage(cl.sprite.c, -cs / 2, -cs / 2);
-    fgctx.restore();
+    ctx.save();
+    ctx.translate(rx + px + amp * Math.sin(t * (2.2 + cl.ph * 0.3) + cl.ph), ry + py + amp * 0.6 * Math.sin(t * 3.1 + cl.ph * 2.0));
+    ctx.rotate(sways[cl.sys] + 0.06 * burst * breeze * Math.sin(t * 1.7 + cl.ph));
+    ctx.drawImage(cl.sprite.c, -cs / 2, -cs / 2);
+    ctx.restore();
   }
-  fgctx.globalAlpha = 1;
-
-  var twig = set.twig;
-  var tpx = px * 0.5, tpy = py * 0.5;
-  var tsway = (Math.sin(t * 0.5 + 0.7) * 0.004 + Math.sin(t * 1.3 + 2.0) * 0.0015) * breeze;
-  midctx.globalAlpha = alpha;
-  midctx.save();
-  midctx.translate(twig.ax + tpx, twig.ay + tpy);
-  midctx.rotate(tsway);
-  midctx.translate(-twig.ax, -twig.ay);
-  midctx.drawImage(twig.c, 0, 0);
-  if (night > 0.001 && twig.perch) {
-    midctx.translate(twig.perch.x, twig.perch.y);
-    midctx.rotate(twig.perch.ang);
-    drawCricket(midctx, twig.cs, t, alpha * smooth01(0.55, 0.95, night));
+  if (night > 0.001) {
+    sy = set.systems[set.perch.sys];
+    ctx.save();
+    ctx.translate(sy.ax + px, sy.ay + py);
+    ctx.rotate(sways[set.perch.sys]);
+    ctx.translate(set.perch.x - sy.ax, set.perch.y - sy.ay);
+    ctx.rotate(set.perch.ang);
+    drawCricket(ctx, set.cs, t, smooth01(0.55, 0.95, night));
+    ctx.restore();
   }
-  midctx.restore();
-  ca = Math.cos(tsway); sa = Math.sin(tsway);
-  for (i = 0; i < twig.clusters.length; i++) {
-    cl = twig.clusters[i];
-    rx = twig.ax + (cl.x - twig.ax) * ca - (cl.y - twig.ay) * sa;
-    ry = twig.ay + (cl.x - twig.ax) * sa + (cl.y - twig.ay) * ca;
-    cs = cl.sprite.cs;
-    midctx.save();
-    midctx.translate(rx + tpx + cs * 0.015 * breeze * Math.sin(t * 2.4 + cl.ph), ry + tpy + cs * 0.01 * breeze * Math.sin(t * 3.3 + cl.ph));
-    midctx.rotate(tsway + 0.04 * breeze * Math.sin(t * 1.9 + cl.ph));
-    midctx.drawImage(cl.sprite.c, -cs / 2, -cs / 2);
-    midctx.restore();
-  }
-  midctx.globalAlpha = 1;
 }
 
-function drawForeground(t, px, py, from, to, k, wind, night, env) {
-  var w = fg.width, h = fg.height;
-  fgctx.clearRect(0, 0, w, h);
+function drawForeground(t, px, py, w, wind, night, env) {
+  var i, sum = 0, active = [];
+  if (w.d > 0.002) active.push(['day', w.d]);
+  if (w.u > 0.002) active.push(['dusk', w.u]);
+  if (w.n > 0.002) active.push(['night', w.n]);
+  for (i = 0; i < active.length; i++) sum += active[i][1];
+  fgctx.clearRect(0, 0, fg.width, fg.height);
+  if (active.length === 1) {
+    drawSet(ensureSet(active[0][0]), fgctx, t, px, py, wind, night, env);
+  } else {
+    /* the looks share one geometry, so adding the sets by weight is an
+       exact blend of their shading that leaves every edge's coverage
+       alone; laying one over another would thicken the edges as the
+       fade ran and let them go at its end */
+    fgctx.globalCompositeOperation = 'lighter';
+    for (i = 0; i < active.length; i++) {
+      sctx.clearRect(0, 0, scratch.width, scratch.height);
+      drawSet(ensureSet(active[i][0]), sctx, t, px, py, wind, night, env);
+      fgctx.globalAlpha = active[i][1] / sum;
+      fgctx.drawImage(scratch, 0, 0);
+    }
+    fgctx.globalAlpha = 1;
+    fgctx.globalCompositeOperation = 'source-over';
+  }
+  drawLeaves(fgctx, 'near', t, px, py, wind);
   midctx.clearRect(0, 0, mid.width, mid.height);
-  drawSet(sets[from], 1, t, px, py, wind, night, env);
-  if (to !== from && k > 0) drawSet(ensureSet(to), k, t, px, py, wind, night, env);
-  drawLeaves(fgctx, 'near', t, px, py, 1, wind);
-  drawLeaves(midctx, 'mid', t, px * 0.5, py * 0.5, 1, wind);
+  drawLeaves(midctx, 'mid', t, px * 0.5, py * 0.5, wind);
   gl.bindTexture(gl.TEXTURE_2D, fgTex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, fg);
   gl.bindTexture(gl.TEXTURE_2D, midTex);
@@ -1275,13 +1176,22 @@ function lightScreen(w) {
 
 /* --------------------------------------------------------------- state */
 
-var look = 'dusk', prev = 'dusk', tr = null;
+var look = 'dusk', tr = null;
 var wCur = { d: 0, u: 1, n: 0 }, wFrom = wCur;
 var mx = 0, my = 0, tx = 0, ty = 0;
 var running = false, raf = 0, last = 0, frameNo = 0;
 var visible = !document.hidden, inView = true;
 var box = [0, 0, 0, 0];
 var cloudT = 0, fine = 1, coverBoost = 0;
+var themeMeta = document.querySelector('meta[name="theme-color"]');
+
+function themeColor(w) {
+  if (!themeMeta) return;
+  var c = [0, 1, 2].map(function (i) {
+    return Math.round(255 * (THEME.day[i] * w.d + THEME.dusk[i] * w.u + THEME.night[i] * w.n));
+  });
+  themeMeta.setAttribute('content', 'rgb(' + c.join(',') + ')');
+}
 
 function setLook(name, instant) {
   look = name;
@@ -1289,17 +1199,21 @@ function setLook(name, instant) {
     b.setAttribute('aria-pressed', String(b.getAttribute('data-look') === name));
   });
   hero.style.backgroundColor = FLAT[name];
-  var meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', THEME[name]);
-  if (instant || reduced.matches || name === prev) {
-    prev = name;
-    wCur = { d: LOOKS[name].d, u: LOOKS[name].u, n: LOOKS[name].n };
+  if (LIMBS.length) ensureSet(name);
+  var to = LOOKS[name];
+  var dist = Math.max(Math.abs(to.d - wCur.d), Math.abs(to.u - wCur.u), Math.abs(to.n - wCur.n));
+  if (instant || reduced.matches || dist < 0.002) {
+    wCur = { d: to.d, u: to.u, n: to.n };
     tr = null;
+    themeColor(wCur);
   } else {
+    /* the fade starts from wherever the weights are now, after the set
+       is built so its first frame is not late, and a short way back
+       takes a short time: a click mid-fade bends the fade rather than
+       restarting or skipping it */
     wFrom = { d: wCur.d, u: wCur.u, n: wCur.n };
-    tr = { t0: performance.now(), dur: 1500 };
+    tr = { t0: performance.now(), dur: 600 + 900 * dist };
   }
-  if (fg.width > 1) ensureSet(name);
   wake();
 }
 
@@ -1329,13 +1243,13 @@ function bokeh(src, texelW, texelH, dst, rad, boost) {
 }
 
 function draw(now) {
-  var k = 1;
   if (tr) {
-    k = Math.min(1, (now - tr.t0) / tr.dur);
+    var k = Math.min(1, (now - tr.t0) / tr.dur);
     k = k * k * (3 - 2 * k);
     var to = LOOKS[look];
     wCur = { d: wFrom.d + (to.d - wFrom.d) * k, u: wFrom.u + (to.u - wFrom.u) * k, n: wFrom.n + (to.n - wFrom.n) * k };
-    if (k >= 1) { tr = null; prev = look; }
+    themeColor(wCur);
+    if (k >= 1) tr = null;
   }
   var still = reduced.matches;
   var dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
@@ -1354,16 +1268,16 @@ function draw(now) {
   ld = [ld[0] / ll, ld[1] / ll];
   var aspect = canvas.width / canvas.height;
   var tanH = Math.tan(FOV * FOVK / 2);
-  var cam = [tanH * aspect, tanH, PITCH + my * 0.008 + (still ? 0 : 0.0025 * Math.sin(t * 0.23)), mx * 0.010 + (still ? 0 : 0.003 * Math.sin(t * 0.17 + 1.0))];
+  var cam = [tanH * aspect, tanH, PITCH + my * 0.008 + (still ? 0 : 0.0025 * Math.sin(t * 0.23)), YAW0 + mx * 0.010 + (still ? 0 : 0.003 * Math.sin(t * 0.17 + 1.0))];
   var shift = [0, 0];
   if (box[2] > box[0]) {
     var bc = [(box[0] + box[2]) * 0.5, (box[1] + box[3]) * 0.5];
-    var pn = projectJS(camDirJS(bc[0], bc[1], [cam[0], cam[1], PITCH, 0]), cam);
+    var pn = projectJS(camDirJS(bc[0], bc[1], [cam[0], cam[1], PITCH, YAW0]), cam);
     shift = [pn[0] - bc[0], pn[1] - bc[1]];
   }
 
   if (!still) { stepLeaves(t, dt, env, sets[look]); stepEvents(t, w); }
-  drawForeground(still ? 0 : t, -mx * FW * 0.012, my * FH * 0.012, tr ? prev : look, look, tr ? k : 1, wind, w.n, env);
+  drawForeground(still ? 0 : t, -mx * FW * 0.012, my * FH * 0.012, w, wind, w.n, env);
   var jp = jet.on ? (t - jet.t0) / jet.dur : 0;
   var mp = meteor.on ? Math.min(1, (t - meteor.t0) / meteor.life) : 0;
 
@@ -1423,7 +1337,6 @@ function draw(now) {
   gl.uniform4f(u.MIDMAP, FW / mid.width, FH / mid.height, MX / mid.width, MY / mid.height);
   gl.uniform1f(u.G, still ? 0.37 : (frameNo++ % 977) * 0.013);
   gl.uniform1f(u.T, t);
-  gl.uniform2f(u.R, canvas.width, canvas.height);
   gl.uniform4f(u.CAM, cam[0], cam[1], cam[2], cam[3]);
   gl.uniform1f(u.NIGHT, w.n);
   gl.uniform1f(u.DUSK, w.u);
@@ -1432,6 +1345,7 @@ function draw(now) {
   gl.uniform1f(u.MOONR, MOON_R);
   gl.uniform1f(u.PH, P);
   gl.uniform1f(u.MGAIN, blend('mgain', w));
+  gl.uniform1f(u.STARS, STARS);
   u3(u.SUN, sun);
   u3(u.MOON, MOON);
   gl.uniform1f(u.CTON, jet.on ? 1 : 0);
@@ -1488,19 +1402,19 @@ function resize() {
     canvas.height = ch;
     var hw = Math.max(1, Math.round(cw * HALF)), hh = Math.max(1, Math.round(ch * HALF));
     var sw = Math.max(1, Math.round(cw * SKY_RES)), sh = Math.max(1, Math.round(ch * SKY_RES));
-    FW = hw; FH = hh;
     var portrait = hh > hw;
-    LH = portrait ? Math.round(hw / 1.69) : hh;
-    LY0 = portrait ? Math.round(hh * 0.34) : 0;
-    FBLUR = Math.max(3.0, 6.5 * LH / hh);
-    MBLUR = Math.max(1.2, 3.0 * LH / hh);
+    FW = hw; FH = hh;
+    D = portrait ? hw : Math.min(hh, Math.round(hw * 0.9));
+    FBLUR = 6.5 * D / hh;
+    MBLUR = 3.0 * D / hh;
     REACH = portrait ? 0.34 : 0.42;
     FOVK = portrait ? 1.15 : 1;
+    YAW0 = portrait ? 5 * Math.PI / 180 : 0;
+    STARS = portrait ? 2.2 : 1;
     MX = Math.round(hw * 0.05); MY = Math.round(hh * 0.05);
-    fg.width = hw + 2 * MX;
-    fg.height = hh + 2 * MY;
-    mid.width = hw + 2 * MX;
-    mid.height = hh + 2 * MY;
+    fg.width = mid.width = scratch.width = hw + 2 * MX;
+    fg.height = mid.height = scratch.height = hh + 2 * MY;
+    layout(portrait);
     drop(skyT); drop(skyB); drop(fgB); drop(midB);
     skyT = target(sw, sh, HDR, true);
     skyB = target(hw, hh, HDR, false);
@@ -1512,8 +1426,6 @@ function resize() {
     coverBoost = portrait ? 0 : -0.18 * narrow;
     sets = { day: null, dusk: null, night: null };
     seedLeaves();
-    ensureSet(look);
-    if (tr) ensureSet(prev);
     scheduleSets();
   }
   measure();
