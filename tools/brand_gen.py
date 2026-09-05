@@ -2,9 +2,10 @@
 palette and macOS system fonts.
 
 og.jpg is the hero: tools/og-sky.png is a capture of the sky canvas at a
-1200x630 viewport in the dusk look (canvas.toDataURL with the context
-created preserveDrawingBuffer: true, then reverted), and the name and
-dateline are set over it here in Charter, matching the page's type.
+1200x630 viewport in the night look (canvas.toDataURL called in the same
+task as the last stepped draw, so no preserveDrawingBuffer patch is
+needed), and the name and dateline are set over it here in Charter,
+matching the page's type.
 The capture is not committed; with it missing the old paper card is drawn to og.png.
 
 Run:  uv run --with pillow --with pyoxipng python tools/brand_gen.py
