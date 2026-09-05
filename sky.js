@@ -16,8 +16,9 @@
    and a cricket sits on the left limb and chirps, wings raised and
    shivering. The crown and the sky render to their own targets and are
    defocused through a 72-tap bokeh disc (the sky less, bright spots
-   bloom); the lens is focused a little short of the tree, so only the
-   leaves falling through that plane stay sharp; all of it is
+   bloom); the lens is focused a little short of the tree, so the
+   leaves falling through that plane stay sharp, and the cricket is
+   drawn in that plane too so it keeps its legs; all of it is
    composited under an ACES grade, a vignette and film grain. Phones
    turn the camera toward the tree: the limbs hang in from the upper
    right at full size and the moon stands to the left of the words.
@@ -192,7 +193,7 @@ var SKY = HEAD + `
 layout(location = 0) out vec4 o0;
 layout(location = 1) out vec4 o1;
 uniform vec2 R;
-uniform float CLT, NIGHT, DUSK, COVER, REACH, FINE, SCALE;
+uniform float CLT, NIGHT, DUSK, COVER, REACH, FINE, SCALE, FOOT;
 uniform vec4 CAM, BOX;
 uniform vec3 SUN, MOON, ZEN, HOR, DMID, DFAR, GLOW, CLIT, CMID, CSHD;
 uniform vec2 LD, SHIFT;
@@ -274,7 +275,7 @@ void main() {
     vec2 p0 = dir.xz / (max(dir.y, 0.0) + 0.5) * 0.85;
     vec2 drift = CLT * vec2(0.014, 0.002);
     float nearMoon = pow(max(dot(dir, MOON), 0.0), 80.0);
-    float th0 = mix(0.80, 0.46, COVER);
+    float th0 = mix(0.80, 0.46, COVER) + FOOT * (1.0 - smoothstep(0.0, 0.5, uv.y));
     vec2 s = vec2(R.x / R.y, 1.0);
     vec2 sc = uv - SHIFT;
     if (boxDist(sc * s, BOX, s) < REACH + 0.06) {
@@ -521,7 +522,7 @@ function program(fragSrc, names) {
   return { p: prog, u: u };
 }
 
-var skyProg = program(SKY, ['R', 'CLT', 'NIGHT', 'DUSK', 'COVER', 'REACH', 'FINE', 'SCALE', 'CAM', 'BOX', 'SHIFT', 'SUN', 'MOON', 'ZEN', 'HOR', 'DMID', 'DFAR', 'GLOW', 'CLIT', 'CMID', 'CSHD', 'LD']);
+var skyProg = program(SKY, ['R', 'CLT', 'NIGHT', 'DUSK', 'COVER', 'REACH', 'FINE', 'SCALE', 'FOOT', 'CAM', 'BOX', 'SHIFT', 'SUN', 'MOON', 'ZEN', 'HOR', 'DMID', 'DFAR', 'GLOW', 'CLIT', 'CMID', 'CSHD', 'LD']);
 var bokehProg = program(BOKEH, ['SRC', 'TEXEL', 'RAD', 'BOOST', 'SCALE']);
 var compProg = program(COMP, ['SKYB', 'FGB', 'MIDB', 'COVT', 'FGMAP', 'MIDMAP', 'T', 'G', 'NIGHT', 'DUSK', 'EXPO', 'SCALE', 'MOONR', 'PH', 'MGAIN', 'STARS', 'CAM', 'BLIT', 'BDRK', 'LL0', 'LL1', 'LL2', 'LD0', 'LD1', 'LD2', 'SUN', 'MOON', 'CTON', 'CTP', 'CTAGE', 'CT', 'METON', 'METP', 'METS', 'METL', 'MET']);
 if (!skyProg || !bokehProg || !compProg) return;
@@ -733,7 +734,7 @@ var sets = { day: null, dusk: null, night: null };
 var leaves = [];
 var lightNow = [-0.85, 0.5];
 var LEAF_N = { near: 7, mid: 16 };
-var FW = 1, FH = 1, D = 1, MX = 0, MY = 0, FBLUR = 6.5, MBLUR = 3.0, REACH = 0.42, FOVK = 1, YAW0 = 0, STARS = 1;
+var FW = 1, FH = 1, D = 1, MX = 0, MY = 0, FBLUR = 4.0, MBLUR = 3.0, REACH = 0.42, FOVK = 1, YAW0 = 0, STARS = 1, FOOT = 0;
 var LIMBS = [];
 
 function layout(portrait) {
@@ -1007,12 +1008,12 @@ function drawCricket(ctx, s, t, alpha) {
 
 /* ------------------------------------------------------- foreground */
 
-function drawSet(set, ctx, t, px, py, wind, night, env) {
-  var calm = 0.05 + 0.95 * wind;
-  var breeze = calm * (0.35 + 0.65 * env);
-  var sways = set.systems.map(function (sy) {
-    return (Math.sin(t * 0.35 + sy.ph) * 0.006 + Math.sin(t * 0.9 + sy.ph * 2.0) * 0.002) * sy.k * breeze;
-  });
+function sway(sy, t, breeze) {
+  return (Math.sin(t * 0.35 + sy.ph) * 0.006 + Math.sin(t * 0.9 + sy.ph * 2.0) * 0.002) * sy.k * breeze;
+}
+
+function drawSet(set, ctx, t, px, py, breeze) {
+  var sways = set.systems.map(function (sy) { return sway(sy, t, breeze); });
   var i, sy, cl, cs, ca, sa, rx, ry;
   for (i = 0; i < set.systems.length; i++) {
     sy = set.systems[i];
@@ -1038,16 +1039,21 @@ function drawSet(set, ctx, t, px, py, wind, night, env) {
     ctx.drawImage(cl.sprite.c, -cs / 2, -cs / 2);
     ctx.restore();
   }
-  if (night > 0.001) {
-    sy = set.systems[set.perch.sys];
-    ctx.save();
-    ctx.translate(sy.ax + px, sy.ay + py);
-    ctx.rotate(sways[set.perch.sys]);
-    ctx.translate(set.perch.x - sy.ax, set.perch.y - sy.ay);
-    ctx.rotate(set.perch.ang);
-    drawCricket(ctx, set.cs, t, smooth01(0.55, 0.95, night));
-    ctx.restore();
-  }
+}
+
+/* The cricket is drawn once, into the focus-plane layer so its legs
+   survive, but rides the left limb's sway and parallax so it stays on
+   its perch. The sets share one geometry, so any of them can place it. */
+
+function drawCricketOn(set, ctx, t, px, py, breeze, night) {
+  var sy = set.systems[set.perch.sys];
+  ctx.save();
+  ctx.translate(sy.ax + px, sy.ay + py);
+  ctx.rotate(sway(sy, t, breeze));
+  ctx.translate(set.perch.x - sy.ax, set.perch.y - sy.ay);
+  ctx.rotate(set.perch.ang);
+  drawCricket(ctx, set.cs, t, smooth01(0.55, 0.95, night));
+  ctx.restore();
 }
 
 function drawForeground(t, px, py, w, wind, night, env) {
@@ -1056,9 +1062,10 @@ function drawForeground(t, px, py, w, wind, night, env) {
   if (w.u > 0.002) active.push(['dusk', w.u]);
   if (w.n > 0.002) active.push(['night', w.n]);
   for (i = 0; i < active.length; i++) sum += active[i][1];
+  var breeze = (0.05 + 0.95 * wind) * (0.35 + 0.65 * env);
   fgctx.clearRect(0, 0, fg.width, fg.height);
   if (active.length === 1) {
-    drawSet(ensureSet(active[0][0]), fgctx, t, px, py, wind, night, env);
+    drawSet(ensureSet(active[0][0]), fgctx, t, px, py, breeze);
   } else {
     /* the looks share one geometry, so adding the sets by weight is an
        exact blend of their shading that leaves every edge's coverage
@@ -1067,7 +1074,7 @@ function drawForeground(t, px, py, w, wind, night, env) {
     fgctx.globalCompositeOperation = 'lighter';
     for (i = 0; i < active.length; i++) {
       sctx.clearRect(0, 0, scratch.width, scratch.height);
-      drawSet(ensureSet(active[i][0]), sctx, t, px, py, wind, night, env);
+      drawSet(ensureSet(active[i][0]), sctx, t, px, py, breeze);
       fgctx.globalAlpha = active[i][1] / sum;
       fgctx.drawImage(scratch, 0, 0);
     }
@@ -1076,6 +1083,7 @@ function drawForeground(t, px, py, w, wind, night, env) {
   }
   drawLeaves(fgctx, 'near', t, px, py, wind);
   midctx.clearRect(0, 0, mid.width, mid.height);
+  if (night > 0.001) drawCricketOn(ensureSet(active[0][0]), midctx, t, px, py, breeze, night);
   drawLeaves(midctx, 'mid', t, px * 0.5, py * 0.5, wind);
   gl.bindTexture(gl.TEXTURE_2D, fgTex);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, fg);
@@ -1292,6 +1300,7 @@ function draw(now) {
   gl.uniform1f(u.COVER, Math.min(1, Math.max(0, blend('cover', w) + coverBoost)));
   gl.uniform1f(u.REACH, REACH);
   gl.uniform1f(u.FINE, fine);
+  gl.uniform1f(u.FOOT, FOOT);
   gl.uniform1f(u.SCALE, SCALE);
   gl.uniform4f(u.CAM, cam[0], cam[1], cam[2], cam[3]);
   gl.uniform4f(u.BOX, box[0], box[1], box[2], box[3]);
@@ -1405,12 +1414,13 @@ function resize() {
     var portrait = hh > hw;
     FW = hw; FH = hh;
     D = portrait ? hw : Math.min(hh, Math.round(hw * 0.9));
-    FBLUR = 6.5 * D / hh;
+    FBLUR = 4.0 * D / hh;
     MBLUR = 3.0 * D / hh;
     REACH = portrait ? 0.34 : 0.42;
     FOVK = portrait ? 1.15 : 1;
     YAW0 = portrait ? 5 * Math.PI / 180 : 0;
     STARS = portrait ? 2.2 : 1;
+    FOOT = portrait ? 0.22 : 0;
     MX = Math.round(hw * 0.05); MY = Math.round(hh * 0.05);
     fg.width = mid.width = scratch.width = hw + 2 * MX;
     fg.height = mid.height = scratch.height = hh + 2 * MY;
