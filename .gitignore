@@ -1,7 +1,5 @@
 .DS_Store
 .claude/
-MEMORY.md
-memory/
 tools/og-sky.png
 tools/og-sky.png.json
 __pycache__/

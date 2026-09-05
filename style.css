@@ -5,7 +5,6 @@
     --ink: #211f19;
     --quiet: rgba(33, 31, 25, 0.62);
     --underline: rgba(33, 31, 25, 0.35);
-    --hairline: #d8d5ce;
     --accent: #9a4a12;
     --wash: #e7d8c9;
     --sky: #7ea9de;
@@ -42,7 +41,6 @@ a:hover {
     color: var(--accent);
     text-decoration-color: currentColor;
 }
-
 
 a:focus-visible {
     outline: 2px solid var(--accent);
@@ -186,7 +184,6 @@ p { margin-bottom: 14px; }
 
 p:last-child { margin-bottom: 0; }
 
-
 .small {
     font: 400 15px/1.8 var(--serif);
     color: rgba(33, 31, 25, 0.62);
@@ -270,5 +267,5 @@ footer a { color: inherit; }
         font-size: 10px;
         color: var(--quiet);
     }
-    .entry, figure { break-inside: avoid; }
+    .entry { break-inside: avoid; }
 }
