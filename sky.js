@@ -89,21 +89,21 @@ var PAL = {
     glow: [0.8, 0.76, 0.64], clit: [1.0, 0.82, 0.6], cmid: scene('#d3c9c4'), cshd: scene('#9da0b8'),
     blit: scene('#6e6155'), bdrk: scene('#1c1815'),
     leaf: [['#9a4e2a', '#3e1f12'], ['#cf7f36', '#5c3315'], ['#d6ac48', '#6a541c']],
-    cover: 0.68, expo: 1.0, mgain: 1.0
+    cover: 0.64, expo: 1.0, mgain: 1.0
   },
   dusk: {
     zen: scene('#7180b5'), hor: scene('#d8b09a'), dmid: scene('#e5a778'), dfar: scene('#b79cb4'),
     glow: [1.0, 0.62, 0.36], clit: [1.08, 0.91, 0.78], cmid: scene('#c9a3a9'), cshd: scene('#9c8db0'),
     blit: scene('#735646'), bdrk: scene('#1a1310'),
     leaf: [['#b0562c', '#4a2214'], ['#dd8838', '#603315'], ['#e0b24c', '#6a501c']],
-    cover: 0.68, expo: 1.0, mgain: 1.0
+    cover: 0.64, expo: 1.0, mgain: 1.0
   },
   night: {
     zen: scene('#0a1024'), hor: scene('#1b2439'), dmid: scene('#1e2740'), dfar: scene('#141b30'),
     glow: [0.33, 0.37, 0.48], clit: scene('#5f6a86'), cmid: scene('#2a3149'), cshd: scene('#0b0f1e'),
     blit: scene('#0e1119'), bdrk: scene('#030407'),
     leaf: [['#2e242a', '#08050a'], ['#3b3134', '#0b0808'], ['#403a2e', '#0d0b07']],
-    cover: 0.62, expo: 1.0, mgain: 1.0
+    cover: 0.58, expo: 1.0, mgain: 1.0
   }
 };
 
@@ -1402,9 +1402,10 @@ function draw(now) {
   ld = [ld[0] / ll, ld[1] / ll];
   var aspect = canvas.width / canvas.height;
   var tanH = Math.tan(FOV * FOVK / 2);
-  /* the pointer does not turn the camera: the sky and the moon are far
-     away and hold still, only the crown in front shifts with the viewer */
-  var cam = [tanH * aspect, tanH, PITCH + (still ? 0 : 0.0025 * Math.sin(t * 0.23)), YAW0 + (still ? 0 : 0.003 * Math.sin(t * 0.17 + 1.0))];
+  /* the pointer turns the camera a little and moves the crown the other
+     way, so the sky and the moon slide behind the boughs as the viewer
+     shifts; the still frame holds the camera and lets it breathe */
+  var cam = [tanH * aspect, tanH, PITCH + my * 0.008 + (still ? 0 : 0.0025 * Math.sin(t * 0.23)), YAW0 + mx * 0.010 + (still ? 0 : 0.003 * Math.sin(t * 0.17 + 1.0))];
 
   if (!still) { stepLeaves(t, dt, env, sets[look]); stepEvents(t, w); }
   drawForeground(still ? 0 : t, -mx * FW * 0.012, my * FH * 0.012, w, wind, w.n, env);
