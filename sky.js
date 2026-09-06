@@ -16,12 +16,10 @@
    the tips, and the left limb keeps a bare stretch of wood for the
    cricket. The wind is a noise signal with
    real lulls and gusts: it runs through the crown, carries the clouds
-   slowly leftward as one unchanging piece (the words keep a clearing
-   by fading the clouds behind them, not by reshaping them, and a cloud
-   may pass over the moon), and when it rises leaves let go of the
-   clusters and
-   blow down through the picture, some flipping end over end the whole
-   way; by day a jet crosses the high sky now and then and its contrail
+   slowly leftward as one piece (the words keep a clearing that the
+   deck thins into gently over a wide reach, and a cloud may pass over
+   the moon), and when it rises leaves let go of the clusters and blow
+   down through the picture, some flipping end over end the whole way; by day a jet crosses the high sky now and then and its contrail
    widens and dissolves behind it. At night the wind drops: the clouds
    stand, the crown goes still, no leaf falls, a meteor falls instead,
    and a cricket sits on the left limb and chirps, wings raised and
@@ -89,21 +87,21 @@ var PAL = {
     glow: [0.8, 0.76, 0.64], clit: [1.06, 1.02, 0.95], cmid: scene('#cbc6cb'), cshd: scene('#97a0b6'),
     blit: scene('#6e6155'), bdrk: scene('#1c1815'),
     leaf: [['#9a4e2a', '#3e1f12'], ['#cf7f36', '#5c3315'], ['#d6ac48', '#6a541c']],
-    cover: 0.66, expo: 1.0, mgain: 1.0
+    cover: 0.68, expo: 1.0, mgain: 1.0
   },
   dusk: {
     zen: scene('#7180b5'), hor: scene('#d8b09a'), dmid: scene('#e5a778'), dfar: scene('#b79cb4'),
     glow: [1.0, 0.62, 0.36], clit: [1.08, 0.91, 0.78], cmid: scene('#c9a3a9'), cshd: scene('#9c8db0'),
     blit: scene('#735646'), bdrk: scene('#1a1310'),
     leaf: [['#b0562c', '#4a2214'], ['#dd8838', '#603315'], ['#e0b24c', '#6a501c']],
-    cover: 0.66, expo: 1.0, mgain: 1.0
+    cover: 0.68, expo: 1.0, mgain: 1.0
   },
   night: {
     zen: scene('#0a1024'), hor: scene('#1b2439'), dmid: scene('#1e2740'), dfar: scene('#141b30'),
     glow: [0.33, 0.37, 0.48], clit: scene('#5f6a86'), cmid: scene('#2a3149'), cshd: scene('#0b0f1e'),
     blit: scene('#0e1119'), bdrk: scene('#030407'),
     leaf: [['#2e242a', '#08050a'], ['#3b3134', '#0b0808'], ['#403a2e', '#0d0b07']],
-    cover: 0.60, expo: 1.0, mgain: 1.0
+    cover: 0.62, expo: 1.0, mgain: 1.0
   }
 };
 
@@ -278,7 +276,7 @@ float boxDist(vec2 p, vec4 r, vec2 s) {
   return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0) - rad;
 }
 
-vec4 deck(vec2 p0, vec2 sunP, vec2 drift, float sc, float seed, float th, float far, float glow) {
+vec4 deck(vec2 p0, vec2 sunP, vec2 drift, float sc, float seed, float th0, float thin, float far, float glow) {
   float k = sc * FINE;
   p0 *= k;
   sunP *= k;
@@ -287,12 +285,14 @@ vec4 deck(vec2 p0, vec2 sunP, vec2 drift, float sc, float seed, float th, float 
   vec2 p = q0 + warp;
   float body, lobes, fine;
   float f = puff(p, seed, body, lobes, fine);
+  /* the clearing for the words raises the threshold, but by more in the
+     creases than on the bulges, so the cut edge is cauliflower and not
+     the straight iso-line of the ramp across a cloud's flat middle */
+  float th = th0 + thin * (1.15 - 0.5 * lobes);
   float e = f - th;
   float aa = fwidth(e) * 0.7 + 0.002 + far * 0.006;
-  /* a lobe with no body under it is a crumb, not a cloud; the window
-     sits well below the cut, so a cloud with body under it is opaque
-     through and never reads as haze */
-  float dens = smoothstep(-aa, aa, e) * smoothstep(-0.20, -0.12, body - th);
+  /* a lobe with no body under it is a crumb, not a cloud */
+  float dens = smoothstep(-aa, aa, e) * smoothstep(-0.07, 0.0, body - th);
   if (dens <= 0.0) return vec4(0.0);
   /* three normals, one per scale: the mass, from the body alone over a
      wide step, so a whole cloud keeps one lit side and one shadow side;
@@ -353,29 +353,27 @@ void main() {
   float th0 = mix(0.74, 0.38, COVER) + FOOT * (1.0 - smoothstep(0.0, 0.5, uv.y)) - HEAD * smoothstep(0.5, 1.0, uv.y);
   vec2 s = vec2(R.x / R.y, 1.0);
   vec2 sc = uv - SHIFT;
-  /* the words keep their clearing, but the clouds are not thinned there,
-     which would remake their shape as they drift through: they go
-     translucent instead, so a cloud crosses behind the name whole. The
-     moon has no clearing any more; a cloud simply passes over it */
-  float clear = 0.0;
+  /* the words keep a clearing: the cloud threshold rises gently toward
+     them over a wide reach, so the deck thins into open sky around the
+     name with no boundary, and the wobble, sampled at the drifted
+     point like everything else, keeps the clearing's outline irregular
+     and travelling with the clouds. The moon has no clearing; a cloud
+     may pass over it */
+  float thin = 0.0;
   if (boxDist(sc * s, BOX, s) < REACH + 0.06) {
     vec2 pw = p0 + drift / FINE;
-    vec2 bw = (vec2(fbm3(pw * 1.6 + 5.0), fbm3(pw * 1.6 + 19.0)) - 0.5) * 0.05
-            + (vec2(fbm3(pw * 4.5 + 83.0), fbm3(pw * 4.5 + 97.0)) - 0.5) * 0.02;
-    clear = 1.0 - smoothstep(-0.04, REACH, boxDist(sc * s + bw, BOX, s));
+    vec2 bw = (vec2(fbm3(pw * 1.6 + 5.0), fbm3(pw * 1.6 + 19.0)) - 0.5) * 0.18
+            + (vec2(fbm3(pw * 4.5 + 83.0), fbm3(pw * 4.5 + 97.0)) - 0.5) * 0.08;
+    thin = 0.28 * (1.0 - smoothstep(-0.04, REACH, boxDist(sc * s + bw, BOX, s)));
   }
-  float fade = 1.0 - 0.97 * clear;
   /* the far deck drifts at the near deck's pace, so the two never slide
-     past each other and the picture moves as one; it is cut sparser
-     than the near deck, so its paler clouds stay small and never read
-     as a haze */
-  vec4 far = deck(p0, sunP, drift * 2.1, 2.1, 41.0, th0 + 0.04, 1.0, glow);
-  far.rgb = mix(far.rgb, HOR, 0.20);
-  far.a *= fade;
-  vec4 near = deck(p0, sunP, drift, 1.0, 0.0, th0, 0.0, glow);
-  near.a *= fade;
-  float a = near.a + far.a * (1.0 - near.a);
-  if (a > 0.0) col = mix(col, (near.rgb * near.a + far.rgb * far.a * (1.0 - near.a)) / a, a);
+     past each other and the picture moves as one; it sits behind the
+     near deck, paler and a little translucent, the way distance reads */
+  vec4 far = deck(p0, sunP, drift * 2.1, 2.1, 41.0, th0 + 0.04, thin, 1.0, glow);
+  far.rgb = mix(far.rgb, HOR, 0.30);
+  vec4 near = deck(p0, sunP, drift, 1.0, 0.0, th0, thin, 0.0, glow);
+  float a = near.a + far.a * 0.8 * (1.0 - near.a);
+  if (a > 0.0) col = mix(col, (near.rgb * near.a + far.rgb * far.a * 0.8 * (1.0 - near.a)) / a, a);
   float cov = min(a, 1.0) * smoothstep(-0.05, 0.02, dir.y);
   o0 = vec4(col * SCALE, 1.0);
   o1 = vec4(cov, 0.0, 0.0, 1.0);
@@ -1367,9 +1365,9 @@ var mx = 0, my = 0, tx = 0, ty = 0;
 var running = false, raf = 0, last = 0, frameNo = 0;
 var visible = !document.hidden, inView = true;
 var box = [0, 0, 0, 0];
-/* the drift starts part way in, at a point picked for each frame on
-   first layout (see resize), where the clouds stand in the open sky
-   rather than in one corner */
+/* the drift starts part way in, at a point set on first layout (see
+   resize) where the clouds frame the words rather than crowd one
+   corner */
 var cloudT = -1, fine = 1, coverBoost = 0;
 var themeMeta = document.querySelector('meta[name="theme-color"]');
 
@@ -1409,7 +1407,7 @@ function measure() {
   if (!words) return;
   var hr = hero.getBoundingClientRect(), wr = words.getBoundingClientRect();
   if (!hr.width || !hr.height) return;
-  var px = 0.04 * hr.height, py = 0.03 * hr.height;
+  var px = 0.07 * hr.height, py = 0.05 * hr.height;
   box = [
     (wr.left - hr.left - px) / hr.width,
     1 - (wr.bottom - hr.top + py) / hr.height,
@@ -1599,12 +1597,12 @@ function resize() {
     D = portrait ? hw : Math.min(hh, Math.round(hw * 0.9));
     FBLUR = 4.0 * D / hh;
     MBLUR = 3.0 * D / hh;
-    REACH = portrait ? 0.07 : 0.07;
+    REACH = portrait ? 0.22 : 0.34;
     FOVK = portrait ? 1.15 : 1;
     YAW0 = portrait ? 5 * Math.PI / 180 : 0;
     STARS = portrait ? 2.2 : 1;
-    FOOT = portrait ? 0.15 : 0.07;
-    HEAD = portrait ? 0.06 : 0.05;
+    FOOT = portrait ? 0.15 : 0.09;
+    HEAD = portrait ? 0.09 : 0.09;
     MX = Math.round(hw * 0.05); MY = Math.round(hh * 0.05);
     fg.width = mid.width = scratch.width = hw + 2 * MX;
     fg.height = mid.height = scratch.height = hh + 2 * MY;
@@ -1617,12 +1615,13 @@ function resize() {
     var ar = cw / ch;
     var narrow = Math.min(1, Math.max(0, (16 / 9 - ar) / (16 / 9 - 1)));
     fine = portrait ? 1.1 : 1 + 0.8 * narrow;
-    coverBoost = portrait ? 0.04 : -0.18 * narrow;
-    /* a phone looks at the slice of sky that sits behind the crown on a
-       desktop, so each frame starts the drift where its own view is
-       best: a big cumulus at the left of the desktop frame with the
-       moon clear, a band of cloud under the words on a phone */
-    if (cloudT < 0) cloudT = portrait ? 330 : 150;
+    coverBoost = portrait ? 0.06 : -0.18 * narrow;
+    /* the drift starts where the open sky frames the words: on a
+       desktop a big cumulus arches over the top left with the moon
+       clear under its edge and a cloud sits low on the left; a phone,
+       turned toward the tree, sees a cloud edge above the moon and a
+       cloud at the foot */
+    if (cloudT < 0) cloudT = 133;
     sets = { day: null, dusk: null, night: null };
     seedLeaves();
     scheduleSets();
