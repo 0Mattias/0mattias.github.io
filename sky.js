@@ -89,21 +89,21 @@ var PAL = {
     glow: [0.8, 0.76, 0.64], clit: [1.06, 1.02, 0.95], cmid: scene('#cbc6cb'), cshd: scene('#97a0b6'),
     blit: scene('#6e6155'), bdrk: scene('#1c1815'),
     leaf: [['#9a4e2a', '#3e1f12'], ['#cf7f36', '#5c3315'], ['#d6ac48', '#6a541c']],
-    cover: 0.50, expo: 1.0, mgain: 1.0
+    cover: 0.66, expo: 1.0, mgain: 1.0
   },
   dusk: {
     zen: scene('#7180b5'), hor: scene('#d8b09a'), dmid: scene('#e5a778'), dfar: scene('#b79cb4'),
     glow: [1.0, 0.62, 0.36], clit: [1.08, 0.91, 0.78], cmid: scene('#c9a3a9'), cshd: scene('#9c8db0'),
     blit: scene('#735646'), bdrk: scene('#1a1310'),
     leaf: [['#b0562c', '#4a2214'], ['#dd8838', '#603315'], ['#e0b24c', '#6a501c']],
-    cover: 0.50, expo: 1.0, mgain: 1.0
+    cover: 0.66, expo: 1.0, mgain: 1.0
   },
   night: {
     zen: scene('#0a1024'), hor: scene('#1b2439'), dmid: scene('#1e2740'), dfar: scene('#141b30'),
     glow: [0.33, 0.37, 0.48], clit: scene('#5f6a86'), cmid: scene('#2a3149'), cshd: scene('#0b0f1e'),
     blit: scene('#0e1119'), bdrk: scene('#030407'),
     leaf: [['#2e242a', '#08050a'], ['#3b3134', '#0b0808'], ['#403a2e', '#0d0b07']],
-    cover: 0.44, expo: 1.0, mgain: 1.0
+    cover: 0.60, expo: 1.0, mgain: 1.0
   }
 };
 
@@ -369,7 +369,7 @@ void main() {
      past each other and the picture moves as one; it is cut sparser
      than the near deck, so its paler clouds stay small and never read
      as a haze */
-  vec4 far = deck(p0, sunP, drift * 2.1, 2.1, 41.0, th0 + 0.11, 1.0, glow);
+  vec4 far = deck(p0, sunP, drift * 2.1, 2.1, 41.0, th0 + 0.04, 1.0, glow);
   far.rgb = mix(far.rgb, HOR, 0.20);
   far.a *= fade;
   vec4 near = deck(p0, sunP, drift, 1.0, 0.0, th0, 0.0, glow);
@@ -1409,7 +1409,7 @@ function measure() {
   if (!words) return;
   var hr = hero.getBoundingClientRect(), wr = words.getBoundingClientRect();
   if (!hr.width || !hr.height) return;
-  var px = 0.07 * hr.height, py = 0.05 * hr.height;
+  var px = 0.04 * hr.height, py = 0.03 * hr.height;
   box = [
     (wr.left - hr.left - px) / hr.width,
     1 - (wr.bottom - hr.top + py) / hr.height,
@@ -1456,7 +1456,9 @@ function draw(now) {
   ld = [ld[0] / ll, ld[1] / ll];
   var aspect = canvas.width / canvas.height;
   var tanH = Math.tan(FOV * FOVK / 2);
-  var cam = [tanH * aspect, tanH, PITCH + my * 0.008 + (still ? 0 : 0.0025 * Math.sin(t * 0.23)), YAW0 + mx * 0.010 + (still ? 0 : 0.003 * Math.sin(t * 0.17 + 1.0))];
+  /* the pointer does not turn the camera: the sky and the moon are far
+     away and hold still, only the crown in front shifts with the viewer */
+  var cam = [tanH * aspect, tanH, PITCH + (still ? 0 : 0.0025 * Math.sin(t * 0.23)), YAW0 + (still ? 0 : 0.003 * Math.sin(t * 0.17 + 1.0))];
   var shift = [0, 0];
   if (box[2] > box[0]) {
     var bc = [(box[0] + box[2]) * 0.5, (box[1] + box[3]) * 0.5];
@@ -1597,7 +1599,7 @@ function resize() {
     D = portrait ? hw : Math.min(hh, Math.round(hw * 0.9));
     FBLUR = 4.0 * D / hh;
     MBLUR = 3.0 * D / hh;
-    REACH = portrait ? 0.08 : 0.08;
+    REACH = portrait ? 0.07 : 0.07;
     FOVK = portrait ? 1.15 : 1;
     YAW0 = portrait ? 5 * Math.PI / 180 : 0;
     STARS = portrait ? 2.2 : 1;
@@ -1615,7 +1617,7 @@ function resize() {
     var ar = cw / ch;
     var narrow = Math.min(1, Math.max(0, (16 / 9 - ar) / (16 / 9 - 1)));
     fine = portrait ? 1.1 : 1 + 0.8 * narrow;
-    coverBoost = portrait ? 0.20 : -0.18 * narrow;
+    coverBoost = portrait ? 0.04 : -0.18 * narrow;
     /* a phone looks at the slice of sky that sits behind the crown on a
        desktop, so each frame starts the drift where its own view is
        best: a big cumulus at the left of the desktop frame with the
