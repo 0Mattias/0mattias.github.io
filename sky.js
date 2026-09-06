@@ -2,9 +2,11 @@
    An autumn oak against the sky, photographed rather than drawn: a
    21-degree lens looks up through the crown at two decks of cumulus,
    each puff a body of low noise with turbulence lobes on it, cut at a
-   hard edge and shaded from its own gradient toward the sun, so the
-   lobes facing the light are bright, the bases hang dark by day and
-   catch the low sun at dusk, and a thin lining glows at the rim; a moon at
+   hard edge and lit at three scales, the mass, the lobes and the grain,
+   from their gradients toward the sun, so each cloud keeps a lit side
+   and a shadow side, the lobes facing the light are bright and
+   cauliflowered, the bases hang dark by day and catch the low sun at
+   dusk, and a thin lining glows at the rim on the sun's side; a moon at
    tonight's real phase that dissolves into the sky on its shadow side,
    stars once it is dark. The oak is grown by a small L-system, three
    limbs reaching in from the right and one from the lower left, each
@@ -230,13 +232,25 @@ float turb3(vec2 p) {
   return v;
 }
 
-float puff(vec2 p, vec2 drift, float seed, out float body, out float lobes) {
+float fineAt(vec2 q, vec2 drift, float seed) {
+  return turb3(q * 20.0 + drift * 0.5 + 27.0 + seed);
+}
+
+float puff(vec2 p, vec2 drift, float seed, out float body, out float lobes, out float fine) {
   body = fbm5(p * 1.35 + drift + seed);
   float big = turb3(p * 3.8 + drift * 0.8 + 9.0 + seed);
   float mid = turb3(p * 7.5 + drift * 0.65 + 17.0 + seed);
-  float fine = turb3(p * 20.0 + drift * 0.5 + 27.0 + seed);
+  fine = fineAt(p, drift, seed);
   lobes = 0.6 * big + 0.4 * mid;
   return body + 0.24 * (big - 0.42) + 0.11 * (mid - 0.42) + 0.09 * (fine - 0.42);
+}
+
+float lobeAt(vec2 q, vec2 drift, float seed) {
+  return 0.6 * turb3(q * 3.8 + drift * 0.8 + 9.0 + seed) + 0.4 * turb3(q * 7.5 + drift * 0.65 + 17.0 + seed);
+}
+
+float mass(vec2 q, vec2 drift, float seed) {
+  return fbm5(q * 1.35 + drift + seed) + 0.24 * (turb3(q * 3.8 + drift * 0.8 + 9.0 + seed) - 0.42) - 0.032;
 }
 
 float boxDist(vec2 p, vec4 r, vec2 s) {
@@ -253,8 +267,8 @@ vec4 deck(vec2 p0, vec2 sunP, vec2 drift, float sc, float seed, float th0, float
   sunP *= k;
   vec2 warp = (vec2(fbm3(p0 * 1.2 + drift + 3.0 + seed), fbm3(p0 * 1.2 + drift + 17.0 + seed)) - 0.5) * 0.10;
   vec2 p = p0 + warp;
-  float body, lobes, dummy, dummy2;
-  float f = puff(p, drift, seed, body, lobes);
+  float body, lobes, fine;
+  float f = puff(p, drift, seed, body, lobes, fine);
   /* the clearing for the words raises the threshold, but by more in the
      creases than on the bulges, so the cut edge is cauliflower and not
      the straight iso-line of the ramp across a cloud's flat middle */
@@ -264,24 +278,44 @@ vec4 deck(vec2 p0, vec2 sunP, vec2 drift, float sc, float seed, float th0, float
   /* a lobe with no body under it is a crumb, not a cloud */
   float dens = smoothstep(-aa, aa, e) * smoothstep(-0.07, 0.0, body - th);
   if (dens <= 0.0) return vec4(0.0);
-  float eps = 0.010;
-  vec2 g = vec2(puff(p + vec2(eps, 0.0), drift, seed, dummy, dummy2) - f, puff(p + vec2(0.0, eps), drift, seed, dummy, dummy2) - f) / eps;
-  float gm = length(g);
-  vec2 gn = g / max(gm, 1e-4);
+  /* three normals, one per scale: the mass, from the body alone over a
+     wide step, so a whole cloud keeps one lit side and one shadow side;
+     the lobes, from the two coarser turbulence scales, so each bulge
+     turns toward the light; and the fine grain that roughens the lit
+     lobes into cauliflower */
+  float eb = 0.05, el = 0.012, ef = 0.005;
+  vec2 gB = vec2(fbm5((p + vec2(eb, 0.0)) * 1.35 + drift + seed) - body,
+                 fbm5((p + vec2(0.0, eb)) * 1.35 + drift + seed) - body) / eb;
+  vec2 gL = vec2(lobeAt(p + vec2(el, 0.0), drift, seed) - lobes,
+                 lobeAt(p + vec2(0.0, el), drift, seed) - lobes) / el;
+  vec2 gF = vec2(fineAt(p + vec2(ef, 0.0), drift, seed) - fine,
+                 fineAt(p + vec2(0.0, ef), drift, seed) - fine) / ef;
   vec2 toSun = normalize(sunP - p0 + vec2(1e-5));
+  float gmB = length(gB), gmL = length(gL), gmF = length(gF);
+  float sideB = dot(-gB, toSun) / max(gmB, 1e-4);
+  float sideL = dot(-gL, toSun) / max(gmL, 1e-4);
+  float sideF = dot(-gF, toSun) / max(gmF, 1e-4);
   float sunUp = clamp(SUN.y * 2.2, 0.0, 1.0);
   float thick = smoothstep(0.0, 0.18, e);
   /* the lens looks along the clouds, not up at them: what sits under
-     more cloud is its base, dark by day, brushed by a low sun */
-  float under = smoothstep(-0.02, 0.10, puff(p + vec2(0.0, -0.05), drift, seed, dummy, dummy2) - th);
-  float side = dot(-gn, toSun);
-  float lamAmp = clamp(gm * 0.35, 0.0, 1.0) * mix(1.0, 0.7, thick);
-  float lam = 0.5 + 0.5 * side * lamAmp;
+     more cloud is its base, dark by day, brushed by a low sun; two
+     samples up the sky let the base deepen gradually */
+  float under = 0.6 * smoothstep(-0.02, 0.10, mass(p + vec2(0.0, -0.05), drift, seed) - th)
+              + 0.4 * smoothstep(-0.02, 0.14, mass(p + vec2(0.0, -0.11), drift, seed) - th);
+  float ampB = smoothstep(0.0, 0.9, gmB);
+  float ampL = clamp(gmL * 0.3, 0.0, 1.0) * mix(1.0, 0.7, thick);
+  /* the grain only shows where the light rakes it: the shadow side is
+     lit by the sky alone and stays smooth */
+  float ampF = clamp(gmF * 0.08, 0.0, 1.0) * (0.3 + 0.7 * smoothstep(-0.4, 0.5, sideB * ampB));
+  float lam = 0.5 + 0.5 * clamp(0.55 * sideB * ampB + 0.45 * sideL * ampL + 0.35 * sideF * ampF, -1.0, 1.0);
   float shade = max(under * mix(0.4, 1.0, sunUp), thick * 0.5 * sunUp) * (1.0 - far * 0.35);
   float belly = mix(1.0, 0.30, shade);
   float crease = smoothstep(0.55, 0.2, lobes);
   float lk = clamp(belly * mix(0.35, 1.15, lam) * (1.0 - 0.28 * crease), 0.0, 1.0);
-  float lining = (1.0 - smoothstep(0.0, 0.045, e)) * (0.3 + 0.7 * lam);
+  /* the rim lights up where the edge faces the sun and the thin cloud
+     there scatters its light forward; the shadow side keeps a bare edge */
+  float facing = smoothstep(-0.3, 0.7, 0.4 * sideB + 0.35 * sideL + 0.25 * sideF);
+  float lining = (1.0 - smoothstep(0.0, 0.045, e)) * (0.2 + 0.8 * facing);
   float hue = smoothstep(0.36, 0.64, fbm3(p0 * 0.55 + drift * 0.3 + 57.0 + seed));
   vec3 lit = CLIT * mix(vec3(1.03, 0.99, 0.93), vec3(0.98, 1.0, 1.03), hue);
   lit *= mix(vec3(1.0), vec3(1.0, 0.84, 0.66), DUSK);
