@@ -120,14 +120,14 @@ html.sky .looks { animation: fade 1s ease 1.2s both; }
 .letterhead .name {
     font: 400 clamp(38px, 6.4vw, 72px)/1.08 var(--serif);
     letter-spacing: -0.012em;
-    text-shadow: 0 2px 18px rgba(20, 30, 60, 0.22);
+    text-shadow: 0 2px 22px rgba(20, 30, 60, 0.34);
 }
 
 .dateline {
     margin-top: 14px;
     font: 400 clamp(15px, 1.6vw, 18px)/1.6 var(--serif);
     color: rgba(246, 243, 236, 0.88);
-    text-shadow: 0 1px 10px rgba(20, 30, 60, 0.22);
+    text-shadow: 0 1px 12px rgba(20, 30, 60, 0.34);
     text-wrap: balance;
 }
 
