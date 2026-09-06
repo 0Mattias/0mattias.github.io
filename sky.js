@@ -197,7 +197,7 @@ var SKY = HEAD + `
 layout(location = 0) out vec4 o0;
 layout(location = 1) out vec4 o1;
 uniform vec2 R;
-uniform float CLT, NIGHT, DUSK, COVER, REACH, FINE, SCALE, FOOT, HEAD;
+uniform float CLT, NIGHT, DUSK, COVER, REACH, FINE, SCALE, FOOT;
 uniform vec4 CAM, BOX;
 uniform vec3 SUN, MOON, ZEN, HOR, DMID, DFAR, GLOW, CLIT, CMID, CSHD;
 uniform vec2 LD, SHIFT;
@@ -297,7 +297,7 @@ void main() {
   vec2 drift = CLT * vec2(0.014, 0.002);
   float nearMoon = pow(max(dot(dir, MOON), 0.0), 80.0);
   float glow = pow(max(dot(dir, SUN), 0.0), mix(24.0, 48.0, NIGHT));
-  float th0 = mix(0.74, 0.38, COVER) + FOOT * (1.0 - smoothstep(0.0, 0.5, uv.y)) - HEAD * smoothstep(0.5, 1.0, uv.y);
+  float th0 = mix(0.74, 0.38, COVER) + FOOT * (1.0 - smoothstep(0.0, 0.5, uv.y));
   vec2 s = vec2(R.x / R.y, 1.0);
   vec2 sc = uv - SHIFT;
   float thin = 0.0;
@@ -544,7 +544,7 @@ function program(fragSrc, names) {
   return { p: prog, u: u };
 }
 
-var skyProg = program(SKY, ['R', 'CLT', 'NIGHT', 'DUSK', 'COVER', 'REACH', 'FINE', 'SCALE', 'FOOT', 'HEAD', 'CAM', 'BOX', 'SHIFT', 'SUN', 'MOON', 'ZEN', 'HOR', 'DMID', 'DFAR', 'GLOW', 'CLIT', 'CMID', 'CSHD', 'LD']);
+var skyProg = program(SKY, ['R', 'CLT', 'NIGHT', 'DUSK', 'COVER', 'REACH', 'FINE', 'SCALE', 'FOOT', 'CAM', 'BOX', 'SHIFT', 'SUN', 'MOON', 'ZEN', 'HOR', 'DMID', 'DFAR', 'GLOW', 'CLIT', 'CMID', 'CSHD', 'LD']);
 var bokehProg = program(BOKEH, ['SRC', 'TEXEL', 'RAD', 'BOOST', 'SCALE']);
 var compProg = program(COMP, ['SKYB', 'FGB', 'MIDB', 'COVT', 'FGMAP', 'MIDMAP', 'T', 'G', 'NIGHT', 'DUSK', 'EXPO', 'SCALE', 'MOONR', 'PH', 'MGAIN', 'STARS', 'CAM', 'BLIT', 'BDRK', 'LL0', 'LL1', 'LL2', 'LD0', 'LD1', 'LD2', 'SUN', 'MOON', 'CTON', 'CTP', 'CTAGE', 'CT', 'METON', 'METP', 'METS', 'METL', 'MET']);
 if (!skyProg || !bokehProg || !compProg) return;
@@ -752,7 +752,7 @@ function makeBank(rnd, lx, ly) {
     }
     return arr;
   }
-  return { rnd: mulberry32(20261105), inner: series(12, [0.5, 0.7], [0.8, 1.1]), deep: series(12, [0.62, 0.8], [0.8, 1.15]), mid: series(16, [0.76, 0.92], [0.8, 1.2]), outer: series(20, [0.9, 1.0], [0.8, 1.25]) };
+  return { inner: series(12, [0.5, 0.7], [0.8, 1.1]), deep: series(12, [0.62, 0.8], [0.8, 1.15]), mid: series(16, [0.76, 0.92], [0.8, 1.2]), outer: series(20, [0.9, 1.0], [0.8, 1.25]) };
 }
 
 function stamp(ctx, sp, x, y, rot, sc) {
@@ -796,17 +796,6 @@ function oak(ctx, x, y, ang, len, wid, depth, rnd, lx, ly, bank, out, trunk) {
     var sp = bank.inner[Math.floor(rnd() * bank.inner.length)];
     stamp(ctx, sp, q[0], q[1], (rnd() - 0.5) * 0.6, 0.85 + 0.3 * rnd());
   }
-  /* more leaves over the gaps: a second spray on some twigs and some on
-     the boughs, so the thick stretches through the crown are not bare;
-     drawn from the bank's own stream, so the limbs keep their shape */
-  var r2 = bank.rnd;
-  var pb = depth <= 3 ? 0.3 : depth === 4 ? 0.6 : depth === 5 ? 0.35 : 0;
-  if (pb > 0 && r2() < pb) {
-    var qb = pointOn(x, y, cx, cy, ex, ey, 0.2 + r2() * 0.6);
-    var tb = depth <= 3 ? bank.inner : bank.deep;
-    var spb = tb[Math.floor(r2() * tb.length)];
-    stamp(ctx, spb, qb[0], qb[1], (r2() - 0.5) * 0.6, 0.8 + 0.3 * r2());
-  }
   if (depth <= 2 || (depth === 3 && rnd() < 0.6)) {
     /* the sprays brighten toward the twig tips: the outer crown is backlit, the inside shades itself */
     var tier = depth === 1 ? bank.outer : depth === 2 ? bank.mid : bank.deep;
@@ -828,7 +817,7 @@ var sets = { day: null, dusk: null, night: null };
 var leaves = [];
 var lightNow = [-0.85, 0.5];
 var LEAF_N = { near: 7, mid: 16 };
-var FW = 1, FH = 1, D = 1, MX = 0, MY = 0, FBLUR = 4.0, MBLUR = 3.0, REACH = 0.42, FOVK = 1, YAW0 = 0, STARS = 1, FOOT = 0, HEAD = 0;
+var FW = 1, FH = 1, D = 1, MX = 0, MY = 0, FBLUR = 4.0, MBLUR = 3.0, REACH = 0.42, FOVK = 1, YAW0 = 0, STARS = 1, FOOT = 0;
 var LIMBS = [];
 
 function layout(portrait) {
@@ -838,7 +827,7 @@ function layout(portrait) {
     { x: ox + w * 1.05, y: oy + h * ys[0], ang: Math.PI * 0.85, len: d * 0.20, wid: d * 0.030, depth: 7, k: 1.0, ph: 0 },
     { x: ox + w * (portrait ? 1.04 : 0.95), y: oy + h * ys[1], ang: Math.PI * 0.62, len: d * 0.17, wid: d * 0.026, depth: 7, k: 1.3, ph: 1.7 },
     { x: ox + w * 1.02, y: oy + h * ys[2], ang: Math.PI * 1.18, len: d * 0.13, wid: d * 0.018, depth: 6, k: 1.6, ph: 3.4 },
-    { x: ox - w * 0.04, y: oy + h * 0.84, ang: Math.PI * 0.06, len: d * 0.16, wid: d * 0.023, depth: 6, k: 1.1, ph: 5.1, seed: 20261104 }
+    { x: ox - w * 0.04, y: oy + h * 0.84, ang: Math.PI * 0.06, len: d * 0.15, wid: d * 0.020, depth: 6, k: 1.1, ph: 5.1, seed: 20261104 }
   ];
 }
 
@@ -1397,7 +1386,6 @@ function draw(now) {
   gl.uniform1f(u.REACH, REACH);
   gl.uniform1f(u.FINE, fine);
   gl.uniform1f(u.FOOT, FOOT);
-  gl.uniform1f(u.HEAD, HEAD);
   gl.uniform1f(u.SCALE, SCALE);
   gl.uniform4f(u.CAM, cam[0], cam[1], cam[2], cam[3]);
   gl.uniform4f(u.BOX, box[0], box[1], box[2], box[3]);
@@ -1517,8 +1505,7 @@ function resize() {
     FOVK = portrait ? 1.15 : 1;
     YAW0 = portrait ? 5 * Math.PI / 180 : 0;
     STARS = portrait ? 2.2 : 1;
-    FOOT = portrait ? 0.15 : 0.07;
-    HEAD = portrait ? 0.06 : 0.05;
+    FOOT = portrait ? 0.12 : 0;
     MX = Math.round(hw * 0.05); MY = Math.round(hh * 0.05);
     fg.width = mid.width = scratch.width = hw + 2 * MX;
     fg.height = mid.height = scratch.height = hh + 2 * MY;
