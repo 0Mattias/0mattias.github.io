@@ -1553,12 +1553,12 @@ function resize() {
     var narrow = Math.min(1, Math.max(0, (16 / 9 - ar) / (16 / 9 - 1)));
     fine = portrait ? 1.1 : 1 + 0.8 * narrow;
     coverBoost = portrait ? 0.06 : -0.18 * narrow;
-    /* the drift starts where the sky frames the words: on a desktop a
-       cumulus arches over the top left with the moon clear of it, more
-       cloud shows through the crown and a low one sits at the right
-       foot; a phone, turned toward the tree, sees cloud beside the
-       moon and cloud at the foot */
-    if (cloudT < 0) cloudT = 140;
+    /* the drift starts where the moon stands clear in every frame, since
+       at night the deck never moves on: on a desktop it hangs in open
+       sky under a cloud at the top left, with cloud over the crown and
+       a low bank beneath the words; a phone, turned toward the tree,
+       sees it clear beside the boughs with a cloud across the middle */
+    if (cloudT < 0) cloudT = 166;
     sets = { day: null, dusk: null, night: null };
     seedLeaves();
     scheduleSets();
