@@ -232,9 +232,11 @@ float turb3(vec2 p) {
 
 float puff(vec2 p, vec2 drift, float seed, out float body, out float lobes) {
   body = fbm5(p * 1.35 + drift + seed);
-  lobes = turb3(p * 3.8 + drift * 0.8 + 9.0 + seed);
-  float fine = turb3(p * 12.0 + drift * 0.5 + 27.0 + seed);
-  return body + 0.26 * (lobes - 0.42) + 0.06 * (fine - 0.42);
+  float big = turb3(p * 3.8 + drift * 0.8 + 9.0 + seed);
+  float mid = turb3(p * 7.5 + drift * 0.65 + 17.0 + seed);
+  float fine = turb3(p * 20.0 + drift * 0.5 + 27.0 + seed);
+  lobes = 0.6 * big + 0.4 * mid;
+  return body + 0.24 * (big - 0.42) + 0.11 * (mid - 0.42) + 0.09 * (fine - 0.42);
 }
 
 float boxDist(vec2 p, vec4 r, vec2 s) {
@@ -249,7 +251,7 @@ vec4 deck(vec2 p0, vec2 sunP, vec2 drift, float sc, float seed, float th0, float
   float k = sc * FINE;
   p0 *= k;
   sunP *= k;
-  vec2 warp = (vec2(fbm3(p0 * 1.2 + drift + 3.0 + seed), fbm3(p0 * 1.2 + drift + 17.0 + seed)) - 0.5) * 0.16;
+  vec2 warp = (vec2(fbm3(p0 * 1.2 + drift + 3.0 + seed), fbm3(p0 * 1.2 + drift + 17.0 + seed)) - 0.5) * 0.10;
   vec2 p = p0 + warp;
   float body, lobes, dummy, dummy2;
   float f = puff(p, drift, seed, body, lobes);
@@ -273,19 +275,19 @@ vec4 deck(vec2 p0, vec2 sunP, vec2 drift, float sc, float seed, float th0, float
      more cloud is its base, dark by day, brushed by a low sun */
   float under = smoothstep(-0.02, 0.10, puff(p + vec2(0.0, -0.05), drift, seed, dummy, dummy2) - th);
   float side = dot(-gn, toSun);
-  float lamAmp = clamp(gm * 0.35, 0.0, 1.0) * mix(1.0, 0.6, thick);
+  float lamAmp = clamp(gm * 0.35, 0.0, 1.0) * mix(1.0, 0.7, thick);
   float lam = 0.5 + 0.5 * side * lamAmp;
   float shade = max(under * mix(0.4, 1.0, sunUp), thick * 0.5 * sunUp) * (1.0 - far * 0.35);
   float belly = mix(1.0, 0.30, shade);
   float crease = smoothstep(0.55, 0.2, lobes);
-  float lk = clamp(belly * mix(0.35, 1.3, lam) * (1.0 - 0.15 * crease), 0.0, 1.0);
+  float lk = clamp(belly * mix(0.35, 1.15, lam) * (1.0 - 0.28 * crease), 0.0, 1.0);
   float lining = (1.0 - smoothstep(0.0, 0.045, e)) * (0.3 + 0.7 * lam);
   float hue = smoothstep(0.36, 0.64, fbm3(p0 * 0.55 + drift * 0.3 + 57.0 + seed));
   vec3 lit = CLIT * mix(vec3(1.03, 0.99, 0.93), vec3(0.98, 1.0, 1.03), hue);
   lit *= mix(vec3(1.0), vec3(1.0, 0.84, 0.66), DUSK);
   vec3 col = lk < 0.5 ? mix(CSHD, CMID, lk * 2.0) : mix(CMID, lit, lk * 2.0 - 1.0);
-  col += lit * lining * 0.35;
-  col += GLOW * lining * (0.15 + 0.6 * DUSK);
+  col += lit * lining * 0.35 * (1.0 - 0.5 * DUSK);
+  col += GLOW * lining * (0.15 + 0.25 * DUSK);
   col += GLOW * glow * mix(0.55, 0.50, NIGHT) * (1.0 - thick * 0.8) * (1.0 - 0.7 * DUSK);
   return vec4(col, dens);
 }
@@ -1437,7 +1439,7 @@ function draw(now) {
   gl.uniform1i(bokehProg.u.SRC, 0);
   gl.uniform1f(bokehProg.u.SCALE, SCALE);
   gl.activeTexture(gl.TEXTURE0);
-  bokeh(skyT.tex, skyT.w, skyT.h, skyB, 3.0, 1.0);
+  bokeh(skyT.tex, skyT.w, skyT.h, skyB, 1.8, 1.0);
   bokeh(fgTex, fg.width, fg.height, fgB, FBLUR, 0.0);
   bokeh(midTex, mid.width, mid.height, midB, MBLUR, 0.0);
 
