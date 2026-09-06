@@ -9,8 +9,10 @@
    stars once it is dark. The oak is grown by a small L-system, three
    limbs reaching in from the right and one from the lower left, each
    forking once and dividing into twigs, and hung with dense sprays of
-   russet, rust and old gold: shaded sprays sit deep along the twigs
-   and bright ones ride the tips. The wind is a noise signal with
+   russet, rust and old gold: sprays lie over the limbs and boughs
+   themselves, shaded ones sit deep along the twigs, bright ones ride
+   the tips, and the left limb keeps a bare stretch of wood for the
+   cricket. The wind is a noise signal with
    real lulls and gusts: it runs through the crown, carries the clouds
    slowly leftward, and when it rises leaves let go of the clusters and
    blow down through the picture, some flipping end over end the whole
@@ -94,7 +96,7 @@ var PAL = {
   night: {
     zen: scene('#0a1024'), hor: scene('#1b2439'), dmid: scene('#1e2740'), dfar: scene('#141b30'),
     glow: [0.33, 0.37, 0.48], clit: scene('#5f6a86'), cmid: scene('#2a3149'), cshd: scene('#0b0f1e'),
-    blit: scene('#22273a'), bdrk: scene('#030407'),
+    blit: scene('#0e1119'), bdrk: scene('#030407'),
     leaf: [['#2e242a', '#08050a'], ['#3b3134', '#0b0808'], ['#403a2e', '#0d0b07']],
     cover: 0.58, expo: 1.0, mgain: 1.0
   }
@@ -197,7 +199,7 @@ var SKY = HEAD + `
 layout(location = 0) out vec4 o0;
 layout(location = 1) out vec4 o1;
 uniform vec2 R;
-uniform float CLT, NIGHT, DUSK, COVER, REACH, FINE, SCALE, FOOT;
+uniform float CLT, NIGHT, DUSK, COVER, REACH, FINE, SCALE, FOOT, HEAD;
 uniform vec4 CAM, BOX;
 uniform vec3 SUN, MOON, ZEN, HOR, DMID, DFAR, GLOW, CLIT, CMID, CSHD;
 uniform vec2 LD, SHIFT;
@@ -297,7 +299,7 @@ void main() {
   vec2 drift = CLT * vec2(0.014, 0.002);
   float nearMoon = pow(max(dot(dir, MOON), 0.0), 80.0);
   float glow = pow(max(dot(dir, SUN), 0.0), mix(24.0, 48.0, NIGHT));
-  float th0 = mix(0.74, 0.38, COVER) + FOOT * (1.0 - smoothstep(0.0, 0.5, uv.y));
+  float th0 = mix(0.74, 0.38, COVER) + FOOT * (1.0 - smoothstep(0.0, 0.5, uv.y)) - HEAD * smoothstep(0.5, 1.0, uv.y);
   vec2 s = vec2(R.x / R.y, 1.0);
   vec2 sc = uv - SHIFT;
   float thin = 0.0;
@@ -544,7 +546,7 @@ function program(fragSrc, names) {
   return { p: prog, u: u };
 }
 
-var skyProg = program(SKY, ['R', 'CLT', 'NIGHT', 'DUSK', 'COVER', 'REACH', 'FINE', 'SCALE', 'FOOT', 'CAM', 'BOX', 'SHIFT', 'SUN', 'MOON', 'ZEN', 'HOR', 'DMID', 'DFAR', 'GLOW', 'CLIT', 'CMID', 'CSHD', 'LD']);
+var skyProg = program(SKY, ['R', 'CLT', 'NIGHT', 'DUSK', 'COVER', 'REACH', 'FINE', 'SCALE', 'FOOT', 'HEAD', 'CAM', 'BOX', 'SHIFT', 'SUN', 'MOON', 'ZEN', 'HOR', 'DMID', 'DFAR', 'GLOW', 'CLIT', 'CMID', 'CSHD', 'LD']);
 var bokehProg = program(BOKEH, ['SRC', 'TEXEL', 'RAD', 'BOOST', 'SCALE']);
 var compProg = program(COMP, ['SKYB', 'FGB', 'MIDB', 'COVT', 'FGMAP', 'MIDMAP', 'T', 'G', 'NIGHT', 'DUSK', 'EXPO', 'SCALE', 'MOONR', 'PH', 'MGAIN', 'STARS', 'CAM', 'BLIT', 'BDRK', 'LL0', 'LL1', 'LL2', 'LD0', 'LD1', 'LD2', 'SUN', 'MOON', 'CTON', 'CTP', 'CTAGE', 'CT', 'METON', 'METP', 'METS', 'METL', 'MET']);
 if (!skyProg || !bokehProg || !compProg) return;
@@ -752,7 +754,7 @@ function makeBank(rnd, lx, ly) {
     }
     return arr;
   }
-  return { inner: series(12, [0.5, 0.7], [0.8, 1.1]), deep: series(12, [0.62, 0.8], [0.8, 1.15]), mid: series(16, [0.76, 0.92], [0.8, 1.2]), outer: series(20, [0.9, 1.0], [0.8, 1.25]) };
+  return { rnd: mulberry32(20261105), boughs: [], inner: series(12, [0.5, 0.7], [0.8, 1.1]), deep: series(12, [0.62, 0.8], [0.8, 1.15]), mid: series(16, [0.76, 0.92], [0.8, 1.2]), outer: series(20, [0.9, 1.0], [0.8, 1.25]) };
 }
 
 function stamp(ctx, sp, x, y, rot, sc) {
@@ -801,6 +803,26 @@ function oak(ctx, x, y, ang, len, wid, depth, rnd, lx, ly, bank, out, trunk) {
     var tier = depth === 1 ? bank.outer : depth === 2 ? bank.mid : bank.deep;
     out.push({ x: ex, y: ey, sprite: tier[Math.floor(rnd() * tier.length)], rot: (rnd() - 0.5) * 0.5, sc: 0.9 + 0.25 * rnd(), ph: rnd() * 6.2832 });
   }
+  /* bushy: sprays lie over the wood itself, spaced along every limb and
+     bough and doubled up on the twigs, so no stretch of branch runs bare
+     through the crown. They come from the bank's own stream, so the
+     limbs keep their shape, and buildForeground stamps them, keeping the
+     left limb's base clear for the cricket. */
+  var r2 = bank.rnd;
+  var dx = ex - x, dy = ey - y, sl = Math.hypot(dx, dy) || 1;
+  var nx = -dy / sl, ny = dx / sl;
+  var n = depth >= 4 ? Math.max(1, Math.round(len / (D * 0.05))) : (r2() < 0.6 ? 1 : 0);
+  for (var b = 0; b < n; b++) {
+    var tb = depth >= 4 ? (b + 0.2 + 0.6 * r2()) / n : 0.25 + 0.6 * r2();
+    var qb = pointOn(x, y, cx, cy, ex, ey, tb);
+    var off = (r2() - 0.5) * 0.5;
+    var tb2 = depth >= 4 ? (r2() < 0.7 ? bank.mid : bank.deep) : bank.inner;
+    var spb = tb2[Math.floor(r2() * tb2.length)];
+    bank.boughs.push({ x: qb[0] + nx * off * spb.cs, y: qb[1] + ny * off * spb.cs, sprite: spb, rot: (r2() - 0.5) * 0.6, sc: (depth >= 6 ? 1.0 : 0.85) + 0.3 * r2() });
+  }
+  if (depth <= 3 && r2() < 0.35) {
+    out.push({ x: ex, y: ey, sprite: bank.mid[Math.floor(r2() * bank.mid.length)], rot: (r2() - 0.5) * 0.5, sc: 0.9 + 0.25 * r2(), ph: r2() * 6.2832 });
+  }
 }
 
 /* -------------------------------------------------------------- layout */
@@ -817,7 +839,7 @@ var sets = { day: null, dusk: null, night: null };
 var leaves = [];
 var lightNow = [-0.85, 0.5];
 var LEAF_N = { near: 7, mid: 16 };
-var FW = 1, FH = 1, D = 1, MX = 0, MY = 0, FBLUR = 4.0, MBLUR = 3.0, REACH = 0.42, FOVK = 1, YAW0 = 0, STARS = 1, FOOT = 0;
+var FW = 1, FH = 1, D = 1, MX = 0, MY = 0, FBLUR = 4.0, MBLUR = 3.0, REACH = 0.42, FOVK = 1, YAW0 = 0, STARS = 1, FOOT = 0, HEAD = 0;
 var LIMBS = [];
 
 function layout(portrait) {
@@ -827,7 +849,7 @@ function layout(portrait) {
     { x: ox + w * 1.05, y: oy + h * ys[0], ang: Math.PI * 0.85, len: d * 0.20, wid: d * 0.030, depth: 7, k: 1.0, ph: 0 },
     { x: ox + w * (portrait ? 1.04 : 0.95), y: oy + h * ys[1], ang: Math.PI * 0.62, len: d * 0.17, wid: d * 0.026, depth: 7, k: 1.3, ph: 1.7 },
     { x: ox + w * 1.02, y: oy + h * ys[2], ang: Math.PI * 1.18, len: d * 0.13, wid: d * 0.018, depth: 6, k: 1.6, ph: 3.4 },
-    { x: ox - w * 0.04, y: oy + h * 0.84, ang: Math.PI * 0.06, len: d * 0.15, wid: d * 0.020, depth: 6, k: 1.1, ph: 5.1, seed: 20261104 }
+    { x: ox - w * 0.04, y: oy + h * 0.84, ang: Math.PI * 0.06, len: d * 0.16, wid: d * 0.026, depth: 6, k: 1.1, ph: 5.1, seed: 20261104 }
   ];
 }
 
@@ -856,7 +878,14 @@ function buildForeground(lx, ly) {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     var out = [];
+    bank.boughs = [];
     oak(ctx, sp.x, sp.y, sp.ang, sp.len, sp.wid, sp.depth, sp.seed ? mulberry32(sp.seed) : rnd, lx, ly, bank, out, i === last ? trunk : null);
+    /* the cricket's stretch of the left limb stays bare wood */
+    var keep = i === last ? perchOn(trunk[1] || trunk[0], 0.5) : null;
+    bank.boughs.forEach(function (b) {
+      if (keep && Math.hypot(b.x - keep.x, b.y - keep.y) < D * 0.075 + b.sprite.cs * 0.5 * b.sc) return;
+      stamp(ctx, b.sprite, b.x, b.y, b.rot, b.sc);
+    });
     out.forEach(function (cl) { cl.sys = i; clusters.push(cl); });
     return { c: c, ax: sp.x, ay: sp.y, k: sp.k, ph: sp.ph };
   });
@@ -1386,6 +1415,7 @@ function draw(now) {
   gl.uniform1f(u.REACH, REACH);
   gl.uniform1f(u.FINE, fine);
   gl.uniform1f(u.FOOT, FOOT);
+  gl.uniform1f(u.HEAD, HEAD);
   gl.uniform1f(u.SCALE, SCALE);
   gl.uniform4f(u.CAM, cam[0], cam[1], cam[2], cam[3]);
   gl.uniform4f(u.BOX, box[0], box[1], box[2], box[3]);
@@ -1505,7 +1535,8 @@ function resize() {
     FOVK = portrait ? 1.15 : 1;
     YAW0 = portrait ? 5 * Math.PI / 180 : 0;
     STARS = portrait ? 2.2 : 1;
-    FOOT = portrait ? 0.12 : 0;
+    FOOT = portrait ? 0.15 : 0.07;
+    HEAD = portrait ? 0.06 : 0.05;
     MX = Math.round(hw * 0.05); MY = Math.round(hh * 0.05);
     fg.width = mid.width = scratch.width = hw + 2 * MX;
     fg.height = mid.height = scratch.height = hh + 2 * MY;
