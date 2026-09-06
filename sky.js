@@ -16,7 +16,7 @@
    the tips, and the left limb keeps a bare stretch of wood for the
    cricket. The wind is a noise signal with
    real lulls and gusts: it runs through the crown, carries the clouds
-   slowly leftward, and when it rises leaves let go of the clusters and
+   slowly leftward in one piece, and when it rises leaves let go of the clusters and
    blow down through the picture, some flipping end over end the whole
    way; by day a jet crosses the high sky now and then and its contrail
    widens and dissolves behind it. At night the wind drops: the clouds
@@ -232,25 +232,40 @@ float turb3(vec2 p) {
   return v;
 }
 
+/* the field translates as one piece, so a cloud keeps its shape as it
+   crosses the frame; the lobes and the grain slip behind the body by a
+   few percent, so a cloud still turns over, slowly, the way they do */
+float bodyAt(vec2 q, vec2 drift, float seed) {
+  return fbm5((q + drift) * 1.35 + seed);
+}
+
+float bigAt(vec2 q, vec2 drift, float seed) {
+  return turb3((q + drift * 0.96) * 3.8 + 9.0 + seed);
+}
+
+float midAt(vec2 q, vec2 drift, float seed) {
+  return turb3((q + drift * 0.96) * 7.5 + 17.0 + seed);
+}
+
 float fineAt(vec2 q, vec2 drift, float seed) {
-  return turb3(q * 20.0 + drift * 0.5 + 27.0 + seed);
+  return turb3((q + drift * 0.92) * 20.0 + 27.0 + seed);
 }
 
 float puff(vec2 p, vec2 drift, float seed, out float body, out float lobes, out float fine) {
-  body = fbm5(p * 1.35 + drift + seed);
-  float big = turb3(p * 3.8 + drift * 0.8 + 9.0 + seed);
-  float mid = turb3(p * 7.5 + drift * 0.65 + 17.0 + seed);
+  body = bodyAt(p, drift, seed);
+  float big = bigAt(p, drift, seed);
+  float mid = midAt(p, drift, seed);
   fine = fineAt(p, drift, seed);
   lobes = 0.6 * big + 0.4 * mid;
   return body + 0.24 * (big - 0.42) + 0.11 * (mid - 0.42) + 0.09 * (fine - 0.42);
 }
 
 float lobeAt(vec2 q, vec2 drift, float seed) {
-  return 0.6 * turb3(q * 3.8 + drift * 0.8 + 9.0 + seed) + 0.4 * turb3(q * 7.5 + drift * 0.65 + 17.0 + seed);
+  return 0.6 * bigAt(q, drift, seed) + 0.4 * midAt(q, drift, seed);
 }
 
 float mass(vec2 q, vec2 drift, float seed) {
-  return fbm5(q * 1.35 + drift + seed) + 0.24 * (turb3(q * 3.8 + drift * 0.8 + 9.0 + seed) - 0.42) - 0.032;
+  return bodyAt(q, drift, seed) + 0.24 * (bigAt(q, drift, seed) - 0.42) - 0.032;
 }
 
 float boxDist(vec2 p, vec4 r, vec2 s) {
@@ -265,7 +280,7 @@ vec4 deck(vec2 p0, vec2 sunP, vec2 drift, float sc, float seed, float th0, float
   float k = sc * FINE;
   p0 *= k;
   sunP *= k;
-  vec2 warp = (vec2(fbm3(p0 * 1.2 + drift + 3.0 + seed), fbm3(p0 * 1.2 + drift + 17.0 + seed)) - 0.5) * 0.10;
+  vec2 warp = (vec2(fbm3((p0 + drift) * 1.2 + 3.0 + seed), fbm3((p0 + drift) * 1.2 + 17.0 + seed)) - 0.5) * 0.10;
   vec2 p = p0 + warp;
   float body, lobes, fine;
   float f = puff(p, drift, seed, body, lobes, fine);
@@ -284,8 +299,8 @@ vec4 deck(vec2 p0, vec2 sunP, vec2 drift, float sc, float seed, float th0, float
      turns toward the light; and the fine grain that roughens the lit
      lobes into cauliflower */
   float eb = 0.05, el = 0.012, ef = 0.005;
-  vec2 gB = vec2(fbm5((p + vec2(eb, 0.0)) * 1.35 + drift + seed) - body,
-                 fbm5((p + vec2(0.0, eb)) * 1.35 + drift + seed) - body) / eb;
+  vec2 gB = vec2(bodyAt(p + vec2(eb, 0.0), drift, seed) - body,
+                 bodyAt(p + vec2(0.0, eb), drift, seed) - body) / eb;
   vec2 gL = vec2(lobeAt(p + vec2(el, 0.0), drift, seed) - lobes,
                  lobeAt(p + vec2(0.0, el), drift, seed) - lobes) / el;
   vec2 gF = vec2(fineAt(p + vec2(ef, 0.0), drift, seed) - fine,
@@ -316,7 +331,7 @@ vec4 deck(vec2 p0, vec2 sunP, vec2 drift, float sc, float seed, float th0, float
      there scatters its light forward; the shadow side keeps a bare edge */
   float facing = smoothstep(-0.3, 0.7, 0.4 * sideB + 0.35 * sideL + 0.25 * sideF);
   float lining = (1.0 - smoothstep(0.0, 0.045, e)) * (0.2 + 0.8 * facing);
-  float hue = smoothstep(0.36, 0.64, fbm3(p0 * 0.55 + drift * 0.3 + 57.0 + seed));
+  float hue = smoothstep(0.36, 0.64, fbm3((p0 + drift) * 0.55 + 57.0 + seed));
   vec3 lit = CLIT * mix(vec3(1.03, 0.99, 0.93), vec3(0.98, 1.0, 1.03), hue);
   lit *= mix(vec3(1.0), vec3(1.0, 0.84, 0.66), DUSK);
   vec3 col = lk < 0.5 ? mix(CSHD, CMID, lk * 2.0) : mix(CMID, lit, lk * 2.0 - 1.0);
@@ -332,7 +347,7 @@ void main() {
   float dy = max(dir.y, 0.0);
   vec2 p0 = dir.xz / (dy + 0.5) * 0.85;
   vec2 sunP = SUN.xz / (max(SUN.y, 0.0) + 0.5) * 0.85;
-  vec2 drift = CLT * vec2(0.014, 0.002);
+  vec2 drift = CLT * vec2(0.008, 0.0012);
   float nearMoon = pow(max(dot(dir, MOON), 0.0), 80.0);
   float glow = pow(max(dot(dir, SUN), 0.0), mix(24.0, 48.0, NIGHT));
   float th0 = mix(0.74, 0.38, COVER) + FOOT * (1.0 - smoothstep(0.0, 0.5, uv.y)) - HEAD * smoothstep(0.5, 1.0, uv.y);
@@ -1340,7 +1355,9 @@ var mx = 0, my = 0, tx = 0, ty = 0;
 var running = false, raf = 0, last = 0, frameNo = 0;
 var visible = !document.hidden, inView = true;
 var box = [0, 0, 0, 0];
-var cloudT = 0, fine = 1, coverBoost = 0;
+/* the drift starts 90 s in, where the clouds stand in the open sky on
+   both the desktop and the phone frame instead of in one corner */
+var cloudT = 90, fine = 1, coverBoost = 0;
 var themeMeta = document.querySelector('meta[name="theme-color"]');
 
 function themeColor(w) {
