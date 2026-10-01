@@ -131,7 +131,6 @@ html.sky .looks { animation: fade 1s ease 1.2s both; }
     text-wrap: balance;
 }
 
-/* a narrow screen breaks the line between the items, never inside one */
 .dateline span { white-space: nowrap; }
 
 .looks {
