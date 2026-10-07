@@ -27,20 +27,13 @@
 
 (function () {
 
+var root = document.documentElement;
 var hero = document.querySelector('.letterhead');
 var canvas = document.getElementById('sky');
 var buttons = Array.prototype.slice.call(document.querySelectorAll('.looks button'));
 if (!hero || !canvas) return;
 
-var gl = canvas.getContext('webgl2', {
-  alpha: false, antialias: false, depth: false, stencil: false,
-  powerPreference: 'low-power'
-});
-if (!gl) return;
-
-var HDR = !!gl.getExtension('EXT_color_buffer_float');
 var reduced = matchMedia('(prefers-reduced-motion: reduce)');
-var SAMPLES = Math.min(4, gl.getParameter(gl.MAX_SAMPLES) || 0);
 var DEG = Math.PI / 180;
 
 /* ------------------------------------------------------------ the world */
@@ -97,8 +90,7 @@ function scene(hex) {
 }
 
 var LOOKS = { day: { d: 1, u: 0, n: 0 }, dusk: { d: 0, u: 1, n: 0 }, night: { d: 0, u: 0, n: 1 } };
-var FLAT = { day: '#7d9fcb', dusk: '#4f5a8a', night: '#121a2e' };
-var THEME = { day: srgb('#4d7bbd'), dusk: srgb('#33457f'), night: srgb('#0b1124') };
+var THEME = { day: srgb('#6282b6'), dusk: srgb('#495282'), night: srgb('#2d313e') };
 
 /* each look: the light (sun, or the moon at night) and its colour, the
    sky's zenith and horizon, the glow about the light, the far horizon's
@@ -142,6 +134,97 @@ var MOON_R = 0.8 * DEG;
 PAL.day.orb = PAL.day.sun;
 PAL.dusk.orb = PAL.dusk.sun;
 PAL.night.orb = MOON;
+
+/* -------------------------------------------------------------- looks */
+/* The whole page wears the look, not just the picture. A script in the
+   head has already chosen it, from this visit or the address, so the
+   first paint is right; a button turns it, and the page's colours turn
+   with the sky and over the same time. */
+
+var look = 'day', tr = null, turning = 0;
+var wCur = { d: 1, u: 0, n: 0 }, wFrom = wCur;
+var themeMeta = document.querySelector('meta[name="theme-color"]');
+
+function themeColor(w) {
+  if (!themeMeta) return;
+  var c = [0, 1, 2].map(function (i) {
+    return Math.round(255 * (THEME.day[i] * w.d + THEME.dusk[i] * w.u + THEME.night[i] * w.n));
+  });
+  themeMeta.setAttribute('content', 'rgb(' + c.join(',') + ')');
+}
+
+function setLook(name, instant) {
+  look = name;
+  buttons.forEach(function (b) {
+    b.setAttribute('aria-pressed', String(b.getAttribute('data-look') === name));
+  });
+  var to = LOOKS[name];
+  var dist = Math.max(Math.abs(to.d - wCur.d), Math.abs(to.u - wCur.u), Math.abs(to.n - wCur.n));
+  var dur = instant || reduced.matches ? 0 : 600 + 900 * dist;
+  if (!dur || !view || slow || dist < 0.002) {
+    wCur = { d: to.d, u: to.u, n: to.n };
+    tr = null;
+    themeColor(wCur);
+  } else {
+    wFrom = { d: wCur.d, u: wCur.u, n: wCur.n };
+    tr = { t0: performance.now(), dur: dur };
+  }
+  /* the links' own quick fades would chase the page's slow one, so they
+     wait it out */
+  clearTimeout(turning);
+  root.classList.toggle('turning', dur > 0);
+  if (dur > 0) turning = setTimeout(function () { root.classList.remove('turning'); }, dur + 100);
+  root.style.setProperty('--turn', Math.round(dur) + 'ms');
+  root.setAttribute('data-look', name);
+  if (gl) wake();
+}
+
+buttons.forEach(function (b) {
+  b.addEventListener('click', function () {
+    var n = b.getAttribute('data-look');
+    if (n === look) return;
+    try { sessionStorage.setItem('look', n); } catch (err) {}
+    setLook(n, false);
+  });
+});
+
+var initial = root.getAttribute('data-look');
+if (!LOOKS[initial]) {
+  try { initial = new URLSearchParams(location.search).get('look') || sessionStorage.getItem('look'); } catch (err) {}
+  if (!LOOKS[initial]) initial = 'day';
+}
+setLook(initial, true);
+root.classList.add('sky');
+
+/* ------------------------------------------------------------- canvas */
+/* Without WebGL2, or with only a software one that would choke on the
+   picture, the page keeps its poster of the look, and the buttons still
+   turn it */
+
+var gl = null;
+try {
+  gl = canvas.getContext('webgl2', {
+    alpha: false, antialias: false, depth: false, stencil: false,
+    powerPreference: 'low-power', failIfMajorPerformanceCaveat: true
+  });
+} catch (err) {}
+if (gl && soft()) gl = null;
+if (!gl) {
+  poster();
+  return;
+}
+
+/* a renderer in software, as a browser without a GPU falls back on */
+function soft() {
+  var r = String(gl.getParameter(gl.RENDERER));
+  if (/^webkit webgl$/i.test(r)) {
+    var info = gl.getExtension('WEBGL_debug_renderer_info');
+    if (info) r = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL));
+  }
+  return /swiftshader|llvmpipe|softpipe|software|basic render/i.test(r);
+}
+
+var HDR = !!gl.getExtension('EXT_color_buffer_float');
 
 /* ------------------------------------------------------------ shaders */
 
@@ -486,8 +569,8 @@ float bound(vec2 p) {
   return max(b, meadowH(p) + 1.0);
 }
 
-float traceFar(vec3 ro, vec3 rd) {
-  float t = 700.0, lt = 700.0;
+float traceFar(vec3 ro, vec3 rd, float t0, float lt0) {
+  float t = t0, lt = lt0;
   float tmax = 120000.0;
   if (rd.y > 0.0) tmax = min(tmax, (4800.0 - ro.y) / rd.y);
   float h = 1e9;
@@ -519,7 +602,7 @@ float traceFar(vec3 ro, vec3 rd) {
 
 float trace(vec3 ro, vec3 rd) {
   float t = traceMeadow(ro, rd);
-  return t > 0.0 ? t : traceFar(ro, rd);
+  return t > 0.0 ? t : traceFar(ro, rd, 700.0, 700.0);
 }
 `;
 
@@ -533,13 +616,16 @@ void main() {
 
 /* the land, shaded once for each look: every pixel is a ray into the
    heightfield; pixels on an edge (a ridge against the sky, a near crest
-   against a far one) take four rays, so the skylines come out clean */
+   against a far one) take four rays, so the skylines come out clean.
+   Once the picture is up, a second pass goes back over the horn, where
+   the eye rests, and gives every pixel of it four rays too */
 var LAND = HEAD + NOISE + MEADOW + TERRAIN + LOOK + PACK + TRACE + `
 layout(location = 0) out vec4 o0;
 layout(location = 1) out vec4 o1;
 layout(location = 2) out vec4 o2;
 layout(location = 3) out vec4 o3;
 uniform sampler2D PREB;
+uniform float REFINE;
 
 const vec2 SS[4] = vec2[4](vec2(0.125, 0.375), vec2(0.375, -0.125), vec2(-0.125, -0.375), vec2(-0.375, 0.125));
 
@@ -588,14 +674,20 @@ float shadow(vec3 ro, vec3 L) {
    line; scree under the faces, pasture and larch lower down; snow where
    the ground is high and flat enough to hold it, and on the glaciers
    the blue lines of crevasses */
-vec3 rockAlbedo(vec3 p, vec3 n, out float snow) {
+vec3 rockAlbedo(vec3 p, vec3 n, float lod, out float snow) {
   float y = p.y;
   float n1 = vn(p.xz / 47.0), n2 = vn(p.xz / 233.0 + 7.0), n3 = vn(p.xz / 11.0 + 3.0);
   vec2 fall = normalize(n.xz + 1e-5);
   vec2 sq = vec2(dot(p.xz, vec2(-fall.y, fall.x)) / 9.0, dot(p.xz, fall) / 140.0);
   float streak = 0.6 * vn(sq) + 0.4 * vn(sq * 2.7 + 5.0);
   vec3 rock = mix(vec3(0.055, 0.050, 0.046), vec3(0.135, 0.115, 0.095), n1 * 0.6 + n3 * 0.4);
-  rock *= 0.78 + 0.44 * smoothstep(0.25, 0.75, vn(vec2(y / 26.0 + n2 * 3.0, p.x / 700.0)));
+  /* the bands lie unevenly, dip a little and break off, showing on some
+     stretches of a face and not on others, and they fade out before they
+     are finer than the pixels, so they never stripe the faces */
+  float lay = (y + 0.22 * dot(p.xz, vec2(0.8, -0.6))) / 31.0 + 2.4 * n2 + 1.3 * vn(p.xz / 150.0 + 19.0);
+  float bands = 0.65 * vn(vec2(lay, dot(p.xz, vec2(0.6, 0.8)) / 240.0)) + 0.35 * vn(vec2(lay * 2.3 + 7.0, dot(p.xz, vec2(-0.8, 0.6)) / 130.0));
+  float bandK = 0.34 * smoothstep(0.3, 0.7, vn(p.xz / 520.0 + 23.0)) * (1.0 - smoothstep(0.1, 0.3, lod / 31.0));
+  rock *= 1.0 + bandK * (smoothstep(0.2, 0.8, bands) - 0.5);
   rock *= 0.75 + 0.45 * streak;
   rock = mix(rock, vec3(0.20, 0.14, 0.09), 0.3 * smoothstep(0.62, 0.85, n2));
   float scree = smoothstep(0.6, 0.8, n.y) * smoothstep(3350.0, 2650.0, y);
@@ -681,15 +773,24 @@ void main() {
       if (abs(log(tn) - lc) > 0.04) edge = true;
     }
   }
-  int ns = edge ? 4 : 1;
+  if (REFINE > 0.5) {
+    vec3 hp = EYE + camDir(gl_FragCoord.xy / RES, CAM) * tc;
+    vec2 hd = hp.xz - HORN;
+    if (edge || tc > 1.5e5 || hp.y < 2900.0 || dot(hd, hd) > 2600.0 * 2600.0) discard;
+  }
+  int ns = edge || REFINE > 0.5 ? 4 : 1;
   vec3 c0 = vec3(0.0), c1 = vec3(0.0), c2 = vec3(0.0), df = vec3(0.0);
-  float hits = 0.0, lt = 0.0, sn = 0.0;
+  float hits = 0.0, lt = 0.0, sn = 0.0, sh0 = 1.0, sh1 = 1.0, sh2 = 1.0;
   for (int s = 0; s < 4; s++) {
     if (s >= ns) break;
-    vec2 f = gl_FragCoord.xy + (edge ? SS[s] : vec2(0.0));
+    vec2 f = gl_FragCoord.xy + (ns > 1 ? SS[s] : vec2(0.0));
     vec3 rd = camDir(f / RES, CAM);
+    /* an edge's rays may each find a different crest, so each is traced
+       from the eye; the horn's lie on one face, so each starts its search
+       just short of the face the pixel found */
     float t;
     if (edge) t = trace(EYE, rd);
+    else if (ns > 1) t = tc < 2400.0 ? trace(EYE, rd) : traceFar(EYE, rd, tc * 0.98, tc * 0.95);
     else t = tc > 1.5e5 ? -1.0 : tc;
     if (t <= 0.0) continue;
     vec3 p = EYE + rd * t;
@@ -697,13 +798,18 @@ void main() {
     float lod = max(t * PIX, 0.02);
     vec3 n = meadow ? meadowNormal(p.xz) : terrainNormal(p.xz, lod);
     float snow = 0.0;
-    vec3 alb = meadow ? meadowAlbedo(p, t) : rockAlbedo(p, n, snow);
+    vec3 alb = meadow ? meadowAlbedo(p, t) : rockAlbedo(p, n, lod, snow);
     float ao = meadow ? 1.0 : terrainAO(p, n, lod);
-    vec3 so = p + n * (0.5 + t * 0.002);
+    if (edge || hits < 0.5) {
+      vec3 so = p + n * (0.5 + t * 0.002);
+      sh0 = shadow(so, LK[0].sun);
+      sh1 = shadow(so, LK[1].sun);
+      sh2 = shadow(so, LK[2].sun);
+    }
     float d0, d1, d2;
-    c0 += light(LK[0], p, n, rd, t, alb, snow, ao, shadow(so, LK[0].sun), meadow, d0);
-    c1 += light(LK[1], p, n, rd, t, alb, snow, ao, shadow(so, LK[1].sun), meadow, d1);
-    c2 += light(LK[2], p, n, rd, t, alb, snow, ao, shadow(so, LK[2].sun), meadow, d2);
+    c0 += light(LK[0], p, n, rd, t, alb, snow, ao, sh0, meadow, d0);
+    c1 += light(LK[1], p, n, rd, t, alb, snow, ao, sh1, meadow, d1);
+    c2 += light(LK[2], p, n, rd, t, alb, snow, ao, sh2, meadow, d2);
     df += vec3(d0, d1, d2);
     hits += 1.0;
     lt += log(t);
@@ -1422,32 +1528,37 @@ void main() {
 
 /* ------------------------------------------------------------------ gl */
 
-function compile(type, src) {
+function shader(type, src) {
   var s = gl.createShader(type);
   gl.shaderSource(s, src);
   gl.compileShader(s);
-  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
-    console.error(gl.getShaderInfoLog(s));
-    return null;
-  }
   return s;
 }
 
+/* a program is linked but not waited on: with the parallel compile
+   extension the driver builds them all off the main thread while the
+   page settles, and the picture starts once every one is ready */
 function program(fragSrc, names, vertSrc) {
-  var vs = compile(gl.VERTEX_SHADER, vertSrc || VERT);
-  var fs = compile(gl.FRAGMENT_SHADER, fragSrc);
-  if (!vs || !fs) return null;
+  var vs = shader(gl.VERTEX_SHADER, vertSrc || VERT), fs = shader(gl.FRAGMENT_SHADER, fragSrc);
   var prog = gl.createProgram();
   gl.attachShader(prog, vs);
   gl.attachShader(prog, fs);
   gl.linkProgram(prog);
-  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-    console.error(gl.getProgramInfoLog(prog));
-    return null;
+  return { p: prog, vs: vs, fs: fs, names: names, u: null };
+}
+
+function linked(prog) {
+  return !PSC || gl.getProgramParameter(prog.p, PSC.COMPLETION_STATUS_KHR);
+}
+
+function finish(prog) {
+  if (!gl.getProgramParameter(prog.p, gl.LINK_STATUS)) {
+    console.error(gl.getShaderInfoLog(prog.vs) || gl.getShaderInfoLog(prog.fs) || gl.getProgramInfoLog(prog.p));
+    return false;
   }
-  var u = {};
-  names.forEach(function (n) { u[n] = gl.getUniformLocation(prog, n); });
-  return { p: prog, u: u };
+  prog.u = {};
+  prog.names.forEach(function (n) { prog.u[n] = gl.getUniformLocation(prog.p, n); });
+  return true;
 }
 
 var LOOK_KEYS = ['sun', 'orb', 'sunc', 'zen', 'hor', 'glow', 'belt', 'amb', 'bnc', 'fog', 'alp', 'halo', 'sky2'];
@@ -1466,23 +1577,61 @@ function setLooks(prog) {
 }
 
 var TRACE_U = ['CAM', 'EYE', 'RES', 'PIX'];
-var preProg = program(PRE, TRACE_U);
-var landProg = program(LAND, TRACE_U.concat(['PREB']));
-var maskProg = program(MASK, ['LA0', 'LA3', 'FULL']);
-var skyProg = program(SKY, ['CAM', 'EYE', 'W', 'SUN', 'CLIT', 'CMID', 'CSHD', 'GLOW', 'CLT', 'SCALE', 'COVER', 'NIGHT', 'DUSK', 'FINE', 'PEAK', 'MASKT']);
-var bokehProg = program(bokehSrc(TAPS), ['SRC', 'TEXEL', 'RAD']);
-var bokeh32Prog = program(bokehSrc(TAPS32), ['SRC', 'TEXEL', 'RAD']);
 var GU = ['CAM', 'EYEG', 'CLIP', 'T', 'WENV', 'WIND', 'BRUSHT', 'BRUSHM', 'LDIR', 'LCOL', 'AMB', 'TRN', 'GSCALE', 'PIXR'];
-var bladeProg = program(BLADE_FS, GU, BLADE_VS);
-var headProg = program(HEAD_FS, GU.concat(['A2C']), HEAD_VS);
-var partProg = program(PART_FS, GU.concat(['VIS', 'HALFW', 'DRIFT']), PART_VS);
-var compProg = program(COMP, ['LA0', 'LA1', 'LA2', 'LA3', 'SKA', 'SKB', 'GFAR', 'GMID', 'GNEAR', 'CAM', 'EYE', 'W', 'MOON', 'GN', 'GC', 'GV', 'T', 'G', 'SCALE', 'GSCALE', 'EXPO', 'MOONR', 'PH', 'STARS', 'CLT', 'MILKY', 'METON', 'METP', 'METS', 'METL', 'MET', 'CTON', 'CTP', 'CTAGE', 'CT', 'JK']);
-if (!preProg || !landProg || !maskProg || !skyProg || !bokehProg || !bokeh32Prog || !bladeProg || !headProg || !partProg || !compProg) return;
-[landProg, skyProg, compProg].forEach(setLooks);
+var preProg, landProg, maskProg, skyProg, bokehProg, bokeh32Prog, bladeProg, headProg, partProg, compProg;
+var progs = [], glReady = false, failed = false;
+var PSC = null, SAMPLES = 0;
 
 var SCALE = HDR ? 1.0 : 0.5;
 var GSCALE = HDR ? 1.0 : 0.5;
 var CFMT = HDR ? gl.RGBA16F : gl.RGBA8;
+
+/* the most samples up to four that the far grass's format can take */
+function samplesFor(fmt) {
+  var s = null, best = 0;
+  try { s = gl.getInternalformatParameter(gl.RENDERBUFFER, fmt, gl.SAMPLES); } catch (err) {}
+  for (var i = 0; s && i < s.length; i++) if (s[i] <= 4 && s[i] > best) best = s[i];
+  return best;
+}
+
+/* everything the context holds, made at the start and again if a lost
+   context comes back */
+function initGL() {
+  PSC = gl.getExtension('KHR_parallel_shader_compile');
+  preProg = program(PRE, TRACE_U);
+  landProg = program(LAND, TRACE_U.concat(['PREB', 'REFINE']));
+  maskProg = program(MASK, ['LA0', 'LA3', 'FULL']);
+  skyProg = program(SKY, ['CAM', 'EYE', 'W', 'SUN', 'CLIT', 'CMID', 'CSHD', 'GLOW', 'CLT', 'SCALE', 'COVER', 'NIGHT', 'DUSK', 'FINE', 'PEAK', 'MASKT']);
+  bokehProg = program(bokehSrc(TAPS), ['SRC', 'TEXEL', 'RAD']);
+  bokeh32Prog = program(bokehSrc(TAPS32), ['SRC', 'TEXEL', 'RAD']);
+  bladeProg = program(BLADE_FS, GU, BLADE_VS);
+  headProg = program(HEAD_FS, GU.concat(['A2C']), HEAD_VS);
+  partProg = program(PART_FS, GU.concat(['VIS', 'HALFW', 'DRIFT']), PART_VS);
+  compProg = program(COMP, ['LA0', 'LA1', 'LA2', 'LA3', 'SKA', 'SKB', 'GFAR', 'GMID', 'GNEAR', 'CAM', 'EYE', 'W', 'MOON', 'GN', 'GC', 'GV', 'T', 'G', 'SCALE', 'GSCALE', 'EXPO', 'MOONR', 'PH', 'STARS', 'CLT', 'MILKY', 'METON', 'METP', 'METS', 'METL', 'MET', 'CTON', 'CTP', 'CTAGE', 'CT', 'JK']);
+  progs = [preProg, landProg, maskProg, skyProg, bokehProg, bokeh32Prog, bladeProg, headProg, partProg, compProg];
+  glReady = false;
+  SAMPLES = samplesFor(CFMT);
+  brushTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, brushTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, BW, BH, 0, gl.RG, gl.FLOAT, bD);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+}
+
+/* true once every program has linked; a program that failed sends the
+   page back to its poster */
+function glUp() {
+  if (glReady) return true;
+  if (failed || !progs.every(linked)) return false;
+  if (!progs.every(finish)) {
+    fail();
+    return false;
+  }
+  glReady = true;
+  return true;
+}
 
 function layerTex(filter) {
   var t = gl.createTexture();
@@ -1501,9 +1650,9 @@ function storage(t, w, h, fmt) {
 }
 
 /* a framebuffer with n colour textures of the given formats, and a depth
-   buffer if asked */
+   buffer if asked; ok says whether the driver can draw to it */
 function target(w, h, fmts, depth, filter) {
-  var r = { fbo: gl.createFramebuffer(), w: w, h: h, tex: [], depth: null };
+  var r = { fbo: gl.createFramebuffer(), w: w, h: h, tex: [], depth: null, ms: null };
   gl.bindFramebuffer(gl.FRAMEBUFFER, r.fbo);
   var bufs = [];
   fmts.forEach(function (f, i) {
@@ -1520,14 +1669,15 @@ function target(w, h, fmts, depth, filter) {
     gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
     gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, r.depth);
   }
+  r.ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   return r;
 }
 
-/* the far grass is drawn multisampled and resolved into a texture */
+/* the far grass is drawn multisampled and resolved into a texture, where
+   the format allows it */
 function msTarget(w, h) {
   var r = target(w, h, [CFMT], false, gl.NEAREST);
-  r.ms = null;
   if (SAMPLES > 1) {
     r.ms = gl.createFramebuffer();
     r.msc = gl.createRenderbuffer();
@@ -1539,15 +1689,21 @@ function msTarget(w, h) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, r.ms);
     gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, r.msc);
     gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, r.msd);
+    var ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  } else {
-    r.depth = gl.createRenderbuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, r.fbo);
-    gl.bindRenderbuffer(gl.RENDERBUFFER, r.depth);
-    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
-    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, r.depth);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    if (ok) return r;
+    gl.deleteFramebuffer(r.ms);
+    gl.deleteRenderbuffer(r.msc);
+    gl.deleteRenderbuffer(r.msd);
+    r.ms = null;
+    SAMPLES = 0;
   }
+  r.depth = gl.createRenderbuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, r.fbo);
+  gl.bindRenderbuffer(gl.RENDERBUFFER, r.depth);
+  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, r.depth);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   return r;
 }
 
@@ -1559,7 +1715,9 @@ function drop(r) {
   gl.deleteFramebuffer(r.fbo);
 }
 
-var preT = null, landT = null, maskT = null, skyT = null, farT = null, midT = null, nearT = null, midB = null, nearB = null;
+/* the land of the picture on screen, and the targets every frame draws
+   through, all of its size */
+var landT = null, maskT = null, skyT = null, farT = null, midT = null, nearT = null, midB = null, nearB = null;
 
 /* ------------------------------------------------------------- random */
 
@@ -1610,15 +1768,29 @@ function smooth01(a, b, x) {
   return k * k * (3 - 2 * k);
 }
 
-function layout(aspect) {
+function layoutFor(aspect) {
   var k1 = smooth01(1.5, 1.25, aspect), k2 = smooth01(1.15, 0.7, aspect);
-  FOVY = (36 + 10 * k1 + 10 * k2) * DEG;
-  PITCH = (6 - 6.5 * k1 - 1.5 * k2) * DEG;
-  YAW0 = (19 * k2 - 2.5 * k1 * (1 - k2)) * DEG;
-  BOXT = [0.5, 0.46, 0.24 + 0.2 * k2, 0.07];
-  EYE[1] = 2300.34 + 0.4 * k2;
-  MOON = dirAzEl(-20 + 28 * k2, 18 + 3 * k2);
-  PAL.night.sun = dirAzEl(-75 + 30 * k2, 28);
+  return {
+    fovy: (36 + 10 * k1 + 10 * k2) * DEG,
+    pitch: (6 - 6.5 * k1 - 1.5 * k2) * DEG,
+    yaw: (19 * k2 - 2.5 * k1 * (1 - k2)) * DEG,
+    boxt: [0.5, 0.46, 0.24 + 0.2 * k2, 0.07],
+    eye: 2300.34 + 0.4 * k2,
+    moon: dirAzEl(-20 + 28 * k2, 18 + 3 * k2),
+    nightSun: dirAzEl(-75 + 30 * k2, 28)
+  };
+}
+
+/* a frame is set up for one layout at a time: the one on screen, or for
+   a moment the one a new size is being built for */
+function useLayout(L) {
+  FOVY = L.fovy;
+  PITCH = L.pitch;
+  YAW0 = L.yaw;
+  BOXT = L.boxt;
+  EYE[1] = L.eye;
+  MOON = L.moon;
+  PAL.night.sun = L.nightSun;
   PAL.day.orb = PAL.day.sun;
   PAL.dusk.orb = PAL.dusk.sun;
   PAL.night.orb = MOON;
@@ -1633,9 +1805,9 @@ function camFor(w, h, pitch, yaw) {
 
 var meadow = null;
 
-function buildMeadow() {
+function buildMeadow(w, h) {
   var rnd = mulberry32(20260930);
-  var cam = camFor(canvas.width, canvas.height, PITCH, YAW0);
+  var cam = camFor(w, h, PITCH, YAW0);
   var tanW = cam[0] * 1.12;
   /* the meadow is laid out once in the world, over a wedge wide enough
      for any frame, so every frame sees the same grass; what falls
@@ -1769,79 +1941,178 @@ function upload(m) {
 /* ----------------------------------------------------- the land build */
 /* The land is traced once per size: a pass that finds how far each
    pixel's ray runs, then a pass that shades it for all three looks.
-   Both go in strips across a few frames, sized to the time each frame
-   leaves, and the picture shows when the last strip lands. */
+   Both go in strips, each sized to the time the one before it took, so
+   the page never stalls on them, and the picture shows when the last
+   strip lands; then the horn's own pass follows. A new size is built
+   beside the picture on screen, which holds its last frame until the new
+   one is ready to take its place. */
 
-var build = null, ready = false;
+var view = null, pend = null;
+var PX8 = new Uint8Array(4), PX32 = new Float32Array(4);
 
-function startBuild() {
-  build = { phase: 0, y: 0, k: 1 };
-  ready = false;
+function makeBuild(sz) {
+  var w = sz[0], h = sz[1];
+  var b = {
+    w: w, h: h, lay: layoutFor(w / h), phase: 0, y: 0, y1: h, x0: 0, x1: w, rows: 8, cost: 0,
+    prof: new Float32Array(h), k: [0, 4, 16]
+  };
+  b.pre = target(w, h, [gl.RGBA8], false, gl.NEAREST);
+  b.land = target(w, h, [CFMT, CFMT, CFMT, CFMT], false, gl.NEAREST);
+  b.mask = target(Math.max(1, Math.round(w * 0.5)), Math.max(1, Math.round(h * 0.5)), [gl.RGBA8], false, gl.NEAREST);
+  if (!b.pre.ok || !b.land.ok || !b.mask.ok) {
+    dropBuild(b);
+    fail();
+    return null;
+  }
+  return b;
 }
 
-function stripPass(prog, tgt, y0, rows) {
+function dropBuild(b) {
+  if (!b) return;
+  drop(b.pre);
+  drop(b.land);
+  drop(b.mask);
+  b.pre = b.land = b.mask = null;
+}
+
+function stripPass(tgt, x0, x1, y0, rows) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, tgt.fbo);
   gl.viewport(0, 0, tgt.w, tgt.h);
   gl.enable(gl.SCISSOR_TEST);
-  gl.scissor(0, y0, tgt.w, rows);
+  gl.scissor(x0, y0, x1 - x0, rows);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.disable(gl.SCISSOR_TEST);
 }
 
-function useTrace(prog, cam) {
+function useTrace(prog, cam, w, h) {
   gl.useProgram(prog.p);
   gl.uniform4f(prog.u.CAM, cam[0], cam[1], cam[2], cam[3]);
   gl.uniform3f(prog.u.EYE, EYE[0], EYE[1], EYE[2]);
-  gl.uniform2f(prog.u.RES, canvas.width, canvas.height);
-  gl.uniform1f(prog.u.PIX, 2 * cam[1] / canvas.height);
+  gl.uniform2f(prog.u.RES, w, h);
+  gl.uniform1f(prog.u.PIX, 2 * cam[1] / h);
 }
 
-function buildStep() {
-  var cam = camFor(canvas.width, canvas.height, PITCH, YAW0);
-  var H = canvas.height, ROWS = 24;
-  var t0 = performance.now();
-  var done = 0;
-  while (done < build.k && build.phase < 2) {
-    if (build.phase === 0) {
-      useTrace(preProg, cam);
-      stripPass(preProg, preT, build.y, ROWS);
-    } else {
-      useTrace(landProg, cam);
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, preT.tex[0]);
-      gl.uniform1i(landProg.u.PREB, 0);
-      stripPass(landProg, landT, build.y, ROWS);
-    }
-    build.y += ROWS;
-    if (build.y >= H) { build.phase++; build.y = 0; }
-    done++;
-  }
-  /* wait for the strips to land, and size the next batch to the time
-     they took; a float target is read back as floats */
-  var flt = build.phase !== 0 && CFMT === gl.RGBA16F;
-  gl.bindFramebuffer(gl.FRAMEBUFFER, build.phase === 0 ? preT.fbo : landT.fbo);
-  gl.readPixels(0, 0, 1, 1, gl.RGBA, flt ? gl.FLOAT : gl.UNSIGNED_BYTE, flt ? new Float32Array(4) : new Uint8Array(4));
+/* wait for the GPU to finish, so that a strip's time is its own and the
+   next can be sized by it; a float target is read back as floats */
+function settle(fbo, flt) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  if (flt) gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.FLOAT, PX32);
+  else gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX8);
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  var ms = performance.now() - t0;
-  if (ms < 7) build.k = Math.min(build.k * 2, 64);
-  else if (ms > 14) build.k = Math.max(1, Math.floor(build.k / 2));
-  if (build.phase >= 2) {
-    gl.useProgram(maskProg.p);
+}
+
+/* the trace pass learns what each row costs, its strips growing to the
+   frame's budget; the shading passes cost some multiple of that, learned
+   as they go, so their strips are planned row by row and the costly
+   rows across the mountains never land all at once. The horn's pass
+   shares its frames with the moving picture, so it takes a smaller
+   budget, and waits for the frame before to finish before timing its
+   own strip */
+function buildStep(b) {
+  useLayout(b.lay);
+  var cam = camFor(b.w, b.h, PITCH, YAW0);
+  var shade = b.phase > 0;
+  var budget = b === view ? 6 : 14;
+  var rows = shade ? plan(b, budget) : Math.min(b.rows, b.y1 - b.y);
+  var tgt = shade ? b.land : b.pre;
+  if (shade) {
+    setLooks(landProg);
+    useTrace(landProg, cam, b.w, b.h);
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, landT.tex[0]);
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, landT.tex[3]);
-    gl.uniform1i(maskProg.u.LA0, 0);
-    gl.uniform1i(maskProg.u.LA3, 1);
-    gl.uniform2i(maskProg.u.FULL, canvas.width, canvas.height);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, maskT.fbo);
-    gl.viewport(0, 0, maskT.w, maskT.h);
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.activeTexture(gl.TEXTURE0);
-    build = null;
-    ready = true;
+    gl.bindTexture(gl.TEXTURE_2D, b.pre.tex[0]);
+    gl.uniform1i(landProg.u.PREB, 0);
+    gl.uniform1f(landProg.u.REFINE, b.phase > 1 ? 1 : 0);
+  } else useTrace(preProg, cam, b.w, b.h);
+  var flt = shade && CFMT === gl.RGBA16F;
+  if (b === view) settle(tgt.fbo, flt);
+  var t0 = performance.now();
+  stripPass(tgt, b.x0, b.x1, b.y, rows);
+  settle(tgt.fbo, flt);
+  var ms = performance.now() - t0, i;
+  if (shade) {
+    var pred = 0;
+    for (i = 0; i < rows; i++) pred += Math.max(b.prof[b.y + i], 0.002);
+    var k = b.k[b.phase];
+    b.k[b.phase] = Math.min(k * 2, Math.max(k * 0.5, 0.5 * k + 0.5 * ms / pred));
+  } else {
+    b.cost += ms;
+    for (i = 0; i < rows; i++) b.prof[b.y + i] = ms / rows;
+    b.rows = Math.max(4, Math.min(Math.round(budget * rows / Math.max(ms, 0.5)), Math.round(b.rows * 1.5)));
   }
+  b.y += rows;
+  if (b.y >= b.y1) {
+    if (b.phase === 1) maskPass(b);
+    b.phase++;
+    b.y = 0;
+    if (b.phase === 2) {
+      if (quality < 1 || slow) b.phase = 3;
+      else hornBox(b, cam);
+    }
+  }
+  if (b.phase > 2 && b.pre) {
+    drop(b.pre);
+    b.pre = null;
+  }
+  if (view && view !== b) useLayout(view.lay);
+}
+
+function plan(b, budget) {
+  var k = b.k[b.phase], acc = 0, n = 0;
+  while (b.y + n < b.y1) {
+    var c = Math.max(b.prof[b.y + n], 0.002) * k;
+    if (n > 0 && acc + c > budget) break;
+    acc += c;
+    n++;
+  }
+  return n;
+}
+
+/* the horn's pass covers only the part of the frame the horn can take */
+function hornBox(b, cam) {
+  var x0 = b.w, x1 = 0, y0 = b.h, y1 = 0;
+  for (var i = 0; i < 8; i++) {
+    var s = toScreen([HORN[0] + (i & 1 ? 2600 : -2600), i & 2 ? 4700 : 2900, HORN[1] + (i & 4 ? 2600 : -2600)], cam);
+    if (!s) continue;
+    x0 = Math.min(x0, s[0] * b.w);
+    x1 = Math.max(x1, s[0] * b.w);
+    y0 = Math.min(y0, s[1] * b.h);
+    y1 = Math.max(y1, s[1] * b.h);
+  }
+  b.x0 = Math.max(0, Math.floor(x0));
+  b.x1 = Math.min(b.w, Math.ceil(x1));
+  b.y = Math.max(0, Math.floor(y0));
+  b.y1 = Math.min(b.h, Math.ceil(y1));
+  if (b.x1 <= b.x0 || b.y1 <= b.y) b.phase = 3;
+}
+
+/* where a point of the world falls in the frame, as the shaders' own
+   projection puts it, 0 to 1 from the bottom left */
+function toScreen(p, cam) {
+  var x = p[0] - EYE[0], y = p[1] - EYE[1], z = p[2] - EYE[2];
+  var cy = Math.cos(cam[3]), sy = Math.sin(cam[3]);
+  var x1 = x * cy - z * sy, z1 = x * sy + z * cy;
+  var cp = Math.cos(cam[2]), sp = Math.sin(cam[2]);
+  var y0 = y * cp - z1 * sp, z0 = y * sp + z1 * cp;
+  if (z0 < 1) return null;
+  return [x1 / z0 / cam[0] * 0.5 + 0.5, y0 / z0 / cam[1] * 0.5 + 0.5];
+}
+
+/* where the sky can be seen at all, at the sky pass's resolution, once
+   the land is built */
+function maskPass(b) {
+  gl.useProgram(maskProg.p);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, b.land.tex[0]);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, b.land.tex[3]);
+  gl.uniform1i(maskProg.u.LA0, 0);
+  gl.uniform1i(maskProg.u.LA3, 1);
+  gl.uniform2i(maskProg.u.FULL, b.w, b.h);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, b.mask.fbo);
+  gl.viewport(0, 0, b.mask.w, b.mask.h);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.activeTexture(gl.TEXTURE0);
 }
 
 /* ----------------------------------------------------------- the events */
@@ -1912,43 +2183,13 @@ function sunDir(w, key) {
 
 /* --------------------------------------------------------------- state */
 
-var look = 'day', tr = null;
-var wCur = { d: 1, u: 0, n: 0 }, wFrom = wCur;
 var mx = 0, my = 0, tx = 0, ty = 0;
-var running = false, raf = 0, last = 0, frameNo = 0, brushing = false;
+var raf = 0, last = 0, frameNo = 0, brushing = false;
 var visible = !document.hidden, inView = true;
 var cloudT = 120;
 /* how far the breeze has carried the seeds, summed frame by frame so a
    change in its strength never jolts them */
 var drift = 0;
-var themeMeta = document.querySelector('meta[name="theme-color"]');
-
-function themeColor(w) {
-  if (!themeMeta) return;
-  var c = [0, 1, 2].map(function (i) {
-    return Math.round(255 * (THEME.day[i] * w.d + THEME.dusk[i] * w.u + THEME.night[i] * w.n));
-  });
-  themeMeta.setAttribute('content', 'rgb(' + c.join(',') + ')');
-}
-
-function setLook(name, instant) {
-  look = name;
-  buttons.forEach(function (b) {
-    b.setAttribute('aria-pressed', String(b.getAttribute('data-look') === name));
-  });
-  hero.style.backgroundColor = FLAT[name];
-  var to = LOOKS[name];
-  var dist = Math.max(Math.abs(to.d - wCur.d), Math.abs(to.u - wCur.u), Math.abs(to.n - wCur.n));
-  if (instant || reduced.matches || dist < 0.002) {
-    wCur = { d: to.d, u: to.u, n: to.n };
-    tr = null;
-    themeColor(wCur);
-  } else {
-    wFrom = { d: wCur.d, u: wCur.u, n: wCur.n };
-    tr = { t0: performance.now(), dur: 600 + 900 * dist };
-  }
-  wake();
-}
 
 function u3(loc, v) { gl.uniform3f(loc, v[0], v[1], v[2]); }
 
@@ -1981,13 +2222,7 @@ var BL0 = Math.log(BR0 + BR1 * BZ0), BL1 = Math.log(BR0 + BR1 * BZ1);
 var bD = new Float32Array(BW * BH * 2), bV = new Float32Array(BW * BH * 2), bT = new Float32Array(BW * BH * 2);
 var bZ = new Float32Array(BH), bAct = null;
 for (var bj = 0; bj < BH; bj++) bZ[bj] = (Math.exp(BL0 + (bj + 0.5) / BH * (BL1 - BL0)) - BR0) / BR1;
-var brushTex = gl.createTexture();
-gl.bindTexture(gl.TEXTURE_2D, brushTex);
-gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, BW, BH, 0, gl.RG, gl.FLOAT, bD);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+var brushTex = null;
 
 var path = [], hand = null, handK = 0, handDir = [0, 0];
 
@@ -2197,16 +2432,21 @@ function drawBand(b, tgt, cam, eyeg, t, env, w, pixr, vis, msaa) {
   }
 }
 
+/* the look on its way from one to the next, eased as the page's colours
+   are */
+function turn(now) {
+  if (!tr) return;
+  var k = Math.min(1, (now - tr.t0) / tr.dur);
+  k = k * k * (3 - 2 * k);
+  var to = LOOKS[look];
+  wCur = { d: wFrom.d + (to.d - wFrom.d) * k, u: wFrom.u + (to.u - wFrom.u) * k, n: wFrom.n + (to.n - wFrom.n) * k };
+  themeColor(wCur);
+  if (k >= 1) tr = null;
+}
+
 function draw(now) {
-  if (tr) {
-    var k = Math.min(1, (now - tr.t0) / tr.dur);
-    k = k * k * (3 - 2 * k);
-    var to = LOOKS[look];
-    wCur = { d: wFrom.d + (to.d - wFrom.d) * k, u: wFrom.u + (to.u - wFrom.u) * k, n: wFrom.n + (to.n - wFrom.n) * k };
-    themeColor(wCur);
-    if (k >= 1) tr = null;
-  }
-  var still = reduced.matches;
+  turn(now);
+  var still = reduced.matches || slow;
   var dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
   var l = still ? 1 : 1 - Math.exp(-(now - last) / 160);
   mx += (tx - mx) * l;
@@ -2307,111 +2547,266 @@ function draw(now) {
   gl.uniform4f(u.CT, jet.a[0], jet.a[1], jet.b[0], jet.b[1]);
   gl.uniform1f(u.JK, FOVY / (21 * DEG));
   gl.drawArrays(gl.TRIANGLES, 0, 3);
-  canvas.classList.add('drawn');
+}
+
+/* ------------------------------------------------------------ the loop */
+/* Each frame: a strip of the build in progress, a strip of the horn's
+   pass once the picture is up, and the picture itself, every frame while
+   something moves and at a gentler pace otherwise. A still picture, for
+   reduced motion or a GPU that cannot keep up, is drawn only when it
+   changes. */
+
+var slow = false, lost = false, losses = 0, lostTimer = 0;
+var MINQ = 0.45, quality = 1, calibrated = false, probing = true, retunes = 0, times = [];
+var LIM = Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE), gl.getParameter(gl.MAX_RENDERBUFFER_SIZE));
+
+function animating() {
+  return !!view && visible && inView && !reduced.matches && !slow;
 }
 
 function frame(now) {
   raf = 0;
-  if (build) {
-    buildStep();
-    if (ready) {
-      draw(now);
-      last = now;
-      running = !reduced.matches && visible && inView;
+  if (lost || failed) return;
+  if (!glUp()) {
+    if (!failed) raf = requestAnimationFrame(frame);
+    return;
+  }
+  if (!view && !pend) rebuild();
+  /* while a new size is built the picture on screen holds its last frame,
+     cropped to fit, and the build has the GPU to itself */
+  if (pend) {
+    buildStep(pend);
+    calibrate();
+    if (pend && pend.phase > 1) {
+      var b = pend;
+      pend = null;
+      show(b, now);
+    } else turn(now);
+  } else {
+    if (view && view.phase === 2) {
+      buildStep(view);
+      if (view.phase > 2 && !animating()) draw(now);
     }
-    if (build || running) raf = requestAnimationFrame(frame);
+    if (view && animating() && now > last) {
+      var busy = tr || brushing || meteor.on || Math.abs(tx - mx) > 0.002 || Math.abs(ty - my) > 0.002;
+      if (now - last >= (busy ? 0 : 30)) {
+        if (probing) timed(now);
+        else draw(now);
+        last = now;
+      }
+    }
+  }
+  if (pend || (view && view.phase === 2) || animating()) raf = requestAnimationFrame(frame);
+}
+
+/* the first build learns how quick the GPU is from its first pass, which
+   costs about a dozen frames of the picture, and a GPU far too slow for
+   the canvas gets a smaller one before the costly shading starts; the
+   timing of the first frames settles the rest */
+function calibrate() {
+  if (calibrated || !pend || pend.phase !== 1 || pend.y !== 0) return;
+  calibrated = true;
+  var est = pend.cost / 12;
+  if (est > 40 && quality > MINQ) {
+    quality = Math.max(MINQ, quality * Math.sqrt(16 / est));
+    rebuild();
+  }
+}
+
+/* the picture's first dozen frames are timed to the GPU's finish; if
+   they run long the canvas shrinks, and once it is as small as it goes
+   the picture holds still. Only a GPU that needed no shrinking makes the
+   horn's pass */
+function timed(now) {
+  var t0 = performance.now();
+  draw(now);
+  gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX8);
+  times.push(performance.now() - t0);
+  if (times.length < 12) return;
+  times.sort(function (a, b) { return a - b; });
+  var med = times[6];
+  times = [];
+  probing = false;
+  if (med < 28) return;
+  if (quality > MINQ + 0.01 && retunes < 2) {
+    retunes++;
+    quality = Math.max(MINQ, quality * Math.sqrt(16 / med));
+    probing = true;
+    rebuild();
     return;
   }
-  if (!running) return;
-  var busy = tr || brushing || meteor.on || Math.abs(tx - mx) > 0.002 || Math.abs(ty - my) > 0.002;
-  if (now - last >= (busy ? 0 : 30)) { draw(now); last = now; }
-  raf = requestAnimationFrame(frame);
-}
-
-function wake() {
-  if (!skyT) return;
-  if (build) { if (!raf) raf = requestAnimationFrame(frame); return; }
-  if (reduced.matches) { if (ready) draw(performance.now()); return; }
-  if (!running && visible && inView) {
-    running = true;
-    last = performance.now();
-    raf = requestAnimationFrame(frame);
+  slow = true;
+  if (view.phase === 2) {
+    view.phase = 3;
+    drop(view.pre);
+    view.pre = null;
   }
-}
-
-function sleep() {
-  running = false;
-  if (raf && !build) cancelAnimationFrame(raf);
-  if (!build) raf = 0;
-}
-
-function canvasSize() {
-  var w = hero.clientWidth, h = hero.clientHeight;
-  if (!w || !h) return null;
-  var scale = Math.min(window.devicePixelRatio || 1, 1.5);
-  if (w * scale > 2000) scale = 2000 / w;
-  return [Math.max(1, Math.round(w * scale)), Math.max(1, Math.round(h * scale))];
-}
-
-/* a window being dragged rebuilds once it settles, the picture
-   stretching with it until then */
-var pending = 0;
-
-function resize() {
-  var sz = canvasSize();
-  if (!sz || (canvas.width === sz[0] && canvas.height === sz[1] && skyT)) return;
-  if (ready) {
-    if (pending) clearTimeout(pending);
-    pending = setTimeout(function () { pending = 0; rebuild(); }, 250);
-    return;
+  if (tr) {
+    tr = null;
+    wCur = { d: LOOKS[look].d, u: LOOKS[look].u, n: LOOKS[look].n };
+    themeColor(wCur);
   }
-  rebuild();
+  draw(now);
 }
 
-function rebuild() {
-  var sz = canvasSize();
-  if (!sz) return;
-  var cw = sz[0], ch = sz[1];
-  canvas.style.transition = 'none';
-  canvas.classList.remove('drawn');
-  void canvas.offsetWidth;
-  canvas.style.transition = '';
-  canvas.width = cw;
-  canvas.height = ch;
+/* a finished build takes the screen: the canvas takes its size, the
+   targets every frame draws through and the grass are made for it, and
+   it fades in over what was there, the poster the page opened with or
+   the last frame of the size before */
+var under = null, veil = 0;
+
+function show(b, now) {
+  var swap = !!view && canvas.classList.contains('drawn');
+  if (view) {
+    if (swap) {
+      draw(now);
+      keep();
+    }
+    dropBuild(view);
+  }
+  canvas.width = b.w;
+  canvas.height = b.h;
+  useLayout(b.lay);
+  frameTargets(b.w, b.h);
+  landT = b.land;
+  maskT = b.mask;
+  setLooks(skyProg);
+  setLooks(compProg);
+  meadow = upload(buildMeadow(b.w, b.h));
+  view = b;
+  draw(now);
+  last = now;
+  reveal(swap);
+  root.classList.remove('still');
+}
+
+function frameTargets(cw, ch) {
+  [skyT, farT, midT, nearT, midB, nearB].forEach(drop);
   var hw = Math.max(1, Math.round(cw * 0.5)), hh = Math.max(1, Math.round(ch * 0.5));
-  [preT, landT, maskT, skyT, farT, midT, nearT, midB, nearB].forEach(drop);
-  preT = target(cw, ch, [gl.RGBA8], false, gl.NEAREST);
-  landT = target(cw, ch, [CFMT, CFMT, CFMT, CFMT], false, gl.NEAREST);
-  skyT = target(hw, hh, [CFMT, CFMT], false);
-  maskT = target(hw, hh, [gl.RGBA8], false, gl.NEAREST);
-  farT = msTarget(cw, ch);
   var qw = Math.max(1, Math.round(cw * 0.25)), qh = Math.max(1, Math.round(ch * 0.25));
+  skyT = target(hw, hh, [CFMT, CFMT], false);
+  farT = msTarget(cw, ch);
   midT = target(hw, hh, [CFMT], true);
   nearT = target(qw, qh, [CFMT], true);
   midB = target(hw, hh, [CFMT], false);
   nearB = target(qw, qh, [CFMT], false);
   RN = 0.04 * qh;
   RM = 0.0055 * hh;
-  layout(cw / ch);
-  [landProg, skyProg, compProg].forEach(setLooks);
-  meadow = upload(buildMeadow());
-  startBuild();
-  if (!raf) raf = requestAnimationFrame(frame);
+}
+
+/* the last frame of the old size, kept on a plain canvas under the new
+   one while it fades in */
+function keep() {
+  if (!under) {
+    under = document.createElement('canvas');
+    under.className = 'under';
+    under.setAttribute('aria-hidden', 'true');
+    canvas.parentNode.insertBefore(under, canvas);
+  }
+  under.width = canvas.width;
+  under.height = canvas.height;
+  var c = under.getContext('2d');
+  if (c) c.drawImage(canvas, 0, 0);
+  under.classList.add('on');
+}
+
+function reveal(swap) {
+  clearTimeout(veil);
+  if (swap) {
+    canvas.classList.add('swap');
+    canvas.style.transition = 'none';
+    canvas.classList.remove('drawn');
+    void canvas.offsetWidth;
+    canvas.style.transition = '';
+    veil = setTimeout(function () {
+      canvas.classList.remove('swap');
+      if (!under) return;
+      under.classList.remove('on');
+      under.width = under.height = 1;
+    }, 800);
+  }
+  canvas.classList.add('drawn');
+}
+
+/* something the picture needs is missing: the page keeps its poster */
+function fail() {
+  failed = true;
+  dropBuild(pend);
+  pend = null;
+  canvas.classList.remove('drawn');
+  poster();
+}
+
+function poster() {
+  root.classList.add('still');
+}
+
+function wake() {
+  if (lost || failed || raf) return;
+  if (!glReady || pend || (view && view.phase === 2) || animating()) raf = requestAnimationFrame(frame);
+  else if (view && visible) draw(performance.now());
+}
+
+function sleep() {
+  if (raf && glReady && !pend && !(view && view.phase === 2)) {
+    cancelAnimationFrame(raf);
+    raf = 0;
+  }
+}
+
+/* the screen's pixels up to one and a half per point, and no more than
+   about two and a half million in all, so a wide screen is drawn as
+   finely as a laptop's; a slow GPU draws fewer */
+function canvasSize() {
+  var w = hero.clientWidth, h = hero.clientHeight;
+  if (!w || !h) return null;
+  var scale = Math.min(window.devicePixelRatio || 1, 1.5);
+  if (w * h * scale * scale > 2.6e6) scale = Math.sqrt(2.6e6 / (w * h));
+  scale = Math.min(scale * quality, LIM / w, LIM / h);
+  return [Math.max(1, Math.round(w * scale)), Math.max(1, Math.round(h * scale))];
+}
+
+/* a window being dragged rebuilds once it settles, the picture on screen
+   cropped to fit until the new one takes its place */
+var pending = 0;
+
+function resize() {
+  if (lost || failed) return;
+  var sz = canvasSize();
+  if (!sz || (pend && pend.w === sz[0] && pend.h === sz[1])) return;
+  clearTimeout(pending);
+  pending = 0;
+  if (view && view.w === sz[0] && view.h === sz[1]) {
+    dropBuild(pend);
+    pend = null;
+    return;
+  }
+  if (view) pending = setTimeout(function () { pending = 0; rebuild(); }, 200);
+  else rebuild();
+}
+
+function rebuild() {
+  var sz = canvasSize();
+  if (!sz || lost || failed) return;
+  dropBuild(pend);
+  pend = makeBuild(sz);
+  wake();
+}
+
+/* a window moved to a screen of another density is built again for it */
+function watchDensity() {
+  try {
+    matchMedia('(resolution: ' + (window.devicePixelRatio || 1) + 'dppx)').addEventListener('change', function () {
+      watchDensity();
+      resize();
+    }, { once: true });
+  } catch (err) {}
 }
 
 /* -------------------------------------------------------------- wiring */
 
-buttons.forEach(function (b) {
-  b.addEventListener('click', function () {
-    var n = b.getAttribute('data-look');
-    if (n === look) return;
-    try { sessionStorage.setItem('look', n); } catch (err) {}
-    setLook(n, false);
-  });
-});
-
 hero.addEventListener('pointermove', function (ev) {
-  if (reduced.matches || ev.pointerType === 'touch') return;
+  if (reduced.matches || slow || ev.pointerType === 'touch') return;
   var r = hero.getBoundingClientRect();
   var u = (ev.clientX - r.left) / r.width, v = (ev.clientY - r.top) / r.height;
   tx = (u - 0.5) * 2;
@@ -2452,20 +2847,40 @@ else addEventListener('resize', resize);
 
 reduced.addEventListener('change', function () { sleep(); wake(); });
 
+/* a lost context gives the picture back to the poster; it is built again
+   when the context returns, and the poster stays if the context is slow
+   to return or is lost a third time */
 canvas.addEventListener('webglcontextlost', function (ev) {
   ev.preventDefault();
-  sleep();
+  lost = true;
+  losses++;
+  if (raf) cancelAnimationFrame(raf);
+  raf = 0;
+  clearTimeout(pending);
+  view = pend = null;
+  landT = maskT = skyT = farT = midT = nearT = midB = nearB = null;
+  meadow = null;
+  glReady = false;
   canvas.classList.remove('drawn');
+  if (under) under.classList.remove('on');
+  clearTimeout(lostTimer);
+  lostTimer = setTimeout(poster, losses > 2 ? 0 : 2500);
 });
 
-canvas.addEventListener('webglcontextrestored', function () { location.reload(); });
+canvas.addEventListener('webglcontextrestored', function () {
+  if (losses > 2 || failed) return;
+  clearTimeout(lostTimer);
+  lost = false;
+  if (!!gl.getExtension('EXT_color_buffer_float') !== HDR) {
+    fail();
+    return;
+  }
+  initGL();
+  wake();
+});
 
-var initial = 'day';
-try { initial = sessionStorage.getItem('look') || initial; } catch (err) {}
-try { initial = new URLSearchParams(location.search).get('look') || initial; } catch (err) {}
-if (!LOOKS[initial]) initial = 'day';
-document.documentElement.classList.add('sky');
-setLook(initial, true);
+initGL();
+watchDensity();
 resize();
 wake();
 

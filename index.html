@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#f6f3ec">
+    <meta name="theme-color" content="#6282b6">
     <meta name="description" content="Software Engineer in Boston">
     <meta name="author" content="Mattias Rask">
     <title>Mattias Rask</title>
@@ -30,6 +30,16 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='13' fill='%23211f19'/%3E%3Ctext x='32' y='47' font-family='Charter,Georgia,serif' font-size='42' fill='%23f6f3ec' text-anchor='middle'%3EM%3C/text%3E%3C/svg%3E" type="image/svg+xml">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 
+    <script>
+    (function () {
+        var d = document.documentElement, look = 'day', sky = { day: '#6282b6', dusk: '#495282', night: '#2d313e' };
+        try { look = new URLSearchParams(location.search).get('look') || sessionStorage.getItem('look') || look; } catch (err) {}
+        if (!sky[look]) look = 'day';
+        d.setAttribute('data-look', look);
+        d.className += ' js';
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', sky[look]);
+    })();
+    </script>
     <link rel="stylesheet" href="/style.css">
     <script src="/sky.js" defer></script>
 
@@ -61,7 +71,7 @@
     <a class="skip" href="#main">skip to content</a>
 
     <header class="letterhead">
-        <canvas id="sky" aria-hidden="true"></canvas>
+        <div class="scene" aria-hidden="true"><canvas id="sky"></canvas></div>
         <div class="words">
             <h1 class="name">Mattias Rask</h1>
             <p class="dateline"><span>security tools</span> &middot; <span>AI agents</span> &middot; <span>low-level systems</span> &middot; <span>Boston, MA</span></p>
