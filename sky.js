@@ -25,7 +25,26 @@
 
 'use strict';
 
-(function () {
+/* The meadow begins once the page's first paint has reached the screen,
+   or after a moment where the browser does not say, so the words and the
+   picture under them are up before the GPU is asked for anything: a
+   browser that draws the page and the canvas on the same GPU thread would
+   otherwise hold the first paint behind the context and its programs. */
+(function (begin) {
+  function go() {
+    if (!begin) return;
+    setTimeout(begin, 0);
+    begin = null;
+  }
+  try {
+    if (performance.getEntriesByName('first-contentful-paint').length) go();
+    else new PerformanceObserver(function (list, seen) {
+      seen.disconnect();
+      go();
+    }).observe({ type: 'paint' });
+  } catch (err) {}
+  setTimeout(go, 1000);
+})(function () {
 
 var root = document.documentElement;
 var hero = document.querySelector('.letterhead');
@@ -225,6 +244,43 @@ function soft() {
 }
 
 var HDR = !!gl.getExtension('EXT_color_buffer_float');
+
+/* -------------------------------------------------------------- the bar */
+/* While the picture is made, a hairline under the words fills as it
+   comes: the programs, then the land traced and shaded. It fades as the
+   picture comes up. */
+
+var bar = document.createElement('span'), fill = document.createElement('i'), filled = 0;
+var began = performance.now();
+bar.className = 'load';
+bar.setAttribute('aria-hidden', 'true');
+bar.appendChild(fill);
+(hero.querySelector('.words') || hero).appendChild(bar);
+progress(0.06);
+
+function progress(p) {
+  if (!fill || !(p > filled)) return;
+  filled = Math.min(p, 1);
+  fill.style.transform = 'scaleX(' + filled.toFixed(3) + ')';
+}
+
+/* the bar runs out to its end, and fades from wherever its own fade in
+   had got to */
+function ready() {
+  if (!bar) return;
+  progress(1);
+  var b = bar;
+  bar = fill = null;
+  setTimeout(function () {
+    if (!b.animate) {
+      b.remove();
+      return;
+    }
+    b.animate([{ opacity: getComputedStyle(b).opacity }, { opacity: 0 }], {
+      duration: 600, easing: 'ease', fill: 'forwards'
+    }).onfinish = function () { b.remove(); };
+  }, reduced.matches ? 0 : 320);
+}
 
 /* ------------------------------------------------------------ shaders */
 
@@ -1610,6 +1666,7 @@ function initGL() {
   compProg = program(COMP, ['LA0', 'LA1', 'LA2', 'LA3', 'SKA', 'SKB', 'GFAR', 'GMID', 'GNEAR', 'CAM', 'EYE', 'W', 'MOON', 'GN', 'GC', 'GV', 'T', 'G', 'SCALE', 'GSCALE', 'EXPO', 'MOONR', 'PH', 'STARS', 'CLT', 'MILKY', 'METON', 'METP', 'METS', 'METL', 'MET', 'CTON', 'CTP', 'CTAGE', 'CT', 'JK']);
   progs = [preProg, landProg, maskProg, skyProg, bokehProg, bokeh32Prog, bladeProg, headProg, partProg, compProg];
   glReady = false;
+  warmed = 0;
   SAMPLES = samplesFor(CFMT);
   brushTex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, brushTex);
@@ -1913,8 +1970,11 @@ function buildMeadow(w, h) {
 }
 
 function upload(m) {
-  if (meadow && meadow.bufs) meadow.bufs.forEach(function (b) { gl.deleteBuffer(b); });
-  var out = { bufs: [], vb: [], vh: [], vp: [], nb: [], nh: [], np: [] };
+  if (meadow && meadow.bufs) {
+    meadow.bufs.forEach(function (b) { gl.deleteBuffer(b); });
+    meadow.vb.concat(meadow.vh, meadow.vp).forEach(function (v) { gl.deleteVertexArray(v); });
+  }
+  var out = { src: m, bufs: [], vb: [], vh: [], vp: [], nb: [], nh: [], np: [] };
   function vao(data, stride) {
     var buf = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
@@ -1954,8 +2014,13 @@ function makeBuild(sz) {
   var w = sz[0], h = sz[1];
   var b = {
     w: w, h: h, lay: layoutFor(w / h), phase: 0, y: 0, y1: h, x0: 0, x1: w, rows: 8, cost: 0,
-    prof: new Float32Array(h), k: [0, 4, 16]
+    prof: new Float32Array(h), k: [0, 4, 16], done: 0, sum: 1
   };
+  /* its grass is grown now, while the GPU has the build, so the frame
+     that takes the build to the screen has less to do */
+  useLayout(b.lay);
+  b.grass = buildMeadow(w, h);
+  if (view) useLayout(view.lay);
   b.pre = target(w, h, [gl.RGBA8], false, gl.NEAREST);
   b.land = target(w, h, [CFMT, CFMT, CFMT, CFMT], false, gl.NEAREST);
   b.mask = target(Math.max(1, Math.round(w * 0.5)), Math.max(1, Math.round(h * 0.5)), [gl.RGBA8], false, gl.NEAREST);
@@ -2034,13 +2099,16 @@ function buildStep(b) {
     for (i = 0; i < rows; i++) pred += Math.max(b.prof[b.y + i], 0.002);
     var k = b.k[b.phase];
     b.k[b.phase] = Math.min(k * 2, Math.max(k * 0.5, 0.5 * k + 0.5 * ms / pred));
+    b.done += pred;
   } else {
-    b.cost += ms;
+    b.cost += Math.min(ms, 4 * budget);
     for (i = 0; i < rows; i++) b.prof[b.y + i] = ms / rows;
     b.rows = Math.max(4, Math.min(Math.round(budget * rows / Math.max(ms, 0.5)), Math.round(b.rows * 1.5)));
   }
   b.y += rows;
+  if (b !== view) progress(shade ? 0.6 + 0.38 * b.done / b.sum : 0.36 + 0.24 * b.y / b.y1);
   if (b.y >= b.y1) {
+    if (b.phase === 0) for (b.sum = 0, i = 0; i < b.h; i++) b.sum += Math.max(b.prof[i], 0.002);
     if (b.phase === 1) maskPass(b);
     b.phase++;
     b.y = 0;
@@ -2558,6 +2626,7 @@ function draw(now) {
 
 var slow = false, lost = false, losses = 0, lostTimer = 0;
 var MINQ = 0.45, quality = 1, calibrated = false, probing = true, retunes = 0, times = [];
+var warmed = 0;
 var LIM = Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE), gl.getParameter(gl.MAX_RENDERBUFFER_SIZE));
 
 function animating() {
@@ -2568,13 +2637,15 @@ function frame(now) {
   raf = 0;
   if (lost || failed) return;
   if (!glUp()) {
+    progress(0.06 + 0.2 * (1 - Math.exp((began - now) / 900)));
     if (!failed) raf = requestAnimationFrame(frame);
     return;
   }
   if (!view && !pend) rebuild();
   /* while a new size is built the picture on screen holds its last frame,
      cropped to fit, and the build has the GPU to itself */
-  if (pend) {
+  if (pend && warmed < 2) warm(pend, now);
+  else if (pend) {
     buildStep(pend);
     calibrate();
     if (pend && pend.phase > 1) {
@@ -2599,10 +2670,54 @@ function frame(now) {
   if (pend || (view && view.phase === 2) || animating()) raf = requestAnimationFrame(frame);
 }
 
+/* Before the first build traces anything, every program is put to use
+   once, on targets like those it will draw into, the trace's in one frame
+   and the picture's in the next: a driver may finish a program for the
+   GPU only on its first use, which in Chrome from a cold start stalls for
+   half a second, better spent while the page waits than as the picture
+   fades in */
+function warm(b, now) {
+  useLayout(b.lay);
+  if (!warmed) {
+    var cam = camFor(b.w, b.h, PITCH, YAW0);
+    useTrace(preProg, cam, b.w, b.h);
+    stripPass(b.pre, 0, 1, 0, 1);
+    setLooks(landProg);
+    useTrace(landProg, cam, b.w, b.h);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, b.pre.tex[0]);
+    gl.uniform1i(landProg.u.PREB, 0);
+    gl.uniform1f(landProg.u.REFINE, 0);
+    stripPass(b.land, 0, 1, 0, 1);
+    gl.uniform1f(landProg.u.REFINE, 1);
+    stripPass(b.land, 0, 1, 0, 1);
+    settle(b.land.fbo, CFMT === gl.RGBA16F);
+    maskPass(b);
+    settle(b.mask.fbo, false);
+    warmed = 1;
+    progress(0.28);
+    return;
+  }
+  canvas.width = b.w;
+  canvas.height = b.h;
+  frameTargets(b.w, b.h);
+  landT = b.land;
+  maskT = b.mask;
+  setLooks(skyProg);
+  setLooks(compProg);
+  meadow = upload(b.grass);
+  draw(now);
+  gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX8);
+  warmed = 2;
+  progress(0.36);
+}
+
 /* the first build learns how quick the GPU is from its first pass, which
    costs about a dozen frames of the picture, and a GPU far too slow for
    the canvas gets a smaller one before the costly shading starts; the
-   timing of the first frames settles the rest */
+   timing of the first frames settles the rest. A strip held up by
+   something else, a driver still finishing a program, counts for no more
+   than four frames' budget, so a quick GPU is not taken for a slow one */
 function calibrate() {
   if (calibrated || !pend || pend.phase !== 1 || pend.y !== 0) return;
   calibrated = true;
@@ -2651,9 +2766,9 @@ function timed(now) {
 
 /* a finished build takes the screen: the canvas takes its size, the
    targets every frame draws through and the grass are made for it, and
-   it fades in over what was there, the poster the page opened with or
+   it fades in over what was there, the picture the page opened with or
    the last frame of the size before */
-var under = null, veil = 0;
+var under = null, veil = 0, fw = 0, fh = 0;
 
 function show(b, now) {
   var swap = !!view && canvas.classList.contains('drawn');
@@ -2664,23 +2779,27 @@ function show(b, now) {
     }
     dropBuild(view);
   }
-  canvas.width = b.w;
-  canvas.height = b.h;
+  if (canvas.width !== b.w || canvas.height !== b.h) {
+    canvas.width = b.w;
+    canvas.height = b.h;
+  }
   useLayout(b.lay);
   frameTargets(b.w, b.h);
   landT = b.land;
   maskT = b.mask;
   setLooks(skyProg);
   setLooks(compProg);
-  meadow = upload(buildMeadow(b.w, b.h));
+  if (!meadow || meadow.src !== b.grass) meadow = upload(b.grass);
   view = b;
   draw(now);
   last = now;
   reveal(swap);
-  root.classList.remove('still');
 }
 
 function frameTargets(cw, ch) {
+  if (skyT && fw === cw && fh === ch) return;
+  fw = cw;
+  fh = ch;
   [skyT, farT, midT, nearT, midB, nearB].forEach(drop);
   var hw = Math.max(1, Math.round(cw * 0.5)), hh = Math.max(1, Math.round(ch * 0.5));
   var qw = Math.max(1, Math.round(cw * 0.25)), qh = Math.max(1, Math.round(ch * 0.25));
@@ -2726,6 +2845,9 @@ function reveal(swap) {
     }, 800);
   }
   canvas.classList.add('drawn');
+  root.classList.remove('still');
+  root.classList.add('live');
+  ready();
 }
 
 /* something the picture needs is missing: the page keeps its poster */
@@ -2737,8 +2859,19 @@ function fail() {
   poster();
 }
 
+/* the page keeps the still of its look, faded in once it is ready; the
+   head of the page has fetched it already where it matches the live
+   picture's first frame */
 function poster() {
   root.classList.add('still');
+  ready();
+  if (root.classList.contains('pic')) return;
+  var m = /url\(\s*['"]?([^'")]+)/.exec(getComputedStyle(root).getPropertyValue('--poster'));
+  if (!m) return;
+  var img = new Image(), on = function () { root.classList.add('pic'); };
+  img.src = m[1];
+  if (img.decode) img.decode().then(on, on);
+  else img.onload = on;
 }
 
 function wake() {
@@ -2884,4 +3017,4 @@ watchDensity();
 resize();
 wake();
 
-})();
+});

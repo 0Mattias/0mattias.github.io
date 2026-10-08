@@ -38,6 +38,14 @@
         d.setAttribute('data-look', look);
         d.className += ' js';
         document.querySelector('meta[name="theme-color"]').setAttribute('content', sky[look]);
+        var w = innerWidth, h = innerHeight, a = w / Math.max(h, 480);
+        if (w > h ? a >= 1.5 && a <= 4 : a <= 0.7) {
+            var still = new Image(), on = function () { d.classList.add('pic'); };
+            still.fetchPriority = 'high';
+            still.src = '/stills/' + look + '-' + (w > h ? 'wide' : 'tall') + '.webp';
+            if (still.decode) still.decode().then(on, function () {});
+            else still.onload = on;
+        }
     })();
     </script>
     <link rel="stylesheet" href="/style.css">
@@ -104,14 +112,14 @@
 
             <div class="entry">
                 <h3><a href="https://huggingface.co/MrPibb/KillChain-8B" target="_blank" rel="noopener noreferrer">KillChain-8B</a></h3> <span class="annot">Qwen3-8B</span>
-                <p>Fully fine-tuned on offensive red-team data.</p>
+                <p>Fully <span class="whole">fine-tuned</span> on offensive <span class="whole">red-team</span> data.</p>
             </div>
         </section>
 
         <section id="about">
             <h2>about</h2>
 
-            <p>Six years of software, cybersecurity, and embedded systems, self-taught and hands-on. C, Rust, Go; Python, MCP, and the Anthropic API for agents; Axolotl for fine-tunes; TypeScript and PostgreSQL for the web.</p>
+            <p>Six years of software, cybersecurity, and embedded systems, <span class="whole">self-taught</span> and <span class="whole">hands-on</span>. C, Rust, Go; Python, MCP, and the Anthropic API for agents; Axolotl for <span class="whole">fine-tunes</span>; TypeScript and PostgreSQL for the web.</p>
 
             <p>Cisco <a href="https://www.credly.com/badges/baafdf3b-ad3c-499d-9048-1e284973c597/public_url" target="_blank" rel="noopener noreferrer">CCNA</a>; CCST in <a href="https://www.credly.com/badges/59b8cf25-5772-4666-b70b-3b246f8f3856/public_url" target="_blank" rel="noopener noreferrer">Cybersecurity</a>, <a href="https://www.credly.com/badges/ad5c05b2-f026-48c8-b0bf-4adf0138b74a/public_url" target="_blank" rel="noopener noreferrer">Networking</a>, and <a href="https://www.credly.com/badges/aa0f5642-5627-4bc9-8b54-8734fc828822/public_url" target="_blank" rel="noopener noreferrer">IT Support</a>; <a href="https://www.credly.com/badges/fe2b7793-e2ba-421e-8332-de1af03226bd/public_url" target="_blank" rel="noopener noreferrer">Network Security Support Technician</a>; Anthropic Cyber Verification Program and <a href="https://www.credly.com/badges/cbf95db0-eea3-47ac-8917-c050d514ed53/public_url" target="_blank" rel="noopener noreferrer">Claude Partner Badge: Claude Code</a>.</p>
 

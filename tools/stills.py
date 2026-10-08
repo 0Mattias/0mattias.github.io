@@ -4,12 +4,13 @@ one is up, and in its place where it cannot run.
 sky.js renders them itself, in WebKit, through a stub that steps its
 clock, so they match the live picture's first frame. Each look gets a
 wide still (every frame at least 1.5:1 is laid out alike, so a still at
-2.6:1 matches any of them up to that, cropped to the sides) and a tall
-one (every frame up to 0.7:1, phones and portrait tablets). The new moon
-is set, so the live moon comes out at its own phase as the picture fades
-in. The stills are written to stills/<look>-<wide|tall>.jpg, and a tiny
-copy of each goes into style.css as the glimpse the page paints, blurred,
-before anything has loaded.
+4:1 matches any of them up to that, a 32:9 screen included, cropped to
+the sides) and a tall one (every frame up to 0.7:1, phones and portrait
+tablets). The new moon is set, so the live moon comes out at its own
+phase as the picture fades in. The stills are written to
+stills/<look>-<wide|tall>.webp, and a tiny copy of each goes into
+style.css as the glimpse the page paints, blurred, before anything has
+loaded.
 
 Run:  uv run --with playwright==1.62.0 --with pillow python tools/stills.py
 (once: uv run --with playwright==1.62.0 playwright install webkit)
@@ -28,8 +29,8 @@ from playwright.sync_api import sync_playwright
 
 REPO = Path(__file__).resolve().parent.parent
 LOOKS = ["day", "dusk", "night"]
-FRAMES = {"wide": (2340, 900), "tall": (840, 1200)}
-GLIMPSE = {"wide": (78, 30), "tall": (21, 30)}
+FRAMES = {"wide": (3600, 900), "tall": (840, 1200)}
+GLIMPSE = {"wide": (120, 30), "tall": (21, 30)}
 
 STUB = """<script>
 (function () {
@@ -109,8 +110,8 @@ def main():
         for look in LOOKS:
             for kind, size in FRAMES.items():
                 img = render(page, look, size)
-                path = out / ("%s-%s.jpg" % (look, kind))
-                img.save(path, "JPEG", quality=80, optimize=True, progressive=True, subsampling="4:2:0")
+                path = out / ("%s-%s.webp" % (look, kind))
+                img.save(path, "WEBP", quality=76, method=6)
                 data = glimpse(img, GLIMPSE[kind])
                 css, n = re.subn(r"(--glimpse-%s-%s: )url\([^)]*\)" % (look, kind), lambda m: m.group(1) + "url(" + data + ")", css)
                 if n != 1:
