@@ -17,6 +17,7 @@
     --wash: #e7d8c9;
     --sky: #6282b6;
     --fade: clamp(110px, 17vh, 190px);
+    --soft: 1.5vh;
     --dissolve: linear-gradient(to bottom,
         #000 calc(100% - var(--fade)),
         rgba(0, 0, 0, 0.972) calc(100% - var(--fade) * 0.9),
@@ -193,10 +194,12 @@ h1, h2, h3 { text-wrap: balance; }
 }
 
 .scene::after {
-    inset: 0;
+    inset: -8vh;
+    padding: 8vh;
     background: center / cover no-repeat;
+    background-origin: content-box;
     opacity: 0;
-    transition: opacity 0.8s ease;
+    transition: opacity 0.8s ease, filter 1.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 html.pic .scene::after,
@@ -208,6 +211,10 @@ html:not(.js) .scene::after {
 html.pic .scene::after,
 html:not(.js) .scene::after {
     opacity: 1;
+}
+
+html.pic:not(.still) .scene::after {
+    filter: blur(var(--soft));
 }
 
 .scene:has(#sky.drawn)::before,
@@ -229,8 +236,10 @@ html:not(.js) .scene::after {
 
 #sky {
     opacity: 0;
-    transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1), filter 1.8s cubic-bezier(0.5, 0, 0.15, 1);
 }
+
+html:not(.live) #sky { filter: blur(var(--soft)); }
 
 #sky.drawn { opacity: 1; }
 
@@ -268,23 +277,41 @@ html:not(.js) .scene::after {
     width: 120px;
     height: 1px;
     margin: 26px 0 0 -60px;
-    background: rgba(246, 243, 236, 0.22);
+    overflow: hidden;
+    background: rgba(246, 243, 236, 0.2);
     box-shadow: 0 1px 12px rgba(20, 30, 60, 0.22);
     pointer-events: none;
-    animation: fade 0.5s ease 0.15s both;
+    animation: fade 0.7s ease 0.2s both;
 }
 
 .load i {
     position: absolute;
     inset: 0;
-    background: rgba(246, 243, 236, 0.9);
+    background: linear-gradient(to right, rgba(246, 243, 236, 0.5), rgba(246, 243, 236, 0.95));
     transform: scaleX(0);
     transform-origin: 0 50%;
-    transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: transform 0.9s cubic-bezier(0.22, 0.7, 0.25, 1);
+}
+
+.load::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 40%;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.85), transparent);
+    animation: glint 1.8s cubic-bezier(0.45, 0, 0.55, 1) 0.6s infinite both;
+}
+
+@keyframes glint {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(250%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .letterhead .name, .letterhead .dateline, .load { animation: none; }
+    .load::after { display: none; }
 }
 
 .letterhead .name {
@@ -294,7 +321,7 @@ html:not(.js) .scene::after {
 }
 
 .dateline {
-    margin-top: 14px;
+    margin: 14px 0 0;
     font: 400 clamp(15px, 1.6vw, 18px)/1.6 var(--serif);
     color: rgba(246, 243, 236, 0.88);
     text-shadow: 0 1px 12px rgba(20, 30, 60, 0.34);
