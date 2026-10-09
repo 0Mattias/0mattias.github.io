@@ -199,6 +199,7 @@ h1, h2, h3 { text-wrap: balance; }
     background: center / cover no-repeat;
     background-origin: content-box;
     opacity: 0;
+    filter: blur(var(--soft));
     transition: opacity 0.8s ease, filter 1.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -213,8 +214,9 @@ html:not(.js) .scene::after {
     opacity: 1;
 }
 
-html.pic:not(.still) .scene::after {
-    filter: blur(var(--soft));
+html.still .scene::after,
+html:not(.js) .scene::after {
+    filter: none;
 }
 
 .scene:has(#sky.drawn)::before,
