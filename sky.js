@@ -1815,9 +1815,11 @@ function windAt(t) {
    the meadow running up to them, and the moon comes round to stay in
    the picture. A tall frame looks down across a lot of meadow, so there
    the eye sits up out of the grass: the lower half shows the flowers
-   rather than a wash of the nearest blades. */
+   rather than a wash of the nearest blades, and the grass is grown
+   farther out, since from up there the eye would see bare ground
+   between the last blades and the slopes. */
 var FOVY = 36 * DEG, PITCH = 6 * DEG, YAW0 = 0;
-var NEAR_Z = 1.0, MID_Z = 4.0;
+var NEAR_Z = 1.0, MID_Z = 4.0, ZMAX = 13;
 var BOXT = [0.5, 0.45, 0.24, 0.09];
 
 function smooth01(a, b, x) {
@@ -1833,6 +1835,7 @@ function layoutFor(aspect) {
     yaw: (19 * k2 - 2.5 * k1 * (1 - k2)) * DEG,
     boxt: [0.5, 0.46, 0.24 + 0.2 * k2, 0.07],
     eye: 2300.34 + 0.4 * k2,
+    zmax: 13 + 12 * k2,
     moon: dirAzEl(-20 + 28 * k2, 18 + 3 * k2),
     nightSun: dirAzEl(-75 + 30 * k2, 28)
   };
@@ -1846,6 +1849,7 @@ function useLayout(L) {
   YAW0 = L.yaw;
   BOXT = L.boxt;
   EYE[1] = L.eye;
+  ZMAX = L.zmax;
   MOON = L.moon;
   PAL.night.sun = L.nightSun;
   PAL.day.orb = PAL.day.sun;
@@ -1883,13 +1887,18 @@ function buildMeadow(w, h) {
   }
   /* keep the grass out of the words, and the nearest blades low in the
      frame but for the edges: a blade whose tip would stand too high is
-     cut down until it clears */
+     cut down until it clears. A far blade is small on the screen, so it
+     may stand nearer the words and is never cut below half its height:
+     from out there the eye sees a carpet of tops, not blades, and a
+     tall frame, whose raised eye looks over the near grass at that
+     ground, would otherwise see it bare under the words */
   function clip(x, z, h) {
-    for (var k = 0; k < 10; k++) {
+    var far = z >= MID_Z, room = far ? 0.02 : 0.05, cuts = far ? 4 : 10;
+    for (var k = 0; k < cuts; k++) {
       var v = view(x, h - (EYE[1] - 2300) + 0.03, z);
       if (v[2] <= 0) return h;
       var sx = v[0] / v[2] / cam[0] * 0.5 + 0.5, sy = 0.5 - v[1] / v[2] / cam[1] * 0.5;
-      var inX = Math.abs(sx - BOXT[0]) < BOXT[2] + 0.07, inY = sy < BOXT[1] + BOXT[3] + 0.05;
+      var inX = Math.abs(sx - BOXT[0]) < BOXT[2] + 0.07, inY = sy < BOXT[1] + BOXT[3] + room;
       var edge = Math.abs(sx - 0.5) > 0.38;
       var top = z < NEAR_Z ? (edge ? 0.36 : 0.6) : z < MID_Z ? (edge ? 0.3 : 0.5) : 0;
       if (!(inX && inY) && sy > top) return h;
@@ -1900,7 +1909,6 @@ function buildMeadow(w, h) {
   function place(z, u) {
     return [u * (z * TANG + 0.3), z];
   }
-  var ZMAX = 13;
   var area = ZMAX * ZMAX * TANG;
   var i, j, z, p, h;
   /* the grass grows in tussocks: a clump of blades fanning out from one
@@ -1909,7 +1917,9 @@ function buildMeadow(w, h) {
   var near = Math.round(4 * 4 * TANG * 26 * 3.2);
   for (i = 0; i < nc + near; i++) {
     z = i < nc ? 0.12 + (ZMAX - 0.12) * Math.sqrt(rnd()) : 0.12 + 3.88 * Math.sqrt(rnd());
-    var thin = z > 9 && rnd() < (z - 9) / 4;
+    /* the far grass thins with distance, where a blade is already less
+       than a pixel wide, and runs out over the last four metres */
+    var thin = z > ZMAX - 4 && rnd() < (z - ZMAX + 4) / 4 || z > 13 && rnd() < 1 - 13 / z;
     p = place(z, rnd() * 2 - 1);
     var nb = 4 + Math.floor(rnd() * 9);
     var tall = 0.55 + 0.9 * rnd() * rnd();
@@ -1940,7 +1950,9 @@ function buildMeadow(w, h) {
   }
   var drifts = [];
   for (i = 0; i < 64; i++) drifts.push([2.0 + 16 * Math.pow(rnd(), 1.1), rnd() * 2 - 1, pick()]);
-  var nf = Math.round(area * 13);
+  /* the drifts are as full whatever the frame: the flowers are counted
+     over the meadow a wide frame sees */
+  var nf = Math.round(13 * 13 * TANG * 13);
   for (i = 0; i < nf; i++) {
     var dr = drifts[Math.floor(rnd() * drifts.length)];
     z = Math.max(1.1, dr[0] * (0.7 + 0.6 * rnd()));
@@ -2802,15 +2814,23 @@ function frameTargets(cw, ch) {
   fh = ch;
   [skyT, farT, midT, nearT, midB, nearB].forEach(drop);
   var hw = Math.max(1, Math.round(cw * 0.5)), hh = Math.max(1, Math.round(ch * 0.5));
-  var qw = Math.max(1, Math.round(cw * 0.25)), qh = Math.max(1, Math.round(ch * 0.25));
+  /* the middle and nearest grass are drawn small, at half and a quarter
+     of the picture on a wide canvas, and softened; a narrow canvas draws
+     them larger, so their blades keep their shape under the blur */
+  var ms = Math.min(1, Math.max(0.5, 1000 / cw)), ns = Math.min(0.5, Math.max(0.25, 500 / cw));
+  var mw = Math.max(1, Math.round(cw * ms)), mh = Math.max(1, Math.round(ch * ms));
+  var nw = Math.max(1, Math.round(cw * ns)), nh = Math.max(1, Math.round(ch * ns));
   skyT = target(hw, hh, [CFMT, CFMT], false);
   farT = msTarget(cw, ch);
-  midT = target(hw, hh, [CFMT], true);
-  nearT = target(qw, qh, [CFMT], true);
-  midB = target(hw, hh, [CFMT], false);
-  nearB = target(qw, qh, [CFMT], false);
-  RN = 0.04 * qh;
-  RM = 0.0055 * hh;
+  midT = target(mw, mh, [CFMT], true);
+  nearT = target(nw, nh, [CFMT], true);
+  midB = target(mw, mh, [CFMT], false);
+  nearB = target(nw, nh, [CFMT], false);
+  /* the softness is sized to the lens, so the wide lens of a tall frame
+     blurs no more of a blade than the narrow one of a wide frame */
+  var ang = 36 * DEG / FOVY;
+  RN = 0.04 * ch * ang * ns;
+  RM = 0.0055 * ch * ang * ms;
 }
 
 /* the last frame of the old size, kept on a plain canvas under the new

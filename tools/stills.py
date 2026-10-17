@@ -65,6 +65,8 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.split("?")[0] in ("/", "/index.html"):
             html = (REPO / "index.html").read_text()
+            # the page's security policy would refuse the stub; it is dropped here
+            html = re.sub(r'\s*<meta http-equiv="Content-Security-Policy"[^>]*>', "", html)
             tag = '<script src="/sky.js" defer></script>'
             body = html.replace(tag, STUB + "    " + tag).encode()
             self.send_response(200)
