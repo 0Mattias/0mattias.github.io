@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-P9v7L88bgWfV1hUZYo4KoHp8FZdKkz1fRnnO4vsr2Ts='; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-auTcziWG8zDj/HFfmKV3GrhZRre8VWeBDEqt0A1yElU='; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="theme-color" content="#6282b6">
     <meta name="description" content="Software engineer in Boston building security tools, AI agents, and low-level systems.">
@@ -40,7 +40,7 @@
         d.setAttribute('data-look', look);
         d.className += ' js';
         document.querySelector('meta[name="theme-color"]').setAttribute('content', sky[look]);
-        var w = innerWidth, h = innerHeight, a = w / Math.max(h, 320);
+        var w = innerWidth, h = innerHeight, a = w / Math.max(h, 480);
         if (w > h ? a >= 1.5 && a <= 4 : a <= 0.7) {
             var still = new Image(), on = function () { d.classList.add('pic'); };
             still.fetchPriority = 'high';
