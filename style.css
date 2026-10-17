@@ -160,7 +160,7 @@ h1, h2, h3 { text-wrap: balance; }
     position: relative;
     height: 100vh;
     height: 100svh;
-    min-height: 480px;
+    min-height: 320px;
     overflow: hidden;
     display: flex;
     align-items: center;
