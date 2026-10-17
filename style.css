@@ -367,6 +367,10 @@ html.still .looks {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.looks button[data-look="day"] { --sw: #7ea9de; }
+.looks button[data-look="dusk"] { --sw: #d8938a; }
+.looks button[data-look="night"] { --sw: #1a2237; }
+
 .looks button::before {
     content: '';
     position: absolute;
