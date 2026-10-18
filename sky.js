@@ -1047,23 +1047,41 @@ void main() {
   o1 = vec4(c * SCALE, a);
 }`;
 
-/* a bokeh disc, gathered over rings of taps turned at random per pixel */
+/* the softness of a band of grass: each pixel of it is spread over a
+   disc, gathered over rings of taps turned at random per pixel, and a
+   pixel gathers every disc that reaches it. On a tall frame
+   the middle grass is the picture's foreground rather than a wash under
+   the page's fade, so there each pixel's disc follows its depth, full
+   out to 2.5 m and gone by the sharp grass at 4 m, as a lens focused on
+   the far meadow would have it; the discs all carry the same light */
 function bokehSrc(k) {
   var n = k.length;
   return HEAD + NOISE + `
 in vec2 uv;
 out vec4 o;
-uniform sampler2D SRC;
-uniform vec2 TEXEL;
-uniform float RAD;
+uniform sampler2D SRC, DEP;
+uniform vec2 TEXEL, CLIPU;
+uniform float RAD, FOCUS;
 const vec2 K[${n}] = vec2[${n}](` + k.join(',') + `);
 void main() {
   float kang = hash12(uv * 517.3) * 6.2831853;
   float kc = cos(kang), ks = sin(kang);
   mat2 ROT = mat2(kc, ks, -ks, kc);
   vec4 acc = vec4(0.0);
-  for (int i = 0; i < ${n}; i++) acc += texture(SRC, uv + (ROT * K[i]) * RAD * TEXEL);
-  o = acc / ${n}.0;
+  for (int i = 0; i < ${n}; i++) {
+    vec2 q = uv + (ROT * K[i]) * RAD * TEXEL;
+    vec4 c = texture(SRC, q);
+    float w = 1.0 / ${n}.0;
+    if (FOCUS > 0.0 && c.a > 0.0) {
+      float dn = texture(DEP, q).r * 2.0 - 1.0;
+      float dz = 2.0 * CLIPU.x * CLIPU.y / (CLIPU.x + CLIPU.y - dn * (CLIPU.y - CLIPU.x));
+      float f = mix(1.0, clamp((1.0 / dz - 0.25) / 0.15, 0.0, 1.0), FOCUS);
+      if (length(K[i]) > f) continue;
+      w = 1.0 / max(1.0, ${n}.0 * f * f);
+    }
+    acc += c * w;
+  }
+  o = acc;
 }`;
 }
 
@@ -1387,7 +1405,7 @@ out vec4 o;
 uniform sampler2D LA0, LA1, LA2, LA3, SKA, SKB, GFAR, GMID, GNEAR;
 uniform vec4 CAM;
 uniform vec3 EYE, W, MOON, GN, GC, GV;
-uniform float T, G, SCALE, GSCALE, EXPO, MOONR, PH, STARS, CLT, MILKY;
+uniform float T, G, SCALE, GSCALE, EXPO, MOONR, PH, STARS, CLT, MILKY, LIFT;
 uniform float METON, METP, METS, METL;
 uniform vec4 MET;
 uniform float CTON, CTP, CTAGE, JK;
@@ -1576,6 +1594,36 @@ void main() {
     l2 *= 1.0 - a2.a * (1.0 - cloudShade(wp, LK[2].sun)) * 0.5;
   }
   vec3 land = W.x * l0 + W.y * l1 + W.z * l2;
+  /* the brow of the meadow, where it falls away into the valley a
+     hundred metres out. A lying eye sees its own tall blades and seed
+     heads stand across it; a raised eye sees it as a line, since no
+     blade it can grow stands tall enough to cross it. What crosses a
+     real brow is the taller growth along it, finer than a pixel from
+     here, so a soft ragged edge of it is laid over the rows just above
+     the meadow's last, in tufts of unequal height, each row taking the
+     meadow's own colour from the brow below it */
+  if (LIFT > 0.0 && (al < 0.999 || td > 400.0)) {
+    float x = gl_FragCoord.x;
+    float tuft = 0.5 * vn(vec2(x * 0.08, 3.0)) + 0.3 * vn(vec2(x * 0.35, 7.0)) + 0.2 * vn(vec2(x * 1.4, 11.0));
+    float reach = 1.0 + 8.0 * tuft * tuft;
+    vec2 sz = vec2(textureSize(LA3, 0));
+    for (int j = 1; j <= 9; j++) {
+      if (float(j) - 0.5 > reach || px.y - j < 0) break;
+      ivec2 q = px + ivec2(0, -j);
+      vec4 b3 = texelFetch(LA3, q, 0);
+      float tq = unpackT(b3.rg);
+      if (tq < 25.0 || tq > 400.0) continue;
+      vec4 b0 = texelFetch(LA0, q, 0), b1 = texelFetch(LA1, q, 0), b2 = texelFetch(LA2, q, 0);
+      vec3 m0 = dec(b0.rgb), m1 = dec(b1.rgb), m2 = dec(b2.rgb);
+      vec3 wq = EYE + camDir((vec2(q) + 0.5) / sz, CAM) * tq;
+      m0 *= 1.0 - b3.b * (1.0 - cloudShade(wq, LK[0].sun)) * 0.72;
+      m2 *= 1.0 - b2.a * (1.0 - cloudShade(wq, LK[2].sun)) * 0.5;
+      float cov = LIFT * 0.9 * (1.0 - (float(j) - 0.5) / reach);
+      land = mix(land, W.x * m0 + W.y * m1 + W.z * m2, cov);
+      al = max(al, cov);
+      break;
+    }
+  }
   vec3 col;
   if (cd < td) col = cl.rgb + (1.0 - cl.a) * (land + (1.0 - al) * sky);
   else col = land + (1.0 - al) * (cl.rgb + (1.0 - cl.a) * sky);
@@ -1673,12 +1721,12 @@ function initGL() {
   landProg = program(LAND, TRACE_U.concat(['PREB', 'REFINE', 'LIFT']));
   maskProg = program(MASK, ['LA0', 'LA3', 'FULL']);
   skyProg = program(SKY, ['CAM', 'EYE', 'W', 'SUN', 'CLIT', 'CMID', 'CSHD', 'GLOW', 'CLT', 'SCALE', 'COVER', 'NIGHT', 'DUSK', 'FINE', 'PEAK', 'MASKT']);
-  bokehProg = program(bokehSrc(TAPS), ['SRC', 'TEXEL', 'RAD']);
-  bokeh32Prog = program(bokehSrc(TAPS32), ['SRC', 'TEXEL', 'RAD']);
+  bokehProg = program(bokehSrc(TAPS), ['SRC', 'DEP', 'TEXEL', 'CLIPU', 'RAD', 'FOCUS']);
+  bokeh32Prog = program(bokehSrc(TAPS32), ['SRC', 'DEP', 'TEXEL', 'CLIPU', 'RAD', 'FOCUS']);
   bladeProg = program(BLADE_FS, GU, BLADE_VS);
   headProg = program(HEAD_FS, GU.concat(['A2C']), HEAD_VS);
   partProg = program(PART_FS, GU.concat(['VIS', 'HALFW', 'DRIFT']), PART_VS);
-  compProg = program(COMP, ['LA0', 'LA1', 'LA2', 'LA3', 'SKA', 'SKB', 'GFAR', 'GMID', 'GNEAR', 'CAM', 'EYE', 'W', 'MOON', 'GN', 'GC', 'GV', 'T', 'G', 'SCALE', 'GSCALE', 'EXPO', 'MOONR', 'PH', 'STARS', 'CLT', 'MILKY', 'METON', 'METP', 'METS', 'METL', 'MET', 'CTON', 'CTP', 'CTAGE', 'CT', 'JK']);
+  compProg = program(COMP, ['LA0', 'LA1', 'LA2', 'LA3', 'SKA', 'SKB', 'GFAR', 'GMID', 'GNEAR', 'CAM', 'EYE', 'W', 'MOON', 'GN', 'GC', 'GV', 'T', 'G', 'SCALE', 'GSCALE', 'EXPO', 'MOONR', 'PH', 'STARS', 'CLT', 'MILKY', 'LIFT', 'METON', 'METP', 'METS', 'METL', 'MET', 'CTON', 'CTP', 'CTAGE', 'CT', 'JK']);
   progs = [preProg, landProg, maskProg, skyProg, bokehProg, bokeh32Prog, bladeProg, headProg, partProg, compProg];
   glReady = false;
   warmed = 0;
@@ -1724,7 +1772,7 @@ function storage(t, w, h, fmt) {
 /* a framebuffer with n colour textures of the given formats, and a depth
    buffer if asked; ok says whether the driver can draw to it */
 function target(w, h, fmts, depth, filter) {
-  var r = { fbo: gl.createFramebuffer(), w: w, h: h, tex: [], depth: null, ms: null };
+  var r = { fbo: gl.createFramebuffer(), w: w, h: h, tex: [], depth: null, dtex: null, ms: null };
   gl.bindFramebuffer(gl.FRAMEBUFFER, r.fbo);
   var bufs = [];
   fmts.forEach(function (f, i) {
@@ -1735,7 +1783,17 @@ function target(w, h, fmts, depth, filter) {
     bufs.push(gl.COLOR_ATTACHMENT0 + i);
   });
   gl.drawBuffers(bufs);
-  if (depth) {
+  if (depth === 2) {
+    /* the depth kept as a texture, for a pass that reads it back */
+    r.dtex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, r.dtex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, w, h);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, r.dtex, 0);
+  } else if (depth) {
     r.depth = gl.createRenderbuffer();
     gl.bindRenderbuffer(gl.RENDERBUFFER, r.depth);
     gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
@@ -1783,6 +1841,7 @@ function drop(r) {
   if (!r) return;
   r.tex.forEach(function (t) { gl.deleteTexture(t); });
   if (r.depth) gl.deleteRenderbuffer(r.depth);
+  if (r.dtex) gl.deleteTexture(r.dtex);
   if (r.ms) { gl.deleteFramebuffer(r.ms); gl.deleteRenderbuffer(r.msc); gl.deleteRenderbuffer(r.msd); }
   gl.deleteFramebuffer(r.fbo);
 }
@@ -2343,19 +2402,26 @@ var drift = 0;
 
 function u3(loc, v) { gl.uniform3f(loc, v[0], v[1], v[2]); }
 
-function bokeh(prog, src, w, h, dst, rad) {
+function bokeh(prog, src, dst, rad) {
   gl.useProgram(prog.p);
   gl.uniform1i(prog.u.SRC, 0);
+  gl.uniform1i(prog.u.DEP, 1);
   gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
   gl.viewport(0, 0, dst.w, dst.h);
+  gl.activeTexture(gl.TEXTURE1);
+  gl.bindTexture(gl.TEXTURE_2D, src.dtex);
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, src);
-  gl.uniform2f(prog.u.TEXEL, 1 / w, 1 / h);
+  gl.bindTexture(gl.TEXTURE_2D, src.tex[0]);
+  gl.uniform2f(prog.u.TEXEL, 1 / src.w, 1 / src.h);
+  gl.uniform2f(prog.u.CLIPU, GCLIP[0], GCLIP[1]);
   gl.uniform1f(prog.u.RAD, rad);
+  gl.uniform1f(prog.u.FOCUS, LIFT);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
 
 var RN = 12, RM = 3;
+/* the grass's near and far clip planes, in metres */
+var GCLIP = [0.03, 400];
 
 /* the hand: where the pointer passes over the meadow it presses the
    grass aside, out from its path and a little on along it, and once it
@@ -2517,7 +2583,7 @@ function grassUniforms(prog, cam, eyeg, t, env, w, pixr) {
   gl.useProgram(prog.p);
   gl.uniform4f(u.CAM, cam[0], cam[1], cam[2], cam[3]);
   u3(u.EYEG, eyeg);
-  gl.uniform2f(u.CLIP, 0.03, 400);
+  gl.uniform2f(u.CLIP, GCLIP[0], GCLIP[1]);
   gl.uniform1f(u.T, t);
   gl.uniform1f(u.WENV, env);
   gl.uniform2f(u.WIND, 0.94, -0.33);
@@ -2653,8 +2719,8 @@ function draw(now) {
   drawBand(1, midT, gcam, eyeg, t, env, w, pixr, vis, false);
   drawBand(0, nearT, gcam, eyeg, t, env, w, pixr, vis, false);
 
-  bokeh(bokeh32Prog, midT.tex[0], midT.w, midT.h, midB, RM);
-  bokeh(bokehProg, nearT.tex[0], nearT.w, nearT.h, nearB, RN);
+  bokeh(bokeh32Prog, midT, midB, RM);
+  bokeh(bokehProg, nearT, nearB, RN);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, W2, H2);
@@ -2677,6 +2743,7 @@ function draw(now) {
   u3(u.GV, GAL_V);
   gl.uniform1f(u.T, t);
   gl.uniform1f(u.G, still ? 0.37 : (frameNo++ % 977) * 0.013);
+  gl.uniform1f(u.LIFT, LIFT);
   gl.uniform1f(u.SCALE, SCALE);
   gl.uniform1f(u.GSCALE, GSCALE);
   gl.uniform1f(u.EXPO, blend('expo', w));
@@ -2892,8 +2959,8 @@ function frameTargets(cw, ch) {
   var nw = Math.max(1, Math.round(cw * ns)), nh = Math.max(1, Math.round(ch * ns));
   skyT = target(hw, hh, [CFMT, CFMT], false);
   farT = msTarget(cw, ch);
-  midT = target(mw, mh, [CFMT], true);
-  nearT = target(nw, nh, [CFMT], true);
+  midT = target(mw, mh, [CFMT], 2);
+  nearT = target(nw, nh, [CFMT], 2);
   midB = target(mw, mh, [CFMT], false);
   nearB = target(nw, nh, [CFMT], false);
   /* the softness is sized to the frame: the nearest grass is a wash,
