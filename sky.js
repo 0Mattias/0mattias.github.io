@@ -2008,7 +2008,7 @@ function buildMeadow(w, h) {
      there too: short blades scattered over the meadow it looks down
      on, fewer with distance as the tussocks close, and none past ten
      metres */
-  var ns = Math.round(LIFT * 10 * 10 * TANG * 1200);
+  var ns = Math.round(LIFT * 10 * 10 * TANG * 700);
   for (i = 0; i < ns; i++) {
     z = 10 * Math.sqrt(rnd());
     if (z < NEAR_Z || rnd() > Math.min(1, 3 / z) * Math.min(1, (10 - z) / 4)) continue;
@@ -2019,6 +2019,30 @@ function buildMeadow(w, h) {
     if (!inView(p[0], p[1])) continue;
     sw[2] = clip(p[0], p[1], h);
     Array.prototype.push.apply(blades[band(z)], sw);
+  }
+  /* and the flowers of that ground: the drifts above begin about where
+     a lying eye's wash of near blades ends, but a tall frame's lower
+     half is this meadow at arm's length, seen from above, so it is
+     flowered too, in small drifts of one kind that thin with distance:
+     the frame holds only a couple of metres of ground across its lower
+     third, and each of them should carry its flowers */
+  var nk = Math.round(LIFT * 4.5 * 4.5 * TANG * 9);
+  for (i = 0; i < nk; i++) {
+    z = 1.1 * Math.pow(4.5 / 1.1, rnd());
+    var ku = rnd() * 2 - 1, kk = pick(), kn = 2 + Math.floor(rnd() * 4);
+    for (j = 0; j < kn; j++) {
+      var zk = Math.max(1.1, z + (rnd() - 0.5) * 0.5);
+      p = place(zk, Math.max(-1, Math.min(1, ku + (rnd() - 0.5) * 0.5 / (zk * TANG + 0.3))));
+      var kf = kk === 7 && zk < 3.5 ? 0 : kk;
+      var ks = KS[kf] * (0.8 + 0.45 * rnd());
+      h = 0.1 + 0.26 * rnd();
+      var ss = [p[0], p[1], h, 0.002, rnd() * Math.PI * 2, 0.05 + 0.15 * rnd(), rnd(), rnd(), 2, 0.5 + 0.6 * rnd(), 0.3, rnd() - 0.5];
+      var ff = [kf, ks, rnd() * Math.PI * 2, 0.2 + 0.25 * rnd()];
+      if (!inView(p[0], p[1])) continue;
+      ss[2] = clip(p[0], p[1], h);
+      Array.prototype.push.apply(blades[band(zk)], ss);
+      Array.prototype.push.apply(heads[band(zk)], ss.concat(ff));
+    }
   }
   return { blades: blades, heads: heads, parts: parts };
 }
