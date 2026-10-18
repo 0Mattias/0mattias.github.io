@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-auTcziWG8zDj/HFfmKV3GrhZRre8VWeBDEqt0A1yElU='; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-I5qLNtcQuhETkzRkJzp28xhCbsrSxcAlG7whFSZv/Dw='; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="theme-color" content="#6282b6">
     <meta name="description" content="Software engineer in Boston building security tools, AI agents, and low-level systems.">
@@ -41,10 +41,10 @@
         d.className += ' js';
         document.querySelector('meta[name="theme-color"]').setAttribute('content', sky[look]);
         var w = innerWidth, h = innerHeight, a = w / Math.max(h, 480);
-        if (w > h ? a >= 1.5 && a <= 4 : a <= 0.7) {
+        if (a <= 4) {
             var still = new Image(), on = function () { d.classList.add('pic'); };
             still.fetchPriority = 'high';
-            still.src = '/stills/' + look + '-' + (w > h ? 'wide' : 'tall') + '.webp';
+            still.src = '/stills/' + look + '-' + (a > 1.5 ? 'wide' : 'tall') + '.webp';
             if (still.decode) still.decode().then(on, function () {});
             else still.onload = on;
         }

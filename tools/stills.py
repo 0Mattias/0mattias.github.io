@@ -3,14 +3,17 @@ one is up, and in its place where it cannot run.
 
 sky.js renders them itself, in WebKit, through a stub that steps its
 clock, so they match the live picture's first frame. Each look gets a
-wide still (every frame at least 1.5:1 is laid out alike, so a still at
-4:1 matches any of them up to that, a 32:9 screen included, cropped to
-the sides) and a tall one (every frame up to 0.7:1, phones and portrait
-tablets). The new moon is set, so the live moon comes out at its own
-phase as the picture fades in. The stills are written to
-stills/<look>-<wide|tall>.webp, and a tiny copy of each goes into
-style.css as the glimpse the page paints, blurred, before anything has
-loaded.
+wide still (every frame at least 1.5:1 is laid out alike, so a still
+at 4:1 matches any of them up to that, a 32:9 screen included, cropped
+to the sides) and a tall one at 0.7:1 for every frame narrower than
+3:2 (each of those holds the horizon at the same height and the horn
+in the same place, so a narrower frame matches the still cropped to
+the sides about the horn, and a wider one cropped top and bottom about
+the horizon, as style.css places it). The new moon is set, so the live
+moon comes out at its own phase as the picture fades in. The stills
+are written to stills/<look>-<wide|tall>.webp, and a tiny copy of each
+goes into style.css as the glimpse the page paints, blurred, before
+anything has loaded.
 
 Run:  uv run --with playwright==1.62.0 --with pillow python tools/stills.py
 (once: uv run --with playwright==1.62.0 playwright install webkit)

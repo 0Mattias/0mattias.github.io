@@ -681,7 +681,7 @@ layout(location = 1) out vec4 o1;
 layout(location = 2) out vec4 o2;
 layout(location = 3) out vec4 o3;
 uniform sampler2D PREB;
-uniform float REFINE, LIFT;
+uniform float REFINE;
 
 const vec2 SS[4] = vec2[4](vec2(0.125, 0.375), vec2(0.375, -0.125), vec2(-0.125, -0.375), vec2(-0.375, 0.125));
 
@@ -794,19 +794,10 @@ vec3 meadowAlbedo(vec3 p, float t) {
   float vis = smoothstep(0.08, 0.025, t * PIX);
   tops = mix(tops, fc, speck * vis);
   tops += vec3(0.012, 0.01, 0.004) * (1.0 - vis);
-  /* a raised eye looks down the far meadow to where its blades end, and
-     sees the ground beyond go on as the same weave of lit tips over
-     shaded blades, a pixel wide and a few tall; it is woven into the
-     ground there, and fades as the pixels grow coarser than it */
-  float weave = 0.6 * vn(vec2(gl_FragCoord.x * 0.9, gl_FragCoord.y * 0.22)) + 0.4 * vn(vec2(gl_FragCoord.x * 1.7 + 5.0, gl_FragCoord.y * 0.45));
-  tops *= 1.0 + LIFT * smoothstep(0.12, 0.03, t * PIX) * 1.6 * (weave - 0.56);
-  /* which of them the eye sees turns on how steeply it looks into the
-     sward: a lying eye, 0.34 m up, sees tops from five metres out, and
-     an eye raised higher sees the floor as much farther */
-  return mix(floor0, tops, smoothstep(5.0, 16.0, t * 0.34 / (EYE.y - 2300.0)));
+  return mix(floor0, tops, smoothstep(5.0, 16.0, t));
 }
 
-vec3 light(Look L, vec3 p, vec3 n, vec3 rd, float t, vec3 alb, float snow, float ao, float sh, bool meadow, float deep, out float dfr) {
+vec3 light(Look L, vec3 p, vec3 n, vec3 rd, float t, vec3 alb, float snow, float ao, float sh, bool meadow, out float dfr) {
   float ndl = dot(n, L.sun);
   float dif = max(ndl, 0.0);
   dif = mix(dif, max((ndl + 0.3) / 1.3, 0.0), snow * 0.6);
@@ -815,9 +806,6 @@ vec3 light(Look L, vec3 p, vec3 n, vec3 rd, float t, vec3 alb, float snow, float
   vec3 direct = L.sunc * dif * sh * line;
   if (meadow) direct += L.sunc * sh * line * 0.35 * pow(max(dot(rd, L.sun), 0.0), 3.0);
   vec3 amb = L.amb * ao * (0.55 + 0.45 * n.y) + L.bnc * ao * (0.5 - 0.5 * n.y);
-  /* the floor of the sward lies in the shade of the blades over it */
-  direct *= 1.0 - 0.5 * deep;
-  amb *= 1.0 - 0.3 * deep;
   vec3 col = alb * (direct + amb);
   vec3 hv = normalize(L.sun - rd);
   col += snow * L.sunc * sh * line * pow(max(dot(n, hv), 0.0), 24.0) * 0.08;
@@ -868,9 +856,6 @@ void main() {
     float snow = 0.0;
     vec3 alb = meadow ? meadowAlbedo(p, t) : rockAlbedo(p, n, lod, snow);
     float ao = meadow ? 1.0 : terrainAO(p, n, lod);
-    /* how far down into the sward the ray looks: steeply, it finds the
-       floor between the tussocks; at a slant, the lit sward itself */
-    float deep = meadow ? smoothstep(0.15, 0.4, -rd.y) * smoothstep(0.05, 0.015, t * PIX) : 0.0;
     if (edge || hits < 0.5) {
       vec3 so = p + n * (0.5 + t * 0.002);
       sh0 = shadow(so, LK[0].sun);
@@ -878,9 +863,9 @@ void main() {
       sh2 = shadow(so, LK[2].sun);
     }
     float d0, d1, d2;
-    c0 += light(LK[0], p, n, rd, t, alb, snow, ao, sh0, meadow, deep, d0);
-    c1 += light(LK[1], p, n, rd, t, alb, snow, ao, sh1, meadow, deep, d1);
-    c2 += light(LK[2], p, n, rd, t, alb, snow, ao, sh2, meadow, deep, d2);
+    c0 += light(LK[0], p, n, rd, t, alb, snow, ao, sh0, meadow, d0);
+    c1 += light(LK[1], p, n, rd, t, alb, snow, ao, sh1, meadow, d1);
+    c2 += light(LK[2], p, n, rd, t, alb, snow, ao, sh2, meadow, d2);
     df += vec3(d0, d1, d2);
     hits += 1.0;
     lt += log(t);
@@ -1047,41 +1032,23 @@ void main() {
   o1 = vec4(c * SCALE, a);
 }`;
 
-/* the softness of a band of grass: each pixel of it is spread over a
-   disc, gathered over rings of taps turned at random per pixel, and a
-   pixel gathers every disc that reaches it. On a tall frame
-   the middle grass is the picture's foreground rather than a wash under
-   the page's fade, so there each pixel's disc follows its depth, full
-   out to 2.5 m and gone by the sharp grass at 4 m, as a lens focused on
-   the far meadow would have it; the discs all carry the same light */
+/* a bokeh disc, gathered over rings of taps turned at random per pixel */
 function bokehSrc(k) {
   var n = k.length;
   return HEAD + NOISE + `
 in vec2 uv;
 out vec4 o;
-uniform sampler2D SRC, DEP;
-uniform vec2 TEXEL, CLIPU;
-uniform float RAD, FOCUS;
+uniform sampler2D SRC;
+uniform vec2 TEXEL;
+uniform float RAD;
 const vec2 K[${n}] = vec2[${n}](` + k.join(',') + `);
 void main() {
   float kang = hash12(uv * 517.3) * 6.2831853;
   float kc = cos(kang), ks = sin(kang);
   mat2 ROT = mat2(kc, ks, -ks, kc);
   vec4 acc = vec4(0.0);
-  for (int i = 0; i < ${n}; i++) {
-    vec2 q = uv + (ROT * K[i]) * RAD * TEXEL;
-    vec4 c = texture(SRC, q);
-    float w = 1.0 / ${n}.0;
-    if (FOCUS > 0.0 && c.a > 0.0) {
-      float dn = texture(DEP, q).r * 2.0 - 1.0;
-      float dz = 2.0 * CLIPU.x * CLIPU.y / (CLIPU.x + CLIPU.y - dn * (CLIPU.y - CLIPU.x));
-      float f = mix(1.0, clamp((1.0 / dz - 0.25) / 0.15, 0.0, 1.0), FOCUS);
-      if (length(K[i]) > f) continue;
-      w = 1.0 / max(1.0, ${n}.0 * f * f);
-    }
-    acc += c * w;
-  }
-  o = acc;
+  for (int i = 0; i < ${n}; i++) acc += texture(SRC, uv + (ROT * K[i]) * RAD * TEXEL);
+  o = acc / ${n}.0;
 }`;
 }
 
@@ -1405,7 +1372,7 @@ out vec4 o;
 uniform sampler2D LA0, LA1, LA2, LA3, SKA, SKB, GFAR, GMID, GNEAR;
 uniform vec4 CAM;
 uniform vec3 EYE, W, MOON, GN, GC, GV;
-uniform float T, G, SCALE, GSCALE, EXPO, MOONR, PH, STARS, CLT, MILKY, LIFT;
+uniform float T, G, SCALE, GSCALE, EXPO, MOONR, PH, STARS, CLT, MILKY;
 uniform float METON, METP, METS, METL;
 uniform vec4 MET;
 uniform float CTON, CTP, CTAGE, JK;
@@ -1594,36 +1561,6 @@ void main() {
     l2 *= 1.0 - a2.a * (1.0 - cloudShade(wp, LK[2].sun)) * 0.5;
   }
   vec3 land = W.x * l0 + W.y * l1 + W.z * l2;
-  /* the brow of the meadow, where it falls away into the valley a
-     hundred metres out. A lying eye sees its own tall blades and seed
-     heads stand across it; a raised eye sees it as a line, since no
-     blade it can grow stands tall enough to cross it. What crosses a
-     real brow is the taller growth along it, finer than a pixel from
-     here, so a soft ragged edge of it is laid over the rows just above
-     the meadow's last, in tufts of unequal height, each row taking the
-     meadow's own colour from the brow below it */
-  if (LIFT > 0.0 && (al < 0.999 || td > 400.0)) {
-    float x = gl_FragCoord.x;
-    float tuft = 0.5 * vn(vec2(x * 0.08, 3.0)) + 0.3 * vn(vec2(x * 0.35, 7.0)) + 0.2 * vn(vec2(x * 1.4, 11.0));
-    float reach = 1.0 + 8.0 * tuft * tuft;
-    vec2 sz = vec2(textureSize(LA3, 0));
-    for (int j = 1; j <= 9; j++) {
-      if (float(j) - 0.5 > reach || px.y - j < 0) break;
-      ivec2 q = px + ivec2(0, -j);
-      vec4 b3 = texelFetch(LA3, q, 0);
-      float tq = unpackT(b3.rg);
-      if (tq < 25.0 || tq > 400.0) continue;
-      vec4 b0 = texelFetch(LA0, q, 0), b1 = texelFetch(LA1, q, 0), b2 = texelFetch(LA2, q, 0);
-      vec3 m0 = dec(b0.rgb), m1 = dec(b1.rgb), m2 = dec(b2.rgb);
-      vec3 wq = EYE + camDir((vec2(q) + 0.5) / sz, CAM) * tq;
-      m0 *= 1.0 - b3.b * (1.0 - cloudShade(wq, LK[0].sun)) * 0.72;
-      m2 *= 1.0 - b2.a * (1.0 - cloudShade(wq, LK[2].sun)) * 0.5;
-      float cov = LIFT * 0.9 * (1.0 - (float(j) - 0.5) / reach);
-      land = mix(land, W.x * m0 + W.y * m1 + W.z * m2, cov);
-      al = max(al, cov);
-      break;
-    }
-  }
   vec3 col;
   if (cd < td) col = cl.rgb + (1.0 - cl.a) * (land + (1.0 - al) * sky);
   else col = land + (1.0 - al) * (cl.rgb + (1.0 - cl.a) * sky);
@@ -1718,15 +1655,15 @@ function samplesFor(fmt) {
 function initGL() {
   PSC = gl.getExtension('KHR_parallel_shader_compile');
   preProg = program(PRE, TRACE_U);
-  landProg = program(LAND, TRACE_U.concat(['PREB', 'REFINE', 'LIFT']));
+  landProg = program(LAND, TRACE_U.concat(['PREB', 'REFINE']));
   maskProg = program(MASK, ['LA0', 'LA3', 'FULL']);
   skyProg = program(SKY, ['CAM', 'EYE', 'W', 'SUN', 'CLIT', 'CMID', 'CSHD', 'GLOW', 'CLT', 'SCALE', 'COVER', 'NIGHT', 'DUSK', 'FINE', 'PEAK', 'MASKT']);
-  bokehProg = program(bokehSrc(TAPS), ['SRC', 'DEP', 'TEXEL', 'CLIPU', 'RAD', 'FOCUS']);
-  bokeh32Prog = program(bokehSrc(TAPS32), ['SRC', 'DEP', 'TEXEL', 'CLIPU', 'RAD', 'FOCUS']);
+  bokehProg = program(bokehSrc(TAPS), ['SRC', 'TEXEL', 'RAD']);
+  bokeh32Prog = program(bokehSrc(TAPS32), ['SRC', 'TEXEL', 'RAD']);
   bladeProg = program(BLADE_FS, GU, BLADE_VS);
   headProg = program(HEAD_FS, GU.concat(['A2C']), HEAD_VS);
   partProg = program(PART_FS, GU.concat(['VIS', 'HALFW', 'DRIFT']), PART_VS);
-  compProg = program(COMP, ['LA0', 'LA1', 'LA2', 'LA3', 'SKA', 'SKB', 'GFAR', 'GMID', 'GNEAR', 'CAM', 'EYE', 'W', 'MOON', 'GN', 'GC', 'GV', 'T', 'G', 'SCALE', 'GSCALE', 'EXPO', 'MOONR', 'PH', 'STARS', 'CLT', 'MILKY', 'LIFT', 'METON', 'METP', 'METS', 'METL', 'MET', 'CTON', 'CTP', 'CTAGE', 'CT', 'JK']);
+  compProg = program(COMP, ['LA0', 'LA1', 'LA2', 'LA3', 'SKA', 'SKB', 'GFAR', 'GMID', 'GNEAR', 'CAM', 'EYE', 'W', 'MOON', 'GN', 'GC', 'GV', 'T', 'G', 'SCALE', 'GSCALE', 'EXPO', 'MOONR', 'PH', 'STARS', 'CLT', 'MILKY', 'METON', 'METP', 'METS', 'METL', 'MET', 'CTON', 'CTP', 'CTAGE', 'CT', 'JK']);
   progs = [preProg, landProg, maskProg, skyProg, bokehProg, bokeh32Prog, bladeProg, headProg, partProg, compProg];
   glReady = false;
   warmed = 0;
@@ -1772,7 +1709,7 @@ function storage(t, w, h, fmt) {
 /* a framebuffer with n colour textures of the given formats, and a depth
    buffer if asked; ok says whether the driver can draw to it */
 function target(w, h, fmts, depth, filter) {
-  var r = { fbo: gl.createFramebuffer(), w: w, h: h, tex: [], depth: null, dtex: null, ms: null };
+  var r = { fbo: gl.createFramebuffer(), w: w, h: h, tex: [], depth: null, ms: null };
   gl.bindFramebuffer(gl.FRAMEBUFFER, r.fbo);
   var bufs = [];
   fmts.forEach(function (f, i) {
@@ -1783,17 +1720,7 @@ function target(w, h, fmts, depth, filter) {
     bufs.push(gl.COLOR_ATTACHMENT0 + i);
   });
   gl.drawBuffers(bufs);
-  if (depth === 2) {
-    /* the depth kept as a texture, for a pass that reads it back */
-    r.dtex = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, r.dtex);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, w, h);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, r.dtex, 0);
-  } else if (depth) {
+  if (depth) {
     r.depth = gl.createRenderbuffer();
     gl.bindRenderbuffer(gl.RENDERBUFFER, r.depth);
     gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, w, h);
@@ -1841,7 +1768,6 @@ function drop(r) {
   if (!r) return;
   r.tex.forEach(function (t) { gl.deleteTexture(t); });
   if (r.depth) gl.deleteRenderbuffer(r.depth);
-  if (r.dtex) gl.deleteTexture(r.dtex);
   if (r.ms) { gl.deleteFramebuffer(r.ms); gl.deleteRenderbuffer(r.msc); gl.deleteRenderbuffer(r.msd); }
   gl.deleteFramebuffer(r.fbo);
 }
@@ -1882,20 +1808,18 @@ function windAt(t) {
 /* ---------------------------------------------------------- the camera */
 
 /* A wide frame looks down the valley with the massif on the left and
-   the horn on the right and the words in the sky between them. As the
-   frame narrows the lens first widens and the camera drops, so the
-   horn's foot rises clear of the words; narrower still it turns toward
-   the horn, until on a phone the horn stands whole above the words with
-   the meadow running up to them, and the moon comes round to stay in
-   the picture. A tall frame looks down across a lot of meadow, so there
-   the eye sits up out of the grass: the lower half shows the flowers
-   rather than a wash of the nearest blades, the grass is grown
-   farther out, since from up there the eye would see bare ground
-   between the last blades and the slopes, and the low sward between
-   the tussocks, which a lying eye never sees past the near blades, is
-   grown too. */
+   the horn on the right and the words in the sky between them, from an
+   eye lying in the grass. Every other frame is that same picture. A
+   frame narrower than three to two sees as wide as one of three to two
+   does, its lens widening up into the sky, and the camera tips up just
+   enough to hold the horizon at the same height on the screen, so the
+   grass is seen at the same slant and the horn stands in the same place
+   on the right. Narrower than seven to ten the lens widens no further,
+   as looking up any more would bend the clouds out of shape: the frame
+   is a crop of that one's, turned toward the horn to keep it in its
+   place, and the moon keeps its own up in the corner of the sky. */
 var FOVY = 36 * DEG, PITCH = 6 * DEG, YAW0 = 0;
-var NEAR_Z = 1.0, MID_Z = 4.0, ZMAX = 13, LIFT = 0;
+var NEAR_Z = 1.0, MID_Z = 4.0;
 var BOXT = [0.5, 0.45, 0.24, 0.09];
 
 function smooth01(a, b, x) {
@@ -1903,18 +1827,34 @@ function smooth01(a, b, x) {
   return k * k * (3 - 2 * k);
 }
 
+var WIDE = {
+  fovy: 36 * DEG,
+  pitch: 6 * DEG,
+  yaw: 0,
+  boxt: [0.5, 0.46, 0.24, 0.07],
+  moon: dirAzEl(-20, 18),
+  nightSun: dirAzEl(-75, 28)
+};
+var PEAK_AZ = Math.atan2(HORN[0] + LEAN[0], HORN[1] + LEAN[1]);
+
 function layoutFor(aspect) {
-  var k1 = smooth01(1.5, 1.25, aspect), k2 = smooth01(1.15, 0.7, aspect);
+  if (aspect >= 1.5) return WIDE;
+  /* the tangents of the half angles: a wide frame's height of view, and
+     a three to two frame's width; this frame's height and width */
+  var t0 = Math.tan(WIDE.fovy / 2), t1 = t0 * 1.5;
+  var th = t1 / Math.max(aspect, 0.7), tw = th * aspect;
+  var pitch = Math.atan(Math.tan(WIDE.pitch) / t0 * th);
+  var yaw = PEAK_AZ - Math.atan(Math.tan(PEAK_AZ) / t1 * tw);
+  /* the moon stands 20 degrees left and 12 up from a wide frame's middle */
+  var maz = yaw + Math.atan(Math.tan(-20 * DEG) / t1 * tw), mel = pitch + Math.atan(Math.tan(12 * DEG) / t0 * th);
   return {
-    fovy: (36 + 10 * k1 + 10 * k2) * DEG,
-    pitch: (6 - 6.5 * k1 - 1.5 * k2) * DEG,
-    yaw: (19 * k2 - 2.5 * k1 * (1 - k2)) * DEG,
-    boxt: [0.5, 0.46, 0.24 + 0.2 * k2, 0.07],
-    eye: 2300.34 + 0.4 * k2,
-    lift: k2,
-    zmax: 13 + 12 * k2,
-    moon: dirAzEl(-20 + 28 * k2, 18 + 3 * k2),
-    nightSun: dirAzEl(-75 + 30 * k2, 28)
+    fovy: 2 * Math.atan(th),
+    pitch: pitch,
+    yaw: yaw,
+    /* the words take more of a narrower frame's width */
+    boxt: [0.5, 0.46, 0.24 + 0.2 * smooth01(1.15, 0.7, aspect), 0.07],
+    moon: dirAzEl(maz / DEG, mel / DEG),
+    nightSun: WIDE.nightSun
   };
 }
 
@@ -1925,9 +1865,6 @@ function useLayout(L) {
   PITCH = L.pitch;
   YAW0 = L.yaw;
   BOXT = L.boxt;
-  EYE[1] = L.eye;
-  LIFT = L.lift;
-  ZMAX = L.zmax;
   MOON = L.moon;
   PAL.night.sun = L.nightSun;
   PAL.day.orb = PAL.day.sun;
@@ -1965,11 +1902,9 @@ function buildMeadow(w, h) {
   }
   /* keep the grass out of the words, and the nearest blades low in the
      frame but for the edges: a blade whose tip would stand too high is
-     cut down until it clears. The far grass is left alone: from out
-     there the eye sees a carpet of tops, not blades, and on a tall
-     frame, whose raised eye looks over the near grass at that ground,
-     the carpet runs up behind the dateline as the slopes do behind the
-     name, where a cut would leave it stubble */
+     cut down until it clears. The far grass is left alone: its tallest
+     stalks stand up across the valley below the words, and a narrow
+     frame, whose words take its whole width, would cut them all */
   function clip(x, z, h) {
     if (z >= MID_Z) return h;
     for (var k = 0; k < 10; k++) {
@@ -1987,6 +1922,7 @@ function buildMeadow(w, h) {
   function place(z, u) {
     return [u * (z * TANG + 0.3), z];
   }
+  var ZMAX = 13;
   var area = ZMAX * ZMAX * TANG;
   var i, j, z, p, h;
   /* the grass grows in tussocks: a clump of blades fanning out from one
@@ -1995,10 +1931,7 @@ function buildMeadow(w, h) {
   var near = Math.round(4 * 4 * TANG * 26 * 3.2);
   for (i = 0; i < nc + near; i++) {
     z = i < nc ? 0.12 + (ZMAX - 0.12) * Math.sqrt(rnd()) : 0.12 + 3.88 * Math.sqrt(rnd());
-    /* the far grass thins with the square of its distance past 13 m,
-       where a blade is already less than a pixel wide and two would
-       stand in one, and runs out over the last four metres */
-    var thin = z > ZMAX - 4 && rnd() < (z - ZMAX + 4) / 4 || z > 13 && rnd() < 1 - 169 / (z * z);
+    var thin = z > 9 && rnd() < (z - 9) / 4;
     p = place(z, rnd() * 2 - 1);
     var nb = 4 + Math.floor(rnd() * 9);
     var tall = 0.55 + 0.9 * rnd() * rnd();
@@ -2008,11 +1941,6 @@ function buildMeadow(w, h) {
       var ang = rnd() * Math.PI * 2, rr = 0.05 * Math.sqrt(rnd());
       var x = p[0] + Math.cos(ang) * rr, zz = p[1] + Math.sin(ang) * rr;
       var kind = rnd() < 0.07 ? 1 : 0;
-      /* a lying eye sees the far seed heads against the sky along the
-         carpet's rim; a raised eye would see them as bright specks all
-         over it, so on a tall frame the stalks past eight metres grow
-         as blades */
-      if (kind === 1 && z > 8 && LIFT > 0 && rnd() < LIFT) kind = 0;
       h = kind === 1 ? 0.26 + 0.3 * rnd() : (0.06 + 0.24 * Math.pow(rnd(), 1.3)) * tall;
       var bl = [x, zz, h, kind === 1 ? 0.0022 : 0.0028 + 0.0035 * rnd(),
         ang + (rnd() - 0.5) * 0.6, 0.12 + 0.34 * rnd(), Math.min(1, Math.max(0, tint0 + (rnd() - 0.5) * 0.3)), rnd(),
@@ -2034,9 +1962,7 @@ function buildMeadow(w, h) {
   }
   var drifts = [];
   for (i = 0; i < 64; i++) drifts.push([2.0 + 16 * Math.pow(rnd(), 1.1), rnd() * 2 - 1, pick()]);
-  /* the drifts are as full whatever the frame: the flowers are counted
-     over the meadow a wide frame sees */
-  var nf = Math.round(13 * 13 * TANG * 13);
+  var nf = Math.round(area * 13);
   for (i = 0; i < nf; i++) {
     var dr = drifts[Math.floor(rnd() * drifts.length)];
     z = Math.max(1.1, dr[0] * (0.7 + 0.6 * rnd()));
@@ -2061,50 +1987,6 @@ function buildMeadow(w, h) {
     var px = (rnd() * 2 - 1) * z * tanW;
     parts[band(z)].push(px, z, k === 2 ? 0.03 + 0.27 * rnd() : 0.08 + 0.42 * rnd(), rnd() * 100,
       k, k === 0 ? 0.012 : k === 1 ? 0.004 : 0.03, k === 2 ? 0 : 0.25 + 0.6 * rnd(), rnd());
-  }
-  /* a lying eye sees the tussocks close over one another; a raised eye
-     sees the ground between them, so a tall frame grows the low sward
-     there too: short blades scattered over the meadow it looks down
-     on, fewer with distance as the tussocks close, none past ten
-     metres, and fewer again close by, where the lower frame should
-     stay the soft strokes of the tussocks' own blades, as it is on a
-     wide frame, and not a turf */
-  var ns = Math.round(LIFT * 10 * 10 * TANG * 700);
-  for (i = 0; i < ns; i++) {
-    z = 10 * Math.sqrt(rnd());
-    if (z < NEAR_Z || rnd() > Math.min(1, 3 / z, (10 - z) / 4, (z - 0.4) / 2.6)) continue;
-    p = place(z, rnd() * 2 - 1);
-    h = 0.04 + 0.08 * rnd();
-    var sw = [p[0], p[1], h, 0.003 + 0.004 * rnd(), rnd() * Math.PI * 2, 0.05 + 0.25 * rnd(), rnd(), rnd(),
-      0, 0.6 + 0.8 * rnd(), 0.4 + 0.8 * rnd(), rnd() * 0.9 - 0.45];
-    if (!inView(p[0], p[1])) continue;
-    sw[2] = clip(p[0], p[1], h);
-    Array.prototype.push.apply(blades[band(z)], sw);
-  }
-  /* and the flowers of that ground: the drifts above begin about where
-     a lying eye's wash of near blades ends, but a tall frame's lower
-     half is this meadow at arm's length, seen from above, so it is
-     flowered too, as a wide frame's foreground is, in small drifts of
-     one kind that thin with distance: the frame holds only a couple of
-     metres of ground across its lower third, and each of them should
-     carry its few flowers */
-  var nk = Math.round(LIFT * 4.5 * 4.5 * TANG * 3.5);
-  for (i = 0; i < nk; i++) {
-    z = 1.1 * Math.pow(4.5 / 1.1, rnd());
-    var ku = rnd() * 2 - 1, kk = pick(), kn = 2 + Math.floor(rnd() * 4);
-    for (j = 0; j < kn; j++) {
-      var zk = Math.max(1.1, z + (rnd() - 0.5) * 0.5);
-      p = place(zk, Math.max(-1, Math.min(1, ku + (rnd() - 0.5) * 0.5 / (zk * TANG + 0.3))));
-      var kf = kk === 7 && zk < 3.5 ? 0 : kk;
-      var ks = KS[kf] * (0.8 + 0.45 * rnd());
-      h = 0.1 + 0.26 * rnd();
-      var ss = [p[0], p[1], h, 0.002, rnd() * Math.PI * 2, 0.05 + 0.15 * rnd(), rnd(), rnd(), 2, 0.5 + 0.6 * rnd(), 0.3, rnd() - 0.5];
-      var ff = [kf, ks, rnd() * Math.PI * 2, 0.2 + 0.25 * rnd()];
-      if (!inView(p[0], p[1])) continue;
-      ss[2] = clip(p[0], p[1], h);
-      Array.prototype.push.apply(blades[band(zk)], ss);
-      Array.prototype.push.apply(heads[band(zk)], ss.concat(ff));
-    }
   }
   return { blades: blades, heads: heads, parts: parts };
 }
@@ -2227,7 +2109,6 @@ function buildStep(b) {
     gl.bindTexture(gl.TEXTURE_2D, b.pre.tex[0]);
     gl.uniform1i(landProg.u.PREB, 0);
     gl.uniform1f(landProg.u.REFINE, b.phase > 1 ? 1 : 0);
-    gl.uniform1f(landProg.u.LIFT, LIFT);
   } else useTrace(preProg, cam, b.w, b.h);
   var flt = shade && CFMT === gl.RGBA16F;
   if (b === view) settle(tgt.fbo, flt);
@@ -2402,26 +2283,19 @@ var drift = 0;
 
 function u3(loc, v) { gl.uniform3f(loc, v[0], v[1], v[2]); }
 
-function bokeh(prog, src, dst, rad) {
+function bokeh(prog, src, w, h, dst, rad) {
   gl.useProgram(prog.p);
   gl.uniform1i(prog.u.SRC, 0);
-  gl.uniform1i(prog.u.DEP, 1);
   gl.bindFramebuffer(gl.FRAMEBUFFER, dst.fbo);
   gl.viewport(0, 0, dst.w, dst.h);
-  gl.activeTexture(gl.TEXTURE1);
-  gl.bindTexture(gl.TEXTURE_2D, src.dtex);
   gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, src.tex[0]);
-  gl.uniform2f(prog.u.TEXEL, 1 / src.w, 1 / src.h);
-  gl.uniform2f(prog.u.CLIPU, GCLIP[0], GCLIP[1]);
+  gl.bindTexture(gl.TEXTURE_2D, src);
+  gl.uniform2f(prog.u.TEXEL, 1 / w, 1 / h);
   gl.uniform1f(prog.u.RAD, rad);
-  gl.uniform1f(prog.u.FOCUS, LIFT);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
 
 var RN = 12, RM = 3;
-/* the grass's near and far clip planes, in metres */
-var GCLIP = [0.03, 400];
 
 /* the hand: where the pointer passes over the meadow it presses the
    grass aside, out from its path and a little on along it, and once it
@@ -2583,7 +2457,7 @@ function grassUniforms(prog, cam, eyeg, t, env, w, pixr) {
   gl.useProgram(prog.p);
   gl.uniform4f(u.CAM, cam[0], cam[1], cam[2], cam[3]);
   u3(u.EYEG, eyeg);
-  gl.uniform2f(u.CLIP, GCLIP[0], GCLIP[1]);
+  gl.uniform2f(u.CLIP, 0.03, 400);
   gl.uniform1f(u.T, t);
   gl.uniform1f(u.WENV, env);
   gl.uniform2f(u.WIND, 0.94, -0.33);
@@ -2719,8 +2593,8 @@ function draw(now) {
   drawBand(1, midT, gcam, eyeg, t, env, w, pixr, vis, false);
   drawBand(0, nearT, gcam, eyeg, t, env, w, pixr, vis, false);
 
-  bokeh(bokeh32Prog, midT, midB, RM);
-  bokeh(bokehProg, nearT, nearB, RN);
+  bokeh(bokeh32Prog, midT.tex[0], midT.w, midT.h, midB, RM);
+  bokeh(bokehProg, nearT.tex[0], nearT.w, nearT.h, nearB, RN);
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, W2, H2);
@@ -2743,7 +2617,6 @@ function draw(now) {
   u3(u.GV, GAL_V);
   gl.uniform1f(u.T, t);
   gl.uniform1f(u.G, still ? 0.37 : (frameNo++ % 977) * 0.013);
-  gl.uniform1f(u.LIFT, LIFT);
   gl.uniform1f(u.SCALE, SCALE);
   gl.uniform1f(u.GSCALE, GSCALE);
   gl.uniform1f(u.EXPO, blend('expo', w));
@@ -2959,8 +2832,8 @@ function frameTargets(cw, ch) {
   var nw = Math.max(1, Math.round(cw * ns)), nh = Math.max(1, Math.round(ch * ns));
   skyT = target(hw, hh, [CFMT, CFMT], false);
   farT = msTarget(cw, ch);
-  midT = target(mw, mh, [CFMT], 2);
-  nearT = target(nw, nh, [CFMT], 2);
+  midT = target(mw, mh, [CFMT], true);
+  nearT = target(nw, nh, [CFMT], true);
   midB = target(mw, mh, [CFMT], false);
   nearB = target(nw, nh, [CFMT], false);
   /* the softness is sized to the frame: the nearest grass is a wash,
