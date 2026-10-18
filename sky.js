@@ -1443,16 +1443,6 @@ float jetSdf(vec2 q) {
   d = min(d, cap(q, vec2(-1.05, 0.0), vec2(-1.45, -0.6), 0.09, 0.04));
   return d * JS;
 }
-/* where the meadow has gone to seed, as buildMeadow grows it: the far
-   ground on a tall frame stands taller and hay-coloured in the same
-   patches, so the carpet and the ground beyond it are one meadow */
-float seeding(vec2 q) {
-  return 0.6 * vn(q / 2.4 + vec2(5.0, 9.0)) + 0.4 * vn(q / 1.1 + vec2(13.0, 2.0));
-}
-vec3 hay(vec3 c, vec2 q) {
-  float s = seeding(q);
-  return mix(c, c * vec3(1.3, 1.12, 0.72), LIFT * smoothstep(0.5, 0.75, s)) * (1.0 + LIFT * 0.3 * (s - 0.5));
-}
 vec3 milky(vec3 d) {
   float b = dot(d, GN);
   float along = atan(dot(d, GV), dot(d, GC));
@@ -1604,7 +1594,6 @@ void main() {
     l2 *= 1.0 - a2.a * (1.0 - cloudShade(wp, LK[2].sun)) * 0.5;
   }
   vec3 land = W.x * l0 + W.y * l1 + W.z * l2;
-  if (LIFT > 0.0 && al > 0.999 && td > 4.0 && td < 400.0) land = hay(land, wp.xz);
   /* the brow of the meadow, where it falls away into the valley a
      hundred metres out. A lying eye sees its own tall blades and seed
      heads stand across it; a raised eye sees it as a line, since no
@@ -1630,7 +1619,7 @@ void main() {
       m0 *= 1.0 - b3.b * (1.0 - cloudShade(wq, LK[0].sun)) * 0.72;
       m2 *= 1.0 - b2.a * (1.0 - cloudShade(wq, LK[2].sun)) * 0.5;
       float cov = LIFT * 0.9 * (1.0 - (float(j) - 0.5) / reach);
-      land = mix(land, hay(W.x * m0 + W.y * m1 + W.z * m2, wq.xz), cov);
+      land = mix(land, W.x * m0 + W.y * m1 + W.z * m2, cov);
       al = max(al, cov);
       break;
     }
@@ -1872,24 +1861,6 @@ function mulberry32(a) {
   };
 }
 
-/* the shaders' lattice hash and value noise, bit for bit, so the grass
-   grown here and the ground shaded there can share one pattern */
-function ghash(x, z) {
-  var qx = Math.imul(Math.floor(x) | 0, 1597334673), qz = Math.imul(Math.floor(z) | 0, -482951495);
-  return (Math.imul(qx ^ qz, 1597334673) >>> 0) / 4294967295;
-}
-function gvn(x, z) {
-  var ix = Math.floor(x), iz = Math.floor(z), fx = x - ix, fz = z - iz;
-  fx = fx * fx * (3 - 2 * fx); fz = fz * fz * (3 - 2 * fz);
-  var a = ghash(ix, iz), b = ghash(ix + 1, iz), c = ghash(ix, iz + 1), d = ghash(ix + 1, iz + 1);
-  return (a + (b - a) * fx) * (1 - fz) + (c + (d - c) * fx) * fz;
-}
-/* where the meadow has gone to seed: patches a couple of metres across
-   in which the grass stands taller and hay-coloured, with its stalks up */
-function seeding(x, z) {
-  return 0.6 * gvn(x / 2.4 + 5, z / 2.4 + 9) + 0.4 * gvn(x / 1.1 + 13, z / 1.1 + 2);
-}
-
 var windRnd = mulberry32(99);
 var WN = [];
 for (var wi = 0; wi < 256; wi++) WN.push(windRnd());
@@ -2031,23 +2002,19 @@ function buildMeadow(w, h) {
     p = place(z, rnd() * 2 - 1);
     var nb = 4 + Math.floor(rnd() * 9);
     var tall = 0.55 + 0.9 * rnd() * rnd();
-    /* a lying eye sees the meadow's unevenness only as its rim; a
-       raised eye looks down on all of it, and an even meadow is a lawn
-       to it, so a tall frame's meadow goes to seed in patches: there
-       the tussocks stand taller, more of them hay-coloured, and more of
-       their blades are stalks, which elsewhere past eight metres grow
-       as blades, since a stalk alone over the carpet is a speck */
-    var seed = seeding(p[0], p[1]), gone = seed > 0.56 ? LIFT : 0;
-    tall *= 1 + LIFT * 0.9 * (seed - 0.5);
-    var tint0 = rnd(), dry0 = rnd() < 0.12 + 0.4 * gone;
+    var tint0 = rnd(), dry0 = rnd() < 0.12;
     var keep = !thin && inView(p[0], p[1]);
     for (j = 0; j < nb; j++) {
       var ang = rnd() * Math.PI * 2, rr = 0.05 * Math.sqrt(rnd());
       var x = p[0] + Math.cos(ang) * rr, zz = p[1] + Math.sin(ang) * rr;
-      var kind = rnd() < 0.07 + 0.1 * gone ? 1 : 0;
-      if (kind === 1 && z > 8 && LIFT > 0 && !gone && rnd() < LIFT) kind = 0;
+      var kind = rnd() < 0.07 ? 1 : 0;
+      /* a lying eye sees the far seed heads against the sky along the
+         carpet's rim; a raised eye would see them as bright specks all
+         over it, so on a tall frame the stalks past eight metres grow
+         as blades */
+      if (kind === 1 && z > 8 && LIFT > 0 && rnd() < LIFT) kind = 0;
       h = kind === 1 ? 0.26 + 0.3 * rnd() : (0.06 + 0.24 * Math.pow(rnd(), 1.3)) * tall;
-      var bl = [x, zz, h, kind === 1 ? 0.0022 * (1 + 1.5 * LIFT) : 0.0028 + 0.0035 * rnd(),
+      var bl = [x, zz, h, kind === 1 ? 0.0022 : 0.0028 + 0.0035 * rnd(),
         ang + (rnd() - 0.5) * 0.6, 0.12 + 0.34 * rnd(), Math.min(1, Math.max(0, tint0 + (rnd() - 0.5) * 0.3)), rnd(),
         kind, 0.6 + 0.8 * rnd(), 0.4 + 0.8 * rnd(), dry0 ? 0.47 : rnd() * 0.9 - 0.45];
       if (!keep) continue;
@@ -2105,8 +2072,8 @@ function buildMeadow(w, h) {
   var ns = Math.round(LIFT * 10 * 10 * TANG * 700);
   for (i = 0; i < ns; i++) {
     z = 10 * Math.sqrt(rnd());
+    if (z < NEAR_Z || rnd() > Math.min(1, 3 / z, (10 - z) / 4, (z - 0.4) / 2.6)) continue;
     p = place(z, rnd() * 2 - 1);
-    if (z < NEAR_Z || rnd() > Math.min(1, 3 / z, (10 - z) / 4, (z - 0.4) / 2.6) * (0.4 + 1.2 * seeding(p[0], p[1]))) continue;
     h = 0.04 + 0.08 * rnd();
     var sw = [p[0], p[1], h, 0.003 + 0.004 * rnd(), rnd() * Math.PI * 2, 0.05 + 0.25 * rnd(), rnd(), rnd(),
       0, 0.6 + 0.8 * rnd(), 0.4 + 0.8 * rnd(), rnd() * 0.9 - 0.45];
