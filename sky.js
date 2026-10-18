@@ -816,8 +816,8 @@ vec3 light(Look L, vec3 p, vec3 n, vec3 rd, float t, vec3 alb, float snow, float
   if (meadow) direct += L.sunc * sh * line * 0.35 * pow(max(dot(rd, L.sun), 0.0), 3.0);
   vec3 amb = L.amb * ao * (0.55 + 0.45 * n.y) + L.bnc * ao * (0.5 - 0.5 * n.y);
   /* the floor of the sward lies in the shade of the blades over it */
-  direct *= 1.0 - 0.8 * deep;
-  amb *= 1.0 - 0.5 * deep;
+  direct *= 1.0 - 0.5 * deep;
+  amb *= 1.0 - 0.3 * deep;
   vec3 col = alb * (direct + amb);
   vec3 hv = normalize(L.sun - rd);
   col += snow * L.sunc * sh * line * pow(max(dot(n, hv), 0.0), 24.0) * 0.08;
@@ -2006,12 +2006,14 @@ function buildMeadow(w, h) {
   /* a lying eye sees the tussocks close over one another; a raised eye
      sees the ground between them, so a tall frame grows the low sward
      there too: short blades scattered over the meadow it looks down
-     on, fewer with distance as the tussocks close, and none past ten
-     metres */
+     on, fewer with distance as the tussocks close, none past ten
+     metres, and fewer again close by, where the lower frame should
+     stay the soft strokes of the tussocks' own blades, as it is on a
+     wide frame, and not a turf */
   var ns = Math.round(LIFT * 10 * 10 * TANG * 700);
   for (i = 0; i < ns; i++) {
     z = 10 * Math.sqrt(rnd());
-    if (z < NEAR_Z || rnd() > Math.min(1, 3 / z) * Math.min(1, (10 - z) / 4)) continue;
+    if (z < NEAR_Z || rnd() > Math.min(1, 3 / z, (10 - z) / 4, (z - 0.4) / 2.6)) continue;
     p = place(z, rnd() * 2 - 1);
     h = 0.04 + 0.08 * rnd();
     var sw = [p[0], p[1], h, 0.003 + 0.004 * rnd(), rnd() * Math.PI * 2, 0.05 + 0.25 * rnd(), rnd(), rnd(),
@@ -2023,10 +2025,11 @@ function buildMeadow(w, h) {
   /* and the flowers of that ground: the drifts above begin about where
      a lying eye's wash of near blades ends, but a tall frame's lower
      half is this meadow at arm's length, seen from above, so it is
-     flowered too, in small drifts of one kind that thin with distance:
-     the frame holds only a couple of metres of ground across its lower
-     third, and each of them should carry its flowers */
-  var nk = Math.round(LIFT * 4.5 * 4.5 * TANG * 9);
+     flowered too, as a wide frame's foreground is, in small drifts of
+     one kind that thin with distance: the frame holds only a couple of
+     metres of ground across its lower third, and each of them should
+     carry its few flowers */
+  var nk = Math.round(LIFT * 4.5 * 4.5 * TANG * 3.5);
   for (i = 0; i < nk; i++) {
     z = 1.1 * Math.pow(4.5 / 1.1, rnd());
     var ku = rnd() * 2 - 1, kk = pick(), kn = 2 + Math.floor(rnd() * 4);
@@ -2893,11 +2896,10 @@ function frameTargets(cw, ch) {
   nearT = target(nw, nh, [CFMT], true);
   midB = target(mw, mh, [CFMT], false);
   nearB = target(nw, nh, [CFMT], false);
-  /* the softness is sized to the lens, so the wide lens of a tall frame
-     blurs no more of a blade than the narrow one of a wide frame */
-  var ang = 36 * DEG / FOVY;
-  RN = 0.04 * ch * ang * ns;
-  RM = 0.0055 * ch * ang * ms;
+  /* the softness is sized to the frame: the nearest grass is a wash,
+     the middle grass soft strokes, on every frame alike */
+  RN = 0.04 * ch * ns;
+  RM = 0.0055 * ch * ms;
 }
 
 /* the last frame of the old size, kept on a plain canvas under the new
