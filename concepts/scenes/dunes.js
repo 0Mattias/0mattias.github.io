@@ -271,6 +271,22 @@ void atmo(vec3 rd, vec3 L, float tEnd, out vec3 ins, out vec3 tr) {
   atmoN(rd, L, tEnd, 8, ins, tr);
 }
 
+/* the air between the eye and the sand, in closed form: a ray to the
+   sand stays within a few hundred metres of the ground, so the air along
+   it is taken at its mean height, lit through the sun's own path there */
+void airNear(vec3 rd, vec3 L, float t, out vec3 ins, out vec3 tr) {
+  float hm = max(EYE + 0.5 * rd.y * t + t * t / (6.0 * RE), 0.0);
+  float rR = exp(-(ALT + hm) / HR), rM = exp(-hm / HM);
+  vec3 sig = (BR + BO) * rR + BME * rM;
+  tr = exp(-sig * t);
+  vec2 sd = sunDepth(ALT + hm, L.y);
+  vec3 Ts = exp(-(BR + BO) * sd.x - BME * sd.y);
+  float c = dot(rd, L);
+  float pol = 1.0 - 0.55 * (1.0 - c * c) / (1.0 + c * c);
+  vec3 sc = BR * rR * (phaseR(c) * pol + 0.03) + BMS * rM * (phaseM(c) + 0.03);
+  ins = sc * Ts * (1.0 - tr) / sig;
+}
+
 vec3 sunAt(vec3 L, float h) {
   vec2 sd = sunDepth(ALT + h, L.y);
   return exp(-(BR + BO) * sd.x - BME * sd.y);
@@ -583,8 +599,13 @@ vec3 keyDir() { return normalize(gSun * gWS * gEs * 0.2 + gMoon * gWM * gEm); }
    what is left of the light behind */
 vec3 airTo(vec3 rd, float t, out vec3 trans) {
   vec3 ins = vec3(0.0), tr = vec3(1.0), ins2 = vec3(0.0), tr2 = vec3(1.0);
-  if (gWS > 0.001) atmo(rd, gSun, t, ins, tr);
-  if (gWM > 0.001) atmo(rd, gMoon, t, ins2, tr2);
+  if (t > 1e8) {
+    if (gWS > 0.001) atmo(rd, gSun, t, ins, tr);
+    if (gWM > 0.001) atmo(rd, gMoon, t, ins2, tr2);
+  } else {
+    if (gWS > 0.001) airNear(rd, gSun, t, ins, tr);
+    if (gWM > 0.001) airNear(rd, gMoon, t, ins2, tr2);
+  }
   trans = gWS > 0.001 ? tr : tr2;
   vec3 air = (ins * gEs * gWS + ins2 * gEm * gWM) * gGain;
   /* the belt of Venus: the low sky away from the sun flushed pink with
