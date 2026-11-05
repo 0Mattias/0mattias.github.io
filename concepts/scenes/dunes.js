@@ -126,7 +126,7 @@ float secondary(vec2 p, out float lee, out float dc) {
     float k = k0 + float(j);
     float r1 = hash11(k * 3.17 + 1.3), r2 = hash11(k * 1.91 + 5.1);
     float c = k * 210.0 + 45.0 * sin(v * 0.009 + r1 * TAU) + 14.0 * sin(v * 0.031 + r2 * TAU);
-    float H = 16.0 * (0.6 + 0.8 * r2) * sat(0.6 + 0.6 * sin(v * 0.006 + r1 * 9.0));
+    float H = 13.0 * (0.6 + 0.8 * r2) * sat(0.6 + 0.6 * sin(v * 0.006 + r1 * 9.0));
     float s = u - c;
     float r = s < 0.0 ? H + s * 0.62 : H * (1.0 - sat(s / (H * 3.2))) * (1.0 - sat(s / (H * 3.2)));
     if (r > h) {
@@ -183,12 +183,12 @@ float field(vec2 p, float lod, out vec4 info) {
   if (hs > h) i1 = i2;
   h = smax(h, hs, 25.0);
   /* the small dunes, left out where they would be under a pixel */
-  float m = smoothstep(8.0, 45.0, h) * (1.0 - smoothstep(0.55, 0.85, 1.0 - i1.y / 220.0)) * smoothstep(9000.0, 4500.0, lod);
+  float m = smoothstep(8.0, 45.0, h) * (1.0 - smoothstep(0.6, 0.85, 1.0 - i1.y / 320.0)) * smoothstep(9000.0, 4500.0, lod);
   if (m > 0.0) {
     float sl, sc;
     float h2 = secondary(p, sl, sc);
     h += h2 * m;
-    if (h2 * m > 3.0 && sc < i1.y) i1 = vec3(sl, sc, i1.z);
+    if (h2 * m > 3.0 && sc < i1.y) i1.x = sl;
   }
   float fl = 3.0 * noise(p * 0.004) + 1.5 * noise(p * 0.017);
   h = smax(h, fl, 14.0);
@@ -561,7 +561,7 @@ void lightsAt(vec3 p, vec3 n, out vec3 sunC, out vec3 skyC) {
     sunC += sunAt(gMoon, p.y) * gEm * gWM * 3.2;
     skyC += skyLight(gMoon, n, hv) * gEm * gWM;
   }
-  skyC *= mix(1.0, gGain, 0.5);
+  skyC *= mix(1.0, gGain, look3(0.5, 0.0, 0.5));
 }
 
 vec3 keyDir() { return normalize(gSun * gWS * gEs * 0.2 + gMoon * gWM * gEm); }
@@ -591,7 +591,7 @@ float spindrift(float along, float down, float above) {
   float n2 = noise(q + vec2(5.2, 1.3) - vec2(0.3, (ph - 1.0) * 40.0 * 0.55));
   float n = mix(n1, n2, ph);
   float gust = 0.55 + 0.45 * sin(along * 0.004 + loopT(37.0));
-  return smoothstep(0.45, 0.85, n) * gust * exp(-down / 14.0) * exp(-max(above, 0.0) / 3.5);
+  return smoothstep(0.38, 0.82, n) * gust * exp(-down / 22.0) * exp(-max(above, 0.0) / 4.5);
 }
 
 /* ----------------------------------------------------------- the sand */
@@ -606,11 +606,11 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   float dA = smoothstep(4.5, 1.0, fpm);
   if (dA > 0.0) {
     vec2 w = vec2(dot(p.xz, RN), dot(p.xz, RD));
-    vec3 n1 = noised(w * vec2(0.03, 0.009) + 3.1);
-    vec3 n2 = noised(w * vec2(0.1, 0.03) + 7.7);
-    vec2 gw = n1.yz * vec2(0.03, 0.009) * 0.9 + n2.yz * vec2(0.1, 0.03) * 0.18 * smoothstep(1.6, 0.5, fpm);
+    vec3 n1 = noised(w * vec2(0.03, 0.006) + 3.1);
+    vec3 n2 = noised(w * vec2(0.1, 0.02) + 7.7);
+    vec2 gw = n1.yz * vec2(0.03, 0.006) * 0.6 + n2.yz * vec2(0.1, 0.02) * 0.14 * smoothstep(1.6, 0.5, fpm);
     vec2 gr = RN * gw.x + RD * gw.y;
-    n = normalize(n - vec3(gr.x, 0.0, gr.y) * dA * (1.0 - info.w));
+    n = normalize(n - vec3(gr.x, 0.0, gr.y) * dA * (1.0 - info.w) * (1.0 - 0.8 * info.x));
   }
 
   /* red on the dunes, a little darker down the slip faces where the
@@ -619,8 +619,8 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   float lee = info.x, pan = info.w;
   float flo = (1.0 - smoothstep(3.0, 14.0, p.y)) * (1.0 - pan);
   float mott = noise(p.xz * 0.011) * 0.6 + noise(p.xz * 0.05) * 0.4;
-  vec3 alb = vec3(0.42, 0.165, 0.078) * (0.9 + 0.2 * mott);
-  alb = mix(alb, vec3(0.39, 0.145, 0.066), lee);
+  vec3 alb = vec3(0.42, 0.175, 0.092) * (0.9 + 0.2 * mott);
+  alb = mix(alb, vec3(0.39, 0.155, 0.08), lee);
   float streak = noise(vec2(info.z * 0.09, info.y * 0.012));
   alb *= 1.0 - lee * 0.18 * smoothstep(0.3, 0.8, streak);
   alb = mix(alb, vec3(0.44, 0.22, 0.12) * (0.85 + 0.3 * mott), flo * 0.8);
@@ -642,6 +642,7 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
     n = normalize(n + vec3(RN.x, 0.0, RN.y) * sl);
   }
 
+  n = normalAt(p.xz, max(0.25, fpm), t); return n * 0.5 + 0.5;
   vec3 L = keyDir();
   float dif = max(dot(n, L), 0.0);
   float sh = dif > 0.0 ? shadow(p + n * 0.6, L, t) : 0.0;
@@ -665,7 +666,7 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   /* sand streaming off the crest above a slip face */
   float sd = lee * spindrift(info.z, info.y, 0.0) * smoothstep(40.0, 4.0, fpm);
   float fwd = 0.35 + 2.5 * pow(sat(dot(rd, L)), 6.0);
-  col += sd * 0.35 * vec3(0.5, 0.3, 0.2) * (sunC * fwd + skyC * 0.25) / PI;
+  col += sd * 0.9 * vec3(0.5, 0.3, 0.2) * (sunC * fwd + skyC * 0.25) / PI;
 
   /* a dead tree standing in front */
   if (pan > 0.0 || info.w > 0.0) {
@@ -720,7 +721,7 @@ vec3 scene(vec2 fc) {
     /* a skyline that the ray only just cleared: part of the pixel is sand */
     float cov = sat(0.5 - rmin);
     if (cov > 0.0) {
-      col = mix(col, shade(ro, rd, tr, pix), cov);
+      col = mix(col, shade(ro, rd, max(tr - max(3.0, tr * pix * 4.0), 1.0), pix), cov);
       lights *= 1.0 - cov;
     }
     /* sand blowing off a crest seen against the sky */
@@ -732,12 +733,12 @@ vec3 scene(vec2 fc) {
       vec3 sunC, skyC;
       lightsAt(q, vec3(0.0, 1.0, 0.0), sunC, skyC);
       float fwd = 0.35 + 2.5 * pow(sat(dot(rd, keyDir())), 6.0);
-      col += sd * 0.35 * vec3(0.5, 0.3, 0.2) * (sunC * fwd + skyC * 0.25) / PI;
+      col += sd * 0.9 * vec3(0.5, 0.3, 0.2) * (sunC * fwd + skyC * 0.25) / PI;
     }
   } else {
     col = shade(ro, rd, t, pix);
   }
-  col *= look3(vec3(1.0), vec3(0.76, 0.92, 1.5), vec3(0.8, 0.95, 1.3));
+  return col * col * col;
   col = max(mix(vec3(luma(col)), col, 1.0 + 0.12 * uLook.x), 0.0);
   vec3 grey = vec3(luma(col));
   col = mix(col, grey * vec3(0.5, 0.72, 1.35), 0.85 * gWM);

@@ -54,10 +54,10 @@ const vec2 CDIR = vec2(-0.24192, 0.97030);
 const vec2 CNRM = vec2(0.97030, 0.24192);
 const vec2 P0 = vec2(91.21, 22.74);
 const float KAPPA = 1.0 / 9000.0;
-const vec2 TIP = vec2(-494.47, 1257.74);
+const float SC = 0.63;
+const vec2 TIP = vec2(-277.77, 800.79);
 const vec2 CAP_N = vec2(-0.82262, 0.56859);
-const vec2 LH = vec2(-440.69, 1247.94);
-const vec2 HOUSE = vec2(-425.17, 1243.56);
+const vec2 LH = vec2(-238.3, 793.6);
 const vec2 SPA = vec2(125.2, 10.6);
 const vec2 SPB = vec2(11.0, -20.75);
 
@@ -70,11 +70,11 @@ vec3 dirBE(float b, float e) {
 /* everything a look decides, blended once per pixel */
 vec3 SUN, SUNC, SUND, MOON;
 vec3 ZEN, HOR, HORA, GLOW, BELT;
-vec3 AMBU, AMBH, BNC, WATER;
+vec3 AMBU, AMBH, BNC, WATER, CLC;
 float HAZE, CAMT, LAMP, NIGHT;
 
 void setup() {
-  vec3 dSun = dirBE(82.0, 32.0), uSun = dirBE(58.0, 2.3), nMoon = dirBE(53.0, 5.8);
+  vec3 dSun = dirBE(82.0, 32.0), uSun = dirBE(54.0, 2.3), nMoon = dirBE(48.0, 6.5);
   SUN = normalize(dSun * uLook.x + uSun * uLook.y + nMoon * uLook.z);
   SUND = normalize(dSun * uLook.x + uSun * (uLook.y + uLook.z));
   MOON = nMoon;
@@ -87,9 +87,10 @@ void setup() {
   AMBU = look3(vec3(0.17, 0.23, 0.36), vec3(0.065, 0.085, 0.17), vec3(0.007, 0.010, 0.020));
   AMBH = look3(vec3(0.20, 0.21, 0.24), vec3(0.085, 0.08, 0.125), vec3(0.006, 0.008, 0.013));
   BNC = look3(vec3(0.05, 0.06, 0.06), vec3(0.03, 0.02, 0.015), vec3(0.002, 0.003, 0.004));
+  CLC = look3(vec3(3.0, 2.9, 2.72), vec3(2.9, 1.45, 0.8), vec3(0.16, 0.19, 0.25));
   WATER = look3(vec3(0.010, 0.034, 0.048), vec3(0.008, 0.022, 0.034), vec3(0.008, 0.026, 0.040));
   HAZE = look3(1.0 / 9000.0, 1.0 / 8500.0, 1.0 / 10000.0);
-  CAMT = look3(0.62, 0.48, 0.3);
+  CAMT = look3(0.5, 0.42, 0.28);
   LAMP = uLook.z + 0.1 * uLook.y;
   NIGHT = uLook.z;
 }
@@ -104,13 +105,14 @@ float hg(float mu, float g) { float g2 = g * g; return (1.0 - g2) / (12.566 * po
    bow, then a run of buttresses, each a long face that swings out to a
    nose and drops back steeply behind it, and the headland beyond */
 float edgeAt(float u) {
+  u /= SC;
   float w = u / 220.0 + 0.3 + 0.3 * sin(u * 0.0047);
   float i = floor(w), f = w - i;
   float a = 24.0 + 50.0 * hash11(i * 7.13 + 1.7);
   float pr = a * pow(min(f / 0.86, 1.0), 2.6) * smoothstep(1.0, 0.86, f);
   float fade = (1.0 - 0.4 * smoothstep(650.0, 1050.0, u)) * (1.0 - smoothstep(1080.0, 1260.0, u));
   float hx = sat((u - 950.0) / 350.0);
-  return -KAPPA * u * u - pr * fade - 70.0 * hx * hx * (3.0 - 2.0 * hx);
+  return SC * (-KAPPA * u * u - pr * fade - 70.0 * hx * hx * (3.0 - 2.0 * hx));
 }
 
 /* the edge: signed distance from it, positive out over the sea, and how
@@ -123,7 +125,7 @@ float coast(vec2 xz, out float s) {
   float e = edgeAt(u);
   float de = edgeAt(u + 1.0) - e;
   float d = (e - v) * inversesqrt(1.0 + de * de);
-  d = smax(d, dot(xz - TIP, CAP_N), 70.0);
+  d = smax(d, dot(xz - TIP, CAP_N), 45.0);
   vec2 pa = xz - SPA, ba = SPB - SPA;
   float sp = length(pa - ba * sat(dot(pa, ba) / dot(ba, ba))) - 24.0 + 4.0 * noise(xz * 0.06);
   return smin(d, sp, 30.0);
@@ -134,7 +136,7 @@ float coast(vec2 xz, out float s) {
    ground rounds over at the lip and rises inland to low hills */
 float landH(vec2 xz, float s, float inl) {
   inl = max(inl, 0.0);
-  float e = 118.0 + 58.0 * smoothstep(80.0, 600.0, s) - 36.0 * smoothstep(850.0, 1340.0, s) + 6.0 * sin(s * 0.009 + 1.2);
+  float e = 118.0 + 40.0 * smoothstep(50.0, 380.0, s) - 22.0 * smoothstep(530.0, 845.0, s) + 5.0 * sin(s * 0.014 + 1.2);
   float h = e - 3.0 * exp(-inl * 0.12) + 0.05 * inl;
   float m = smoothstep(60.0, 700.0, inl);
   if (m > 0.0) h += m * (0.09 * inl + 140.0 * (fbm(xz * 0.0012 + vec2(3.1, 7.7), 3) - 0.4));
@@ -150,8 +152,20 @@ float strata(float y, float s) {
   float l = bedY(y, s) / 5.5;
   float i = floor(l), f = l - i;
   float h = hash11(i * 3.17 + 0.5);
-  float back = 0.15 + 0.9 * h * h;
+  float back = 0.15 + 0.9 * h * h + 1.4 * smoothstep(0.86, 0.96, h);
   return back * smoothstep(0.05, 0.5, f) * (1.0 - smoothstep(0.62, 0.97, f));
+}
+
+/* sea caves at the foot of some buttresses: an arch-shaped bore driven a
+   little way into the rock */
+float cave(vec3 p, float s, float d) {
+  float ci = floor(s / 120.0);
+  float ch = hash11(ci * 5.3 + 2.0);
+  if (ch < 0.5) return 1e3;
+  float sc = (ci + 0.3 + 0.4 * hash11(ci * 2.1 + 0.4)) * 120.0;
+  float cw = 4.0 + 7.0 * ch, cy = 8.0 + 12.0 * hash11(ci + 7.7);
+  float c = (length(vec2((s - sc) / cw, p.y / cy)) - 1.0) * min(cw, cy);
+  return max(c, -d - 24.0);
 }
 
 float map(vec3 p) {
@@ -164,11 +178,20 @@ float map(vec3 p) {
   /* buttresses rounded between sharp gullies, and flutes on them */
   float rib = 1.0 - abs(2.0 * noise(vec2(s / 48.0, p.y / 320.0 + s * 0.0013)) - 1.0);
   float flute = 1.0 - abs(2.0 * noise(vec2(s / 13.0, p.y / 110.0) + 3.0) - 1.0);
-  float face = d + strata(p.y, s) + 11.0 * rib * rib * rib + 4.0 * flute * flute + 0.5 * noise(rot(0.4) * vec2(s / 4.0, p.y / 9.0));
-  float r = smax(top, face, 2.5);
-  /* fallen blocks at the foot */
-  float ap = d - 0.8 * max(9.0 - p.y, 0.0) + 4.0 * noise(p.xz * 0.16 + p.y * 0.1) - 1.5;
-  return min(r, max(ap, p.y - 11.0));
+  /* the upper beds crumble back unevenly, so the edge runs ragged */
+  float rag = 5.0 * smoothstep(h - 16.0, h - 3.0, p.y) * smoothstep(0.35, 0.8, noise(vec2(s / 13.0, 4.0)));
+  float face = d + strata(p.y, s) + 11.0 * rib * rib * rib + 4.0 * flute * flute + 0.5 * noise(rot(0.4) * vec2(s / 4.0, p.y / 9.0)) + rag;
+  float cv = p.y < 24.0 ? cave(p, s, d) : 1e3;
+  face = max(face, -cv);
+  float r = smax(top, face, 2.0);
+  /* the turf hangs a little over the lip */
+  float turf = max(abs(p.y - h + 0.7) - 0.7, face - rag - 0.9 + 0.8 * noise(vec2(s / 4.0, 1.0)));
+  r = min(r, turf);
+  /* fallen blocks at the foot, slumped in places into fans of scree */
+  float sh = 6.0 + 12.0 * smoothstep(0.55, 0.85, noise(vec2(s / 50.0, 1.7)));
+  float ap = d - 0.75 * max(sh - p.y, 0.0) + 4.0 * noise(p.xz * 0.16 + p.y * 0.1) - 1.5;
+  ap = max(ap, -cv);
+  return min(r, max(ap, p.y - sh - 2.0));
 }
 
 vec3 normalAt(vec3 p, float t) {
@@ -243,130 +266,120 @@ vec3 aerial(vec3 col, vec3 ro, vec3 rd, float t) {
   return col * ext + sky(hd) * (1.0 - ext);
 }
 
-/* clouds: cumulus drifting in off the sea, and a high veil above them.
-   The cumulus live in a grid of cells that drifts with the wind; a cell
-   may hold one cloud, a cluster of ten puffs cut off flat at a common
-   base. A ray walks the cells its path crosses inside the layer, nearest
-   first, and stops at the first puff it meets; the cloud is shaded by
-   the puffs' surfaces blended into one and roughened with noise, by
-   which side of the cluster it is on, and by its height over the dark
-   base, and its rim is worn away so the edges are soft. The sea's
-   reflection takes only each cloud's rounded outline */
-const float CB = 1300.0, CV = 6500.0, CS = 8000.0;
-const vec2 CWIND = vec2(7.0, 2.5);
+/* clouds: fair-weather cumulus drifting in off the sea, and a high veil
+   above them. The cumulus stand on a grid of cells laid on the cloud
+   base, which drifts with the wind; a cell may hold one cloud. They are
+   far enough off that each can be drawn as a sheet turned to face the
+   eye, so they keep true perspective, shrinking and crowding toward the
+   horizon, without being traced through. Each sheet carries a heap with
+   a flat base and a billowed, cauliflower top, shaded by the slope of
+   its billows toward the light, by how much cloud stands between a
+   point and the sun, and by its height over the dark base; its edges
+   are worn soft. A ray walks the cells its path crosses inside the
+   layer, nearest first, and lays the clouds it meets one over another */
+const float CB = 1150.0, CS = 6000.0, CV = 6500.0;
+const vec2 CWIND = vec2(6.0, 2.0);
 
-vec4 cumCell(vec2 id) {
-  vec2 h = hash22(id + 88.1);
-  vec2 c = (id + 0.5) * CS + (h - 0.5) * 2500.0;
-  float h3 = hash12(id + 9.3);
-  float k = 0.55 + 1.5 * h3 * h3 * h3;
-  return vec4(c, k, step(hash12(id * 1.37 + 88.1), CAMT));
+/* the cloud of a cell: its centre on the base, half-width and height,
+   and whether one stands there */
+vec4 cuCell(vec2 id, out float H) {
+  float h2 = hash12(id * 1.37 + 21.7), h3 = hash12(id + 9.3);
+  float hw = 550.0 + 1750.0 * h3 * h3;
+  H = hw * (0.5 + 0.3 * h2);
+  vec2 off = (hash22(id + 4.4) - 0.5) * 2.0 * (0.5 * CS - hw - 100.0);
+  return vec4((id + 0.5) * CS + off, hw, step(hash12(id + 88.1), CAMT));
 }
 
-/* puff i of a cloud: a broad central mass and nine about it, the
-   smaller ones riding higher and nearer the middle, the cloud drawn out
-   along the wind */
-vec4 puff(vec2 id, int i, float R) {
-  if (i == 0) return vec4(0.0, 0.2, 0.0, 1.0) * R;
-  vec3 h = hash33(vec3(id * 1.71, float(i) * 3.3));
-  float a = h.x * TAU, r = 0.3 + 0.7 * h.y;
-  float rad = 0.32 + 0.45 * hash12(id + float(i) * 5.7);
-  float y = 0.1 + (1.25 - rad) * h.z * (1.2 - 0.7 * r);
-  return vec4(cos(a) * r * 1.3, y, sin(a) * r * 0.8, rad) * R;
+float billow(vec2 p, int oct) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 6; i++) {
+    if (i >= oct) break;
+    v += a * abs(2.0 * noise(p) - 1.0);
+    p = ROT2 * p * 2.07 + vec2(3.1, 1.7);
+    a *= 0.5;
+  }
+  return v;
 }
 
-/* the nearest puff along the ray in one cell, and how much of the ray
-   the cloud covers */
-float cellHit(vec3 o, vec3 rd, vec2 id, bool lite, out vec4 pc, out vec3 cc, out float cov) {
-  cov = 0.0;
-  vec4 cl = cumCell(id);
-  if (cl.w < 0.5) return -1.0;
-  float R = 620.0 * cl.z;
-  cc = vec3(cl.x, CB + 0.4 * R, cl.y);
-  vec3 oc = o - cc;
-  float b = dot(oc, rd), c = dot(oc, oc) - 5.0 * R * R;
-  if (b * b - c < 0.0) return -1.0;
-  if (lite) {
-    float e = sqrt(max(dot(oc, oc) - b * b, 0.0)) / (1.6 * R);
-    cov = 1.0 - smoothstep(0.4, 1.0, e);
-    pc = vec4(cc, R);
-    return cov > 0.0 ? -b : -1.0;
-  }
-  float best = 1e9, tb = (CB - o.y) / rd.y;
-  for (int i = 0; i < 10; i++) {
-    vec4 q = puff(id, i, R);
-    vec3 ce = vec3(cl.x + q.x, CB + q.y, cl.y + q.z);
-    vec3 d = o - ce;
-    float bb = dot(d, rd), dd = bb * bb - (dot(d, d) - q.w * q.w);
-    if (dd < 0.0) continue;
-    float sq = sqrt(dd), te = -bb - sq, tx = -bb + sq;
-    if (o.y + rd.y * te < CB) { if (tb > tx) continue; te = tb; }
-    if (te <= 0.0) continue;
-    cov = max(cov, 1.0 - smoothstep(0.7, 1.0, sqrt(max(1.0 - dd / (q.w * q.w), 0.0))));
-    if (te < best) { best = te; pc = vec4(ce, q.w); }
-  }
-  return best < 1e9 ? best : -1.0;
+/* the heap, in units of the cloud's half-width across and height up:
+   a broad dome with a tower risen from one side, its outline and body
+   broken into billows; positive inside */
+float cuShape(vec2 q, float seed, int oct) {
+  float c1 = (hash11(seed + 2.0) - 0.5) * 0.9, t1 = 0.65 + 0.45 * hash11(seed + 1.0);
+  float w1 = 0.35 + 0.2 * hash11(seed + 3.0);
+  float dome = 0.7 * sqrt(max(1.0 - q.x * q.x, 0.0));
+  float tw = (q.x - c1) / w1;
+  float tower = t1 * sqrt(max(1.0 - tw * tw, 0.0));
+  float top = max(dome, tower) * (0.85 + 0.3 * noise(vec2(q.x * 2.5, seed)));
+  return top - q.y + 0.34 * (billow(q * vec2(2.4, 3.0) + seed * 7.3, oct) - 0.42);
 }
 
 vec4 cumulus(vec3 ro, vec3 rd, bool lite) {
   if (rd.y < 0.006) return vec4(0.0);
   vec3 o = ro;
   o.xz -= CWIND * uTime;
-  float t0 = (CB - o.y) / rd.y, t1 = min((CB + 2000.0 - o.y) / rd.y, 70000.0);
+  float t0 = (CB - o.y) / rd.y, t1 = min((CB + 2100.0 - o.y) / rd.y, 70000.0);
+  if (t0 > t1) return vec4(0.0);
   vec2 a = o.xz + rd.xz * t0;
   float hl = length(rd.xz);
   vec2 dir = rd.xz / hl + 1e-6;
   float len = (t1 - t0) * hl;
   vec2 cell = floor(a / CS), sv = sign(dir);
   vec2 tm = ((cell + max(sv, 0.0)) * CS - a) / dir, td = abs(CS / dir);
-  float run = 0.0, th = -1.0, cov;
-  vec4 pc;
-  vec3 cc;
-  for (int i = 0; i < 10; i++) {
-    th = cellHit(o, rd, cell, lite, pc, cc, cov);
-    if (th > 0.0) break;
+  float run = 0.0, T = 1.0;
+  vec3 acc = vec3(0.0);
+  float mu = dot(rd, SUN);
+  for (int i = 0; i < 12; i++) {
+    float H;
+    vec4 cl = cuCell(cell, H);
+    if (cl.w > 0.5) {
+      vec2 dh = normalize(cl.xy - o.xz);
+      float den = dot(rd.xz, dh);
+      float th = dot(cl.xy - o.xz, dh) / max(den, 1e-4);
+      vec3 p = o + rd * th;
+      vec2 rh = vec2(dh.y, -dh.x);
+      vec2 q = vec2(dot(p.xz - cl.xy, rh) / cl.z, (p.y - CB) / H);
+      if (den > 0.0 && abs(q.x) < 1.05 && q.y > -0.05 && q.y < 1.5) {
+        float seed = hash12(cell + 61.3) * 50.0;
+        float f = cuShape(q, seed, lite ? 2 : 5);
+        float al = smoothstep(0.0, 0.1 + 0.08 * NIGHT, f) * smoothstep(-0.01, 0.05, q.y);
+        if (al > 0.003) {
+          vec3 c;
+          vec3 cl3 = CLC * 0.62;
+          if (lite) {
+            c = cl3 * 0.6 + AMBU * 1.1;
+          } else {
+            /* the billows' slope, read across the sheet: across, up, and
+               toward the eye as the body thickens */
+            float e = 0.025;
+            float fx = cuShape(q + vec2(e, 0.0), seed, 5) - f, fy = cuShape(q + vec2(0.0, e), seed, 5) - f;
+            vec3 R3 = vec3(rh.x, 0.0, rh.y), C3 = -vec3(dh.x, 0.0, dh.y);
+            vec3 n = normalize(-(fx * R3 + fy * vec3(0.0, 1.0, 0.0)) / e * 0.12 + C3 * (0.35 + 2.0 * sat(f)));
+            vec2 sp = normalize(vec2(dot(SUN, R3), SUN.y * 2.0) + 1e-4);
+            float fs = cuShape(q + sp * 0.16, seed, 3);
+            float sh = exp(-max(fs - f + 0.04, 0.0) * 4.0);
+            float front = sat(dot(SUN, C3) * 0.5 + 0.55);
+            float lam = sat(dot(n, SUN) * 0.55 + 0.45) * sh * mix(0.4, 1.0, front);
+            float bd = smoothstep(0.0, 0.5, q.y);
+            vec3 amb = AMBU * (0.75 + 0.55 * bd) * (1.0 + 1.3 * NIGHT) + AMBH * 0.35 * (1.0 - bd);
+            c = cl3 * lam * mix(0.4, 1.0, bd) + amb;
+            /* light through the thin edges when the sun is behind */
+            c += CLC * (1.0 - smoothstep(0.0, 0.18, f)) * hg(mu, 0.6) * 1.6 * (1.0 - 0.75 * NIGHT);
+          }
+          c = aerial(c, ro, rd, th);
+          acc += T * al * c;
+          T *= 1.0 - al;
+          if (T < 0.02) break;
+        }
+      }
+    }
     if (tm.x < tm.y) { run = tm.x; tm.x += td.x; cell.x += sv.x; }
     else { run = tm.y; tm.y += td.y; cell.y += sv.y; }
     if (run > len) break;
   }
-  if (th <= 0.0) return vec4(0.0);
-  vec3 p = o + rd * th;
-  float base = 1.0 - step(CB + 1.0, p.y);
-  float mu = dot(rd, SUN);
-  float hf = sat((p.y - CB) / (pc.w * 1.4));
-  vec3 n = normalize(p - pc.xyz);
-  float rough = 0.5;
-  if (!lite) {
-    /* the puffs' surfaces blended where they meet, as a soft union */
-    vec4 cl = cumCell(cell);
-    float R = 620.0 * cl.z;
-    vec3 sn = vec3(0.0);
-    for (int i = 0; i < 10; i++) {
-      vec4 q = puff(cell, i, R);
-      vec3 dv = p - vec3(cl.x + q.x, CB + q.y, cl.y + q.z);
-      float dl = length(dv);
-      sn += dv / dl * exp(-(dl - q.w) / (0.12 * R));
-    }
-    n = normalize(mix(normalize(sn), normalize(p - cc), 0.25));
-    vec3 w = p / 230.0;
-    vec3 g = vec3(noise3(w), noise3(w + 3.1), noise3(w + 7.7)) - 0.5;
-    vec3 w2 = p / 80.0;
-    g += 0.5 * (vec3(noise3(w2 + 1.3), noise3(w2 + 5.1), noise3(w2 + 9.7)) - 0.5);
-    n = normalize(n + g * 1.1);
-    rough = noise3(p / 140.0) * 0.55 + noise3(p / 50.0) * 0.3 + noise3(p / 18.0) * 0.15;
-  }
-  n = normalize(mix(n, vec3(0.0, -1.0, 0.0), base));
-  float side = sat(0.5 + 0.65 * dot(normalize(p - cc), SUN));
-  float lk = sat(dot(n, SUN) * 0.6 + 0.45) * mix(0.35, 1.0, side) * mix(0.42, 1.0, hf);
-  lk = mix(lk, 0.14, base);
-  vec3 lit = SUNC * 0.66 + AMBU * 1.15;
-  vec3 shd = AMBU * 0.8 + AMBH * 0.3;
-  vec3 c = mix(shd, lit, lk);
-  /* light through the thin rims and the body when the light is behind */
-  c += SUNC * (pow(1.0 - cov, 0.7) * side * 2.4 + 0.1 * (1.0 - 0.5 * hf)) * hg(mu, 0.65);
-  c = aerial(c, ro, rd, th);
-  float al = smoothstep(0.0, 1.0, cov + (rough - 0.5) * 1.1 * (1.0 - cov * cov));
-  return vec4(c, al * smoothstep(0.006, 0.03, rd.y));
+  float A = 1.0 - T;
+  if (A <= 0.0) return vec4(0.0);
+  return vec4(acc / A, A * smoothstep(0.006, 0.03, rd.y));
 }
 
 /* the veil: thin streaks high up that catch the colour of the low sun */
@@ -386,11 +399,12 @@ vec4 veil(vec3 ro, vec3 rd) {
 float cloudShade(vec3 p) {
   vec3 o = p;
   o.xz -= CWIND * uTime;
-  float t = (CB + 300.0 - o.y) / max(SUN.y, 0.05);
+  float t = (CB + 400.0 - o.y) / max(SUN.y, 0.05);
   vec2 q = o.xz + SUN.xz * t;
-  vec4 cl = cumCell(floor(q / CS));
-  float d = length(q - cl.xy) / (900.0 * cl.z);
-  return 1.0 - 0.7 * cl.w * smoothstep(1.0, 0.55, d);
+  float H;
+  vec4 cl = cuCell(floor(q / CS), H);
+  float d = length(q - cl.xy) / (0.85 * cl.z);
+  return 1.0 - 0.7 * cl.w * smoothstep(1.0, 0.5, d);
 }
 
 vec3 stars(vec3 rd, float pa) {
@@ -508,7 +522,7 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
   vec4 cr = vec4(0.0);
   if (r.y > 0.01) {
     cr = cumulus(p + vec3(0.0, 1.0, 0.0), r, true);
-    cr.a *= 0.55 / (1.0 + var * 90.0);
+    cr.a *= 0.5 / (1.0 + var * 90.0);
   }
   refl = mix(refl, cr.rgb, cr.a);
   /* near the foot the faces stand in the reflection instead of the sky */
@@ -594,13 +608,27 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa) {
   rock *= 1.0 - 0.35 * smoothstep(0.55, 0.85, noise(vec2(s / 6.0, p.y / 70.0 + 2.0)));
   rock = mix(rock, vec3(0.13, 0.13, 0.09), 0.3 * smoothstep(0.6, 0.9, noise(vec2(s / 12.0, p.y / 9.0))) * smoothstep(60.0, 140.0, p.y));
   rock *= 0.8 + 0.4 * noise(vec2(s / 2.0, p.y / 30.0));
-  rock *= mix(0.45, 1.0, smoothstep(2.0, 14.0, p.y));
+  /* where the birds nest, pale streaks run down from the ledges */
+  float colony = smoothstep(0.55, 0.8, noise(vec2(s / 45.0, p.y / 35.0) + 5.0)) * smoothstep(20.0, 45.0, p.y) * (1.0 - smoothstep(110.0, 150.0, p.y));
+  float streak = smoothstep(0.62, 0.9, noise(vec2(s / 2.2, p.y / 28.0 + 9.0))) * smoothstep(0.3, 0.75, bf);
+  rock = mix(rock, vec3(0.34, 0.33, 0.3), colony * streak * 0.75);
+  /* orange and grey lichen high on the face */
+  float lich = smoothstep(0.8, 0.92, noise(vec2(s / 3.0, p.y / 2.5) + 2.0)) * smoothstep(0.5, 0.8, noise(vec2(s / 60.0, p.y / 40.0) + 1.0)) * smoothstep(45.0, 100.0, p.y);
+  rock = mix(rock, vec3(0.17, 0.1, 0.045), lich * 0.4);
+  /* a dark wet band above the water, black with weed at its foot */
+  float wet = 1.0 - smoothstep(4.0, 10.0 + 4.0 * noise(vec2(s / 18.0, 3.0)), p.y);
+  rock *= 1.0 - 0.55 * wet;
+  rock = mix(rock, vec3(0.012, 0.016, 0.01), 0.7 * (1.0 - smoothstep(0.5, 2.5, p.y)));
 
   /* grass on the tops and on the ledges; fields and walls inland */
-  vec3 grass = vec3(0.04, 0.075, 0.022);
-  float fn = noise(p.xz / 35.0) * 0.6 + noise(p.xz / 6.0) * 0.4;
-  grass *= 0.7 + 0.6 * fn;
-  grass = mix(grass, vec3(0.085, 0.08, 0.04), 0.35 * smoothstep(0.55, 0.85, noise(p.xz / 90.0 + 3.0)));
+  vec3 grass = vec3(0.042, 0.078, 0.022);
+  float fn = noise(p.xz / 35.0) * 0.5 + noise(p.xz / 7.0) * 0.3 + noise(p.xz / 1.6) * 0.2;
+  grass *= 0.65 + 0.7 * fn;
+  /* patches of rush and bent grass, paler where it is dry and grazed */
+  grass = mix(grass, vec3(0.09, 0.085, 0.045), 0.4 * smoothstep(0.55, 0.85, noise(p.xz / 90.0 + 3.0)));
+  grass = mix(grass, vec3(0.025, 0.045, 0.02), 0.45 * smoothstep(0.6, 0.85, noise(p.xz / 25.0 + 8.0)));
+  /* bare earth where the turf breaks at the lip */
+  grass = mix(grass, vec3(0.07, 0.05, 0.035), smoothstep(-1.4, -0.9, p.y - h) * (1.0 - smoothstep(-0.9, -0.5, p.y - h)) * 0.7);
   vec2 fq = rot(0.35) * (p.xz + 40.0 * vec2(noise(p.xz / 300.0), noise(p.zx / 300.0 + 5.0)));
   vec2 cs = vec2(120.0, 80.0);
   vec2 ci = floor(fq / cs), cf = fract(fq / cs);
@@ -609,9 +637,16 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa) {
   float wd = min(min(cf.x, 1.0 - cf.x) * cs.x, min(cf.y, 1.0 - cf.y) * cs.y);
   float wall = sat(1.0 - wd / max(fp, 0.5)) * min(1.0, 0.9 / max(fp, 0.5)) * smoothstep(25.0, 60.0, inl);
   grass = mix(grass, vec3(0.09, 0.09, 0.085), wall * 0.8);
-  float gw = smoothstep(0.55, 0.8, n.y) * smoothstep(12.0, 22.0, p.y);
+  float gw = smoothstep(0.55, 0.8, n.y) * smoothstep(28.0, 36.0, p.y);
   gw = max(gw, smoothstep(-1.5, -0.3, p.y - h) * step(0.0, inl));
   vec3 alb = mix(rock, grass, gw);
+
+  /* tussocks on the turf, catching and losing the light */
+  float tfade = sat(2.0 - fp * 0.8) * gw;
+  if (tfade > 0.0) {
+    vec2 tg = noised(p.xz / 2.6 + 3.0).yz + 0.5 * noised(p.xz / 0.9).yz;
+    n = normalize(n + tfade * 0.35 * vec3(-tg.x, 0.0, -tg.y));
+  }
 
   /* the rock's grain, too fine for the surface itself, laid on its light */
   float bfade = sat(1.5 - fp * 1.2) * (1.0 - gw);
@@ -629,16 +664,22 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa) {
   float ao = sat(map(p + n * 4.0) / 4.0) * 0.5 + sat(map(p + n * 14.0) / 14.0) * 0.5;
   ao = 0.35 + 0.65 * ao;
   vec3 amb = mix(AMBH, AMBU, n.y * 0.5 + 0.5);
-  amb += GLOW * 0.05 * sat(dot(normalize(n.xz + 1e-5), normalize(SUN.xz + 1e-5))) * (1.0 - abs(n.y));
-  vec3 col = alb * (SUNC * dif + amb * ao + BNC * sat(-n.y + 0.3) * ao);
+  amb += GLOW * (0.05 + 0.6 * NIGHT) * sat(dot(normalize(n.xz + 1e-5), normalize(SUN.xz + 1e-5))) * (1.0 - abs(n.y));
+  /* by night the eye opens: the moon's light and the sky's are given a
+     little more, so the stone still reads */
+  float moonlit = 1.0 + 2.2 * NIGHT;
+  vec3 col = alb * (SUNC * dif * moonlit + amb * ao * (1.0 + 1.2 * NIGHT) + BNC * sat(-n.y + 0.3) * ao * (1.0 + 3.0 * NIGHT));
+  /* grass glows a little when the light comes through it toward the eye */
+  col += alb * SUNC * gw * 0.6 * pow(sat(dot(rd, SUN)), 3.0) * sh * csh;
   if (p.y < 60.0) col = spray(col, p, max(d, 0.0), rd);
   return col;
 }
 
 /* ------------------------------------------------------- the lighthouse */
 
-/* a white tower with a dark lantern; its silhouette is found from the
-   ray's nearest pass to the axis, so it is cheap and its edges are soft */
+/* a white tower with a red band, a dark gallery, lantern and dome; its
+   silhouette is found from the ray's nearest pass to the axis, so it is
+   cheap and its edges are soft */
 float lighthouse(vec3 ro, vec3 rd, float pa, float base, out vec3 col, out float tl) {
   col = vec3(0.0);
   tl = 1e9;
@@ -651,49 +692,89 @@ float lighthouse(vec3 ro, vec3 rd, float pa, float base, out vec3 col, out float
   float y = ro.y + rd.y * tc - base;
   float fp = tc * pa;
   float r = 0.0, part = 0.0;
-  if (y < 18.0) r = mix(2.9, 2.1, sat(y / 18.0));
-  else if (y < 18.8) { r = 2.9; part = 1.0; }
-  else if (y < 22.0) { r = 1.7; part = 2.0; }
-  else if (y < 23.8) { r = 1.7 * (1.0 - 0.85 * (y - 22.0) / 1.8); part = 3.0; }
-  float cov = sat((r - m) / fp + 0.5) * sat((23.8 - y) / fp + 0.5) * sat((y + 2.0) / fp);
+  if (y < 21.0) r = mix(3.2, 2.3, sat(y / 21.0));
+  else if (y < 21.9) { r = 3.1; part = 1.0; }
+  else if (y < 25.2) { r = 1.9; part = 2.0; }
+  else if (y < 27.2) { r = 1.9 * (1.0 - 0.8 * (y - 25.2) / 2.0); part = 3.0; }
+  float cov = sat((r - m) / fp + 0.5) * sat((27.2 - y) / fp + 0.5) * sat((y + 2.0) / fp);
   if (cov <= 0.0) return 0.0;
   vec2 off = cp - normalize(d2) * sqrt(max(r * r - m * m, 0.0));
-  vec3 n = normalize(vec3(off.x, 0.08, off.y));
+  vec3 n = normalize(vec3(off.x, 0.06, off.y));
   tl = tc - sqrt(max(r * r - m * m, 0.0)) / sqrt(dd);
-  vec3 alb = part == 0.0 ? vec3(0.78, 0.77, 0.74) : part == 2.0 ? vec3(0.05, 0.055, 0.06) : vec3(0.06, 0.06, 0.06);
-  if (part == 3.0) alb = vec3(0.12, 0.04, 0.03);
-  float dif = max(dot(n, SUN), 0.0);
-  vec3 amb = mix(AMBH, AMBU, 0.5);
-  col = alb * (SUNC * dif * cloudShade(vec3(LH.x, base, LH.y)) + amb * 1.1);
+  vec3 alb = vec3(0.8, 0.79, 0.76);
+  float band = smoothstep(12.0 - fp, 12.0, y) * (1.0 - smoothstep(15.0, 15.0 + fp, y));
+  alb = mix(alb, vec3(0.42, 0.06, 0.04), band);
+  if (part == 1.0 || part == 2.0) alb = vec3(0.04, 0.045, 0.05);
+  if (part == 3.0) alb = vec3(0.08, 0.03, 0.025);
+  float dif = max(dot(n, SUN), 0.0) * cloudShade(vec3(LH.x, base, LH.y));
+  vec3 amb = mix(AMBH, AMBU, 0.5) * (0.7 + 0.5 * dot(n, -normalize(vec3(d2.x, 0.0, d2.y)) * 0.5 + 0.5));
+  col = alb * (SUNC * dif * (1.0 + 1.5 * NIGHT) + amb * (1.1 + 1.5 * NIGHT));
   /* the lantern glows at night */
-  if (part == 2.0) col += LAMP * vec3(2.4, 1.9, 1.2);
+  if (part == 2.0) col += LAMP * vec3(2.6, 2.1, 1.3);
   return cov;
 }
 
-/* the keeper's house beside it, a white box under a dark roof */
-float house(vec3 ro, vec3 rd, float base, out vec3 col, out float th) {
-  col = vec3(0.0);
-  th = 1e9;
-  mat2 R = rot(0.6);
-  vec3 o = ro - vec3(HOUSE.x, base, HOUSE.y);
+/* a ray against a gabled block in its own frame: walls of half extents
+   b.x and b.z and height b.y, its roof rising b.w over them along its
+   length; returns the distance in and the face's normal */
+float block(vec3 ro, vec3 rd, vec3 c, float ang, vec4 b, out vec3 nrm) {
+  mat2 R = rot(ang);
+  vec3 o = ro - c, d = rd;
   o.xz = R * o.xz;
-  vec3 d = rd;
   d.xz = R * d.xz;
-  vec3 b = vec3(6.0, 5.5, 3.2);
-  vec3 inv = 1.0 / d;
-  vec3 c = vec3(0.0, 2.0, 0.0);
-  vec3 t0 = (c - b - o) * inv, t1 = (c + b - o) * inv;
-  vec3 tn = min(t0, t1), tf = max(t0, t1);
-  float a = max(max(tn.x, tn.y), tn.z), z = min(min(tf.x, tf.y), tf.z);
-  if (a > z || z < 0.0) return 0.0;
-  th = a;
-  vec3 n = -sign(d) * step(tn.yzx, tn.xyz) * step(tn.zxy, tn.xyz);
-  n.xz = n.xz * R;
-  float y = o.y + d.y * a;
-  vec3 alb = y > 5.6 ? vec3(0.07, 0.07, 0.075) : vec3(0.74, 0.73, 0.7);
-  col = alb * (SUNC * max(dot(n, SUN), 0.0) + mix(AMBH, AMBU, 0.5 + 0.5 * n.y) * 1.1);
-  if (y < 5.6 && y > 2.2 && fract(o.x * 0.25 + o.z * 0.25) < 0.25) col += LAMP * vec3(0.5, 0.32, 0.12);
-  return 1.0;
+  float tn = -1e9, tf = 1e9;
+  vec3 nn = vec3(0.0, 1.0, 0.0);
+  float k = b.w / b.x;
+  for (int i = 0; i < 7; i++) {
+    vec3 pn = i == 0 ? vec3(1.0, 0.0, 0.0) : i == 1 ? vec3(-1.0, 0.0, 0.0) : i == 2 ? vec3(0.0, 0.0, 1.0) :
+              i == 3 ? vec3(0.0, 0.0, -1.0) : i == 4 ? vec3(0.0, -1.0, 0.0) : i == 5 ? vec3(k, 1.0, 0.0) : vec3(-k, 1.0, 0.0);
+    float pd = i < 2 ? b.x : i < 4 ? b.z : i == 4 ? 0.0 : b.y + b.w;
+    float dn = dot(pn, d), on = dot(pn, o);
+    if (abs(dn) < 1e-7) { if (on > pd) return -1.0; continue; }
+    float t = (pd - on) / dn;
+    if (dn < 0.0) { if (t > tn) { tn = t; nn = pn; } }
+    else tf = min(tf, t);
+  }
+  if (tn > tf || tn < 0.0) return -1.0;
+  nn = normalize(nn);
+  nn.xz = nn.xz * R;
+  nrm = nn;
+  return tn;
+}
+
+/* the keepers' houses beside the tower under slate roofs, and the white
+   wall of the compound */
+vec4 station(vec3 ro, vec3 rd, float base) {
+  vec3 c0 = vec3(LH.x, base, LH.y);
+  float best = 1e9;
+  vec3 nb = vec3(0.0);
+  float kind = 0.0;
+  vec3 n;
+  for (int i = 0; i < 6; i++) {
+    vec3 c;
+    vec4 b;
+    float ang = 0.62;
+    if (i == 0) { c = c0 + vec3(15.0, -0.6, 7.0); b = vec4(9.0, 4.8, 3.6, 2.6); }
+    else if (i == 1) { c = c0 + vec3(19.0, -0.8, -8.0); b = vec4(6.0, 4.2, 3.2, 2.2); }
+    else {
+      vec3 wc = c0 + vec3(10.0, -0.6, 0.0);
+      vec2 o = i == 2 ? vec2(0.0, 19.0) : i == 3 ? vec2(0.0, -19.0) : i == 4 ? vec2(23.0, 0.0) : vec2(-23.0, 0.0);
+      o = o * rot(0.62);
+      c = wc + vec3(o.x, 0.0, o.y);
+      b = i < 4 ? vec4(23.0, 1.7, 0.35, 0.0) : vec4(0.35, 1.7, 19.0, 0.0);
+    }
+    float t = block(ro, rd, c, ang, b, n);
+    if (t > 0.0 && t < best) {
+      best = t;
+      nb = n;
+      float y = ro.y + rd.y * t - c.y;
+      kind = i < 2 ? (y > b.y - 0.05 ? 2.0 : 1.0) : 1.0;
+    }
+  }
+  if (best > 1e8) return vec4(0.0, 0.0, 0.0, -1.0);
+  vec3 alb = kind > 1.5 ? vec3(0.06, 0.065, 0.07) : vec3(0.74, 0.73, 0.7);
+  vec3 col = alb * (SUNC * max(dot(nb, SUN), 0.0) * (1.0 + 1.5 * NIGHT) + mix(AMBH, AMBU, 0.5 + 0.5 * nb.y) * (1.1 + 1.5 * NIGHT));
+  return vec4(col, best);
 }
 
 /* --------------------------------------------------------- the lamp */
@@ -750,7 +831,7 @@ vec3 lampGlow(vec3 ro, vec3 rd, float tEnd, vec3 L, float pa) {
    lost almost wholly in the haze */
 float island(vec3 rd) {
   float b = degrees(atan(-rd.x, rd.z));
-  float u = (b - 45.0) / 21.0;
+  float u = (b - 41.0) / 21.0;
   if (u < 0.0 || u > 1.0) return -1.0;
   float shape = pow(sin(u * PI), 0.6) * (0.5 + 0.5 * fbm(vec2(u * 8.0, 2.0), 4));
   shape *= 1.0 - 0.55 * smoothstep(0.5, 0.75, u) * (1.0 - smoothstep(0.8, 0.95, u));
@@ -764,7 +845,7 @@ vec3 scene(vec2 fc) {
   float asp = uRes.x / uRes.y;
   float wide = smoothstep(0.7, 1.45, asp);
   float k = mix(2.0 * tan(radians(31.0)), max(2.0 * tan(radians(28.0)) / asp, 0.56), wide);
-  float yaw = radians(mix(22.0, 35.0, wide) + uPoint.x * 0.7);
+  float yaw = radians(mix(22.0, 31.0, wide) + uPoint.x * 0.7);
   float hz = mix(0.63, 0.31, wide);
   float pitch = -atan((0.5 - hz) * k) + radians(uPoint.y * 0.45);
   vec3 fw = vec3(-sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch));
@@ -819,26 +900,29 @@ vec3 scene(vec2 fc) {
     }
   }
 
-  /* the station on the point */
+  /* the station on the point, looked for only by rays that pass near it */
   float sb;
   float db = coast(LH, sb);
   float base = landH(LH, sb, -db) - 0.5;
-  vec3 lc;
-  float tl;
-  float cov = lighthouse(ro, rd, pa, base, lc, tl);
-  if (cov > 0.0 && tl < tEnd + 3.0) {
-    col = mix(col, aerial(lc, ro, rd, tl), cov);
-    tEnd = min(tEnd, tl);
-  }
-  vec3 hc;
-  float th;
-  if (house(ro, rd, base - 1.0, hc, th) > 0.0 && th < tEnd) {
-    col = aerial(hc, ro, rd, th);
-    tEnd = th;
+  vec2 tw = LH - ro.xz;
+  float near = length(tw - rd.xz * max(dot(tw, rd.xz) / dot(rd.xz, rd.xz), 0.0));
+  if (near < 60.0) {
+    vec4 st = station(ro, rd, base);
+    if (st.w > 0.0 && st.w < tEnd) {
+      col = aerial(st.rgb, ro, rd, st.w);
+      tEnd = st.w;
+    }
+    vec3 lc;
+    float tl;
+    float cov = lighthouse(ro, rd, pa, base, lc, tl);
+    if (cov > 0.0 && tl < tEnd + 3.0) {
+      col = mix(col, aerial(lc, ro, rd, tl), cov);
+      tEnd = min(tEnd, tl);
+    }
   }
 
   if (LAMP > 0.001) {
-    vec3 L = vec3(LH.x, base + 20.4, LH.y);
+    vec3 L = vec3(LH.x, base + 23.5, LH.y);
     col += LAMP * (beams(ro, rd, tEnd, L) + lampGlow(ro, rd, tEnd, L, pa));
   }
   return col;

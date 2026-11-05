@@ -1,11 +1,33 @@
 /* concepts/scenes/summit.js · above the clouds
-   Standing on a summit ridge at four thousand metres, looking out over a
-   sea of cloud that lies seven hundred metres below and runs flat to the
-   horizon, where the earth's curve takes it. Draft. */
+   On a summit ridge at four thousand metres, looking out over a sea of
+   cloud that lies seven hundred metres below and runs to the horizon,
+   where the earth's curve takes it a little under the level of the eye.
+   The deck is a height field traced down from its top: domes of cloud a
+   few hundred metres across, a few standing up as turrets, smaller lumps
+   riding on them, banked up against the peaks, drifting on the wind and
+   slowly swelling and settling. It is lit as cloud is and not as ground:
+   a soft wrapped light, the light gathered under its skin showing
+   through the shaded sides, darker and bluer into the creases between
+   the billows, a little powder on the crests, the thin crests bright
+   toward the sun, and the shadows of its own billows and of the peaks
+   laid across it. Through it stand a pyramid of three faces nine
+   kilometres off, a crown of two summits to the left and two far tops
+   on the horizon, worn into ribs and couloirs and banded with rock; and
+   below the eye on the left a spur of the ridge, its teeth against the
+   cloud and its face in buttresses with snow in the couloirs. By day
+   the sky is the deep blue of the height over a brilliant deck; at dusk
+   the sun stands just over the cloud, its light grazing the tops and the
+   pyramid's long shadow reaching across the deck toward the eye, the
+   sky pink and gold, with the earth's shadow and the belt of Venus low
+   on the side away from it; at night the moon lays a glittering path
+   across the tops, under the stars and a faint Milky Way. Thin veils of
+   cloud drift over the deck below. A phone turns toward the pyramid and
+   sits up a little, the spur swung into its corner. WebGL2, no
+   libraries, no build step. */
 
 window.CONCEPT = {
   id: 'summit',
-  theme: { day: '#2f5c9e', dusk: '#4f4a78', night: '#121a2e' },
+  theme: { day: '#3c6ebc', dusk: '#58539b', night: '#181e37' },
   t0: 40,
   frag: `
 #define DEG 0.0174532925
@@ -16,7 +38,7 @@ window.CONCEPT = {
 const float EYE = 680.0;
 const float FOOT = EYE - 1.7;
 const float RE = 7.4e6;          /* the earth's radius, lengthened by refraction */
-const float TOPC = 340.0;        /* no cloud rises above this */
+const float TOPC = 400.0;        /* no cloud rises above this */
 
 float T, PA, ASP, WIDE;
 vec3 LD, LP, LC, AMB, CUP;
@@ -58,9 +80,12 @@ vec3 sky(vec3 rd) {
   vec2 ah = normalize(rd.xz + 1e-5), lh = normalize(LP.xz + 1e-5);
   float az = dot(ah, lh);
   float mu = dot(rd, LP);
-  /* elevation over the cloud's own horizon, which lies 0.8 degrees down */
+  /* elevation over the cloud's own horizon, which lies 0.8 degrees down;
+     the broad gradient is the air's scattering saturating with its depth
+     along the ray, the narrow one a haze lying on the cloud */
   float ep = max(e + 0.8, 0.0);
-  float t1 = exp(-ep / look3(16.0, 14.0, 16.0));
+  float kr = look3(0.1, 0.115, 0.1);
+  float t1 = (1.0 - exp(-kr * airmass(sin(ep * DEG)))) / (1.0 - exp(-kr * 38.0));
   float t2 = exp(-ep / look3(2.2, 3.0, 2.6));
   vec3 zen = look3(vec3(0.030, 0.085, 0.300), vec3(0.036, 0.056, 0.205), vec3(0.006, 0.010, 0.030));
   vec3 mid = look3(vec3(0.120, 0.250, 0.620), vec3(0.290, 0.165, 0.310), vec3(0.014, 0.022, 0.055));
@@ -381,12 +406,14 @@ float peakShadow(vec3 p) {
   return coneShadow(p, P0, Q0) * coneShadow(p, P1, Q1) * coneShadow(p, P1B, Q1B) * coneShadow(p, P2, Q2) * coneShadow(p, P3, Q3);
 }
 
-/* the cloud's own shadow: a short ray toward the light over the domes */
-float cloudShadow(vec3 p) {
+/* the cloud's own shadow: a short ray toward the light over the domes,
+   shorter where the cloud is far enough that its detail is gone */
+float cloudShadow(vec3 p, float far) {
   float s = 1.0, t = 20.0, cav;
+  int n = far > 6000.0 ? 5 : 9;
   for (int i = 0; i < 9; i++) {
     vec3 q = p + LD * t;
-    if (q.y > TOPC) break;
+    if (q.y > TOPC || i >= n) break;
     float h = cloudH(q.xz, 50000.0, cav) - dot(q.xz, q.xz) / (2.0 * RE);
     s = min(s, sat(0.5 + (q.y - h) / (0.09 * t + 14.0)));
     t *= 1.85;
@@ -429,7 +456,7 @@ vec3 shadeCloud(vec3 ro, vec3 rd, float t) {
   float h0 = farH(p.xz, t, mat, pk, cav, rib) + cloudFine(p.xz, t);
   vec3 n = normalize(vec3(h0 - hx, e, h0 - hz));
   float psh = peakShadow(p);
-  float csh = mix(0.22, 1.0, cloudShadow(p));
+  float csh = mix(0.22, 1.0, cloudShadow(p, t));
   float mu = dot(rd, LP);
   /* light into the cloud's skin: a soft wrapped diffuse, darker into
      the creases between the billows, where the light has come further
@@ -453,7 +480,7 @@ vec3 shadeCloud(vec3 ro, vec3 rd, float t) {
   float clear = smoothstep(-20.0, -80.0, mat);
   sun += LC * csh * D * look3(0.0, 0.05, 0.07) * (0.25 + 2.5 * gl) * (1.0 - 0.6 * cav) * clear;
   vec3 col = sun * psh;
-  col += AMB * (0.3 + 0.7 * n.y * n.y) * (1.0 - 0.55 * cav) + CUP * 0.1 * cav;
+  col += AMB * (0.3 + 0.7 * n.y * n.y) * (1.0 - look3(0.65, 0.55, 0.55) * cav) + CUP * 0.1 * cav;
   return col;
 }
 
@@ -492,8 +519,9 @@ vec3 shadeRidge(vec3 ro, vec3 rd, float t) {
   vec2 bump = vec2(noise(bq) - noise(bq + vec2(0.5, 0.0)), noise(bq) - noise(bq + vec2(0.0, 0.5)));
   n = normalize(n + (1.0 - sn) * 0.6 * vec3(bump.x, 0.0, bump.y));
   vec3 alb = mix(rockc, vec3(0.88, 0.9, 0.94), sn);
-  float sh = ridgeShadow(p + n * 0.05);
-  vec3 col = alb * (LC / PI * max(dot(n, LD), 0.0) * sh + AMB * (0.55 + 0.45 * n.y) + CUP * sat(0.5 - 0.5 * n.y));
+  float nl = max(dot(n, LD), 0.0);
+  float sh = nl > 0.0 ? ridgeShadow(p + n * 0.05) : 0.0;
+  vec3 col = alb * (LC / PI * nl * sh + AMB * (0.55 + 0.45 * n.y) + CUP * sat(0.5 - 0.5 * n.y));
   return col;
 }
 
@@ -538,12 +566,13 @@ vec3 stars(vec3 rd) {
 }
 
 vec3 milky(vec3 rd) {
-  vec3 G = normalize(vec3(-0.62, 0.55, 0.56));
+  vec3 G = vec3(-0.694, -0.576, 0.434);
   float b = dot(rd, G);
   float band = exp(-b * b / 0.018);
   float n = fbm3(rd * 7.0, 4);
   float dust = smoothstep(0.42, 0.68, fbm3(rd * 13.0 + 3.0, 3)) * exp(-sq((b - 0.012) / 0.035));
-  return band * (0.35 + 0.65 * n) * (1.0 - 0.75 * dust) * vec3(0.016, 0.018, 0.026);
+  float core = exp(-sq(dot(rd, normalize(vec3(0.62, 0.12, 0.78))) - 1.0) * 30.0);
+  return band * (0.3 + 0.7 * n) * (1.0 - 0.8 * dust) * (vec3(0.014, 0.016, 0.024) + core * vec3(0.012, 0.010, 0.008));
 }
 
 vec3 moon(vec3 rd) {
@@ -585,7 +614,7 @@ vec3 camera(vec2 fc, out vec3 ro) {
   d = vec3(d.x, d.y * cp + d.z * sp, -d.y * sp + d.z * cp);
   float cy = cos(yaw), sy = sin(yaw);
   d = vec3(d.x * cy + d.z * sy, d.y, -d.x * sy + d.z * cy);
-  ro = vec3(uPoint.x * 0.6, EYE + uPoint.y * 0.2, 0.0);
+  ro = vec3(uPoint.x * 1.5, EYE + uPoint.y * 0.4, 0.0);
   PA = 2.0 * th / uRes.y;
   return d;
 }
@@ -593,10 +622,11 @@ vec3 camera(vec2 fc, out vec3 ro) {
 void setup() {
   ASP = uRes.x / uRes.y;
   WIDE = smoothstep(0.8, 1.45, ASP);
-  T = mod(uTime, 8192.0);
+  /* the clock wraps every nine hours, so positions stay precise */
+  T = mod(uTime, 32768.0);
   DRIFT = vec2(-2.1, 0.8) * T;
   SUN_D = dirAE(80.0, 32.0);
-  SUN_U = dirAE(mix(27.5, 33.0, WIDE), 1.3);
+  SUN_U = dirAE(mix(27.5, 33.0, WIDE), 1.0);
   float th = mix(tan(32.0 * DEG), tan(36.0 * DEG) / ASP, WIDE);
   float top = (atan(0.15 * th) + atan(th)) / DEG;
   MOON_D = dirAE(mix(4.0, -9.0, WIDE), min(mix(30.0, 22.0, WIDE), top - 5.0));
@@ -632,6 +662,7 @@ vec3 scene(vec2 fc) {
     } else {
       col = sky(rd);
       col += uLook.y * sunDisc(rd, SUN_U, vec3(30.0, 14.0, 4.0)) + uLook.x * sunDisc(rd, SUN_D, vec3(80.0, 76.0, 70.0));
+      /* the night's own sky, skipped only where its weight is nil */
       if (uLook.z > 0.0) col += uLook.z * (moon(rd) + (stars(rd) + milky(rd)) * smoothstep(-0.01, 0.08, rd.y));
       /* a peak's edge against the sky, within a pixel: blend it in */
       if (nearF.x < 1.0) col = mix(col, aerial(shadePeak(ro, rd, nearF.y), ro, rd, nearF.y), 0.5 * (1.0 - nearF.x));

@@ -9,10 +9,14 @@
    behind, and the far bank closing it. Every wall is the same section, a
    sheer foot, a wooded slope where there is one, the upper cliff and the
    rounded shoulder of the uplands with their humps behind, pushed in and
-   out along the shore so that buttresses and gullies run straight down
-   it, with ledges where birch and pine take hold, and snow lying on the
-   high flats. A fall comes over the edge of the right wall and cascades
-   down through the wood, and a thinner one down the far left wall. The
+   out along the shore so that buttresses and gullies run down it, broken
+   by ledges and joints that vary with height, so the cliffs read as
+   fractured rock and not as streaks; birch and pine take the wooded
+   slopes and the ledges, and snow lies on the high flats. A fall threads
+   down the right wall in pitches, mostly hidden where it runs under the
+   trees, with spray hanging at its foot, and a thinner one falls down
+   the far left wall. Faces turned from the sun take the light the sunlit
+   walls and the water throw back at them. The
    air is one model for sky and distance alike, sunlight scattered once
    by Rayleigh and Mie over an exponential atmosphere and a bluer veil of
    light scattered more than once, so the far walls fade into the same
@@ -25,8 +29,10 @@
    dusk it is all but down, the fjord is in shadow and only the high
    ground keeps the last of it, under a rose and lavender sky; at night
    the moon hangs in the gap and the aurora folds slowly over the bend,
-   green curtains with magenta hems whose rays drift along them, lighting
-   the fjord twice, once in the sky and once in the water. A phone looks
+   curtains pleated and doubled back on themselves, brightest and sharpest
+   at their lower edge and fading upward through tall rays, densest over
+   the gap and thinning away east, lighting the fjord twice, once in the
+   sky and once in the water. A phone looks
    from further up the reach and nearer the left wall, so that wall
    towers over the words. WebGL2, no libraries, no build step. */
 
@@ -50,6 +56,7 @@ vec3 GLOWA;        // the light the aurora sheds
 float MIE;         // haze
 float AIRLIT;      // how much of the fjord's air the key light reaches
 float FRAMEK;      // 0 on a tall frame, 1 on a wide one
+float AQ;          // the aurora's care: full in the sky, half in the water
 vec3 MSL;          // the light that has scattered more than once, as a source
 
 const vec3 BR = vec3(5.8e-6, 13.5e-6, 33.1e-6);   // Rayleigh, per metre
@@ -163,15 +170,17 @@ float tops(vec2 p) {
    cliff, and the shoulder of the uplands with their humps behind */
 float ground(vec2 p, float s, float T, int det) {
   s += 90.0 * noise(p * 0.0042 + 1.7) - 45.0;
+  float m = smoothstep(0.15, 0.55, noise(p * 0.0008 + 11.0)) * (1.0 - smoothstep(-200.0, -900.0, p.x) * smoothstep(3200.0, 1800.0, p.y));
+  float s2 = 60.0 + 330.0 * m;
+  // the fractured detail is the cliffs'; the wooded slope between is smoother
+  float cf = max(mix(0.3, 1.0, smoothstep(s2 - 60.0, s2 + 20.0, s)), 1.0 - smoothstep(30.0, 60.0, s));
   if (det > 0) {
     s -= (det > 1 ? 52.0 : 34.0) * (0.25 + 1.1 * noise(p * 0.0007 + 2.0)) * (0.45 + 0.8 * noise(vec2(s * 0.007, (p.x + p.y) * 0.003)))
        * sqrt(sq(noise(p * 0.011 + 5.0) - 0.5) + 0.004);
-    if (det > 1) s += 16.0 * noise3(vec3(p.x * 0.03, s * 0.09, p.y * 0.03) + 4.0) - 8.0;
-    if (det > 2) s += 6.0 * noise3(vec3(p.x * 0.09, s * 0.3, p.y * 0.09) + 2.0) - 3.0;
+    if (det > 1) s += cf * (16.0 * noise3(vec3(p.x * 0.03, s * 0.09, p.y * 0.03) + 4.0) - 8.0);
+    if (det > 2) s += cf * (6.0 * noise3(vec3(p.x * 0.09, s * 0.3, p.y * 0.09) + 2.0) - 3.0);
   }
   if (det > 1) s += (1.5 + 3.5 * noise(p * 0.0013 + 6.0)) * sin(s * 0.15 + 14.0 * noise(p * 0.0024 + 3.0));
-  float m = smoothstep(0.15, 0.55, noise(p * 0.0008 + 11.0)) * (1.0 - smoothstep(-200.0, -900.0, p.x) * smoothstep(3200.0, 1800.0, p.y));
-  float s2 = 60.0 + 330.0 * m;
   float h = 0.12 * smoothstep(-12.0, 45.0, s)
           + 0.26 * smoothstep(25.0, s2, s)
           + 0.44 * smoothstep(s2 - 40.0, s2 + 110.0, s)
@@ -252,22 +261,25 @@ float shadow(vec3 p, int n) {
    and threading on down through the wood, where the trees hide most of
    it; and a thinner one far down the left side. steep is how sheer the
    rock is where it falls */
-float falls(vec3 p, float steep) {
+float falls(vec3 p, float steep, float fp) {
   float z0 = 1750.0 + 16.0 * sin(p.y * 0.011) + 7.0 * sin(p.y * 0.037 + 1.0);
   float pitch = noise(vec2(p.y * 0.018, 1.0));
-  float w = (1.6 + 3.2 * (1.0 - p.y / 1150.0)) * (0.5 + pitch) * mix(0.6, 1.0, steep);
-  float m = smoothstep(w, w * 0.2, abs(p.z - z0)) * step(200.0, p.x) * smoothstep(1100.0, 1040.0, p.y);
+  float w0 = (1.6 + 3.2 * (1.0 - p.y / 1150.0)) * (0.5 + pitch) * mix(0.6, 1.0, steep);
+  float w = max(w0, 2.4 * fp);
+  float m = mix(1.0, w0 / w, 0.5) * smoothstep(w, w * 0.2, abs(p.z - z0)) * step(200.0, p.x) * smoothstep(1100.0, 1040.0, p.y);
   float fl = noise(vec2((p.z - z0) * 0.6, p.y * 0.05 + TT * 1.6));
-  float f = m * (0.3 + 0.7 * smoothstep(0.3, 0.7, pitch)) * (0.55 + 0.45 * fl);
+  float f = m * mix(smoothstep(0.45, 0.65, pitch), 0.3 + 0.7 * smoothstep(0.3, 0.7, pitch), steep) * (0.55 + 0.45 * fl);
   float z1 = 10600.0 + 22.0 * sin(p.y * 0.008);
   float p1 = noise(vec2(p.y * 0.012, 4.0));
-  float w1 = (6.0 + 8.0 * (1.0 - p.y / 1100.0)) * (0.5 + p1);
+  float w1 = max((6.0 + 8.0 * (1.0 - p.y / 1100.0)) * (0.5 + p1), 2.4 * fp);
   float m1 = smoothstep(w1, w1 * 0.3, abs(p.z - z1)) * step(p.x, -1500.0) * smoothstep(1050.0, 960.0, p.y);
   f = max(f, m1 * (0.35 + 0.65 * smoothstep(0.3, 0.7, p1)) * (0.6 + 0.4 * noise(vec2((p.z - z1) * 0.2, p.y * 0.03 + TT * 1.2))));
   return f;
 }
 
-vec3 shadeLand(vec3 p, vec3 n, float t, int taps) {
+/* the land's colour and light at p: n shades it, ng (the land's own
+   normal, without the fractured detail) decides what grows and lies there */
+vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, int taps) {
   float y = p.y;
   float fp = t * PXA;
   float aa = sat(1.0 - fp / 6.0);
@@ -284,28 +296,32 @@ vec3 shadeLand(vec3 p, vec3 n, float t, int taps) {
   alb = mix(alb, alb * vec3(1.15, 1.04, 0.85), noise3(p * 0.008 + 1.0));
   // pale scars where rock has fallen, dark moss in the gullies
   float sc = smoothstep(0.72, 0.88, noise3(p * vec3(0.01, 0.006, 0.01) + 17.0));
-  alb = mix(alb, vec3(0.27, 0.255, 0.235), sc * 0.7 * (1.0 - n.y));
+  alb = mix(alb, vec3(0.27, 0.255, 0.235), sc * 0.7 * (1.0 - ng.y));
   float gl = sqrt(sq(noise(p.xz * 0.011 + 5.0) - 0.5) + 0.004);
   alb *= 1.0 - 0.4 * smoothstep(0.18, 0.42, gl);
   // a few black wet streaks, where water seeps over the edges
   float ws = noise3(vec3(p.x * 0.028, y * 0.0018, p.z * 0.028) + 11.0);
-  alb = mix(alb, vec3(0.03, 0.031, 0.03), smoothstep(0.74, 0.86, ws) * (1.0 - n.y) * 0.8);
+  alb = mix(alb, vec3(0.03, 0.031, 0.03), smoothstep(0.74, 0.86, ws) * (1.0 - ng.y) * 0.8);
   // birch and pine on the wooded slopes and the ledges, below the tree line
   float tl = 520.0 + 160.0 * noise(p.xz * 0.0021);
-  float veg = smoothstep(0.3, 0.5, n.y + 0.12 * noise(p.xz * 0.03)) * (1.0 - smoothstep(tl - 90.0, tl + 50.0, y)) * smoothstep(4.0, 14.0, y);
+  float sz = plan(p.xz) + 90.0 * noise(p.xz * 0.0042 + 1.7) - 45.0;
+  float s2 = 60.0 + 330.0 * smoothstep(0.15, 0.55, noise(p.xz * 0.0008 + 11.0)) * (1.0 - smoothstep(-200.0, -900.0, p.x) * smoothstep(3200.0, 1800.0, p.z));
+  float wood = smoothstep(15.0, 45.0, sz) * (1.0 - smoothstep(s2 - 70.0, s2 - 20.0, sz)) * smoothstep(0.3, 0.45, noise(p.xz * 0.012 + 6.0) + 0.2);
+  float veg = max(wood * smoothstep(0.15, 0.35, ng.y), smoothstep(0.45, 0.65, ng.y + 0.12 * noise(p.xz * 0.03)))
+            * (1.0 - smoothstep(tl - 90.0, tl + 50.0, y)) * smoothstep(4.0, 14.0, y);
   float cn = noise3(p * 0.3) * 0.6 + noise3(p * 0.11) * 0.4;
   vec3 trees = mix(vec3(0.016, 0.026, 0.017), vec3(0.036, 0.05, 0.026), smoothstep(0.35, 0.75, noise(p.xz * 0.004 + 2.0)));
   trees *= mix(1.0, 0.45 + 1.1 * cn, aa);
   alb = mix(alb, trees, veg);
   // heath and bare grass above them
-  float heath = smoothstep(0.55, 0.75, n.y) * smoothstep(tl - 40.0, tl + 140.0, y);
+  float heath = smoothstep(0.55, 0.75, ng.y) * smoothstep(tl - 40.0, tl + 140.0, y);
   alb = mix(alb, vec3(0.095, 0.09, 0.06) * (0.8 + 0.4 * noise(p.xz * 0.02)), heath * 0.85);
   // snow lying on the high flats and in the hollows
   float sl = 1200.0 + 300.0 * noise(p.xz * 0.0028) - 150.0 + 140.0 * noise(p.xz * 0.017) - 70.0;
-  float sn = smoothstep(sl - 60.0, sl + 60.0, y) * smoothstep(0.5, 0.78, n.y) * smoothstep(0.3, 0.55, noise(p.xz * 0.006 + 4.0) + 0.25 * noise(p.xz * 0.03));
+  float sn = smoothstep(sl - 60.0, sl + 60.0, y) * smoothstep(0.5, 0.78, ng.y) * smoothstep(0.3, 0.55, noise(p.xz * 0.006 + 4.0) + 0.25 * noise(p.xz * 0.03));
   alb = mix(alb, vec3(0.86, 0.88, 0.9), sn);
   // the falls, hidden where they run under the trees
-  float wf = falls(p, smoothstep(0.62, 0.3, n.y)) * (1.0 - 0.85 * veg);
+  float wf = falls(p, smoothstep(0.62, 0.3, ng.y), fp) * (1.0 - 0.85 * veg);
   alb = mix(alb, vec3(0.74, 0.76, 0.78), wf * look3(0.7, 0.9, 0.9));
   // light: the key with its shadow; the sky the fjord leaves open; the
   // light the sunlit walls throw back across the water onto the faces
@@ -433,7 +449,7 @@ vec3 auroraAt(float u, float x, float xa, float h, float blur, float k) {
   float rays = 0.2 + 0.8 * r1 * r1 * r1 + 0.45 * r2 * r2;
   float kn = noise(vec2(x * 0.011 - TT * 0.03, k * 3.0 + 9.0));
   kn = 0.4 + 1.5 * kn * kn;
-  float reach = k < 0.5 ? smoothstep(-0.62, -0.3, xa) * (1.0 - 0.9 * smoothstep(-0.05, 0.62, xa))
+  float reach = k < 0.5 ? smoothstep(-0.62, -0.3, xa) * (1.0 - 0.93 * smoothstep(-0.1, 0.42, xa))
               : k < 1.5 ? smoothstep(-0.45, -0.25, xa) * (1.0 - smoothstep(-0.02, 0.28, xa))
               : smoothstep(-0.7, -0.4, xa) * (1.0 - smoothstep(0.05, 0.45, xa));
   float base = 98.0 + 6.0 * noise(vec2(x * 0.02 + TT * 0.015, k + 7.0));
@@ -458,7 +474,7 @@ vec3 aurora(vec3 rd) {
     float fk = float(k);
     float Z = k == 0 ? mix(205.0, 400.0, FRAMEK) : k == 1 ? mix(135.0, 255.0, FRAMEK) : mix(640.0, 800.0, FRAMEK);
     float gain = k == 0 ? 1.0 : k == 1 ? 0.45 : 0.4;
-    int n = k == 0 ? 44 : k == 1 ? 26 : 18;
+    int n = int(float(k == 0 ? 44 : k == 1 ? 26 : 18) * AQ);
     float u0 = Z * hd.x / max(hd.y, 0.3) - 150.0, du = 300.0 / float(n);
     vec2 P0 = auroraPath(u0, fk, Z);
     float f0 = hd.x * P0.y - hd.y * P0.x;
@@ -476,7 +492,7 @@ vec3 aurora(vec3 rd) {
           float uc = u - du + du * a;
           float h = r * te + r * r / 12742.0;
           float win = smoothstep(0.0, 25.0, uc - u0) * smoothstep(0.0, 25.0, u0 + 300.0 - uc);
-          acc += auroraAt(uc, P.x, P.x / Z, h, 1.5 * te / max(sn, 0.2), fk) * gain * win * smoothstep(0.04, 0.2, sn) / (hl * max(sn, 0.28));
+          acc += auroraAt(uc, P.x, P.x / Z, h, 1.5 * te / max(sn, 0.2), fk) * gain * win * smoothstep(0.04, 0.2, sn) / (hl * max(sn, 0.4));
         }
       }
       P0 = P1;
@@ -562,6 +578,7 @@ vec3 mist(vec3 col, vec3 ro, vec3 rd, float d) {
 
 vec3 scene(vec2 fc) {
   TT = mod(uTime, 1800.0);
+  AQ = 1.0;
   /* the frame holds its width on wide screens, to 1.9:1, and beyond that
      its height; on tall ones it widens a little, and the eye drifts back
      up the reach and over toward the left wall, so that one wall towers
@@ -597,8 +614,9 @@ vec3 scene(vec2 fc) {
   if (t > 0.0) {
     vec3 p = ro + rd * t;
     int det = detAt(t);
-    vec3 n = rockBump(p, landNormal(p, t, det), t);
-    col = shadeLand(p, n, t, 8);
+    vec3 ng = landNormal(p, t, det);
+    vec3 n = rockBump(p, ng, t);
+    col = shadeLand(p, n, ng, t, 8);
     col = air(col, ro, rd, t);
     col = mist(col, ro, rd, t);
   } else if (rd.y < 0.0) {
@@ -615,10 +633,11 @@ vec3 scene(vec2 fc) {
     if (t2 > 0.0) {
       vec3 q = p + r * t2;
       vec3 qn = landNormal(q, t2 + tw, min(detAt(t2 + tw), 2));
-      rc = shadeLand(q, qn, t2 + tw, 8);
+      rc = shadeLand(q, qn, qn, t2 + tw, 8);
       rc = air(rc, p, r, t2);
       rc = mist(rc, p, r, t2);
     } else {
+      AQ = 0.5;
       rc = mist(sky(r), p, r, 20000.0);
     }
     col = rc * F + waterBody() * (1.0 - F);
@@ -631,14 +650,15 @@ vec3 scene(vec2 fc) {
       vec3 p = ro + rd * te;
       int det = detAt(te);
       p.y = groundAt(p.xz, det);
-      vec3 ce = shadeLand(p, landNormal(p, te, det), te, 8);
+      vec3 en = landNormal(p, te, det);
+      vec3 ce = shadeLand(p, en, en, te, 8);
       ce = air(ce, ro, rd, te);
       col = mix(col, ce, EDGEC);
     }
     col = mist(col, ro, rd, 20000.0);
   }
   // spray hanging at the foot of the fall
-  vec3 B = vec3(765.0, 18.0, 1756.0);
+  vec3 B = vec3(732.0, 18.0, 1756.0);
   float tb = dot(B - ro, rd);
   if (tb > 0.0 && tb < (t > 0.0 ? t : tw) + 60.0) {
     vec3 c = (ro + rd * tb - B) / vec3(60.0, 32.0, 60.0);
