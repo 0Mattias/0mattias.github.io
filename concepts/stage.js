@@ -399,11 +399,18 @@ function timed(now) {
   var t0 = performance.now();
   draw(now);
   gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX);
-  var dt = performance.now() - t0;
-  if (probing++ > 3) times.push(dt);
-  if (times.length < 8) return;
-  times.sort(function (a, b) { return a - b; });
-  var med = times[4], target = 1000 / (S.fps || 30) * 0.8;
+  var dt = performance.now() - t0, target = 1000 / (S.fps || 30) * 0.8, med;
+  /* a frame far over budget after the first is answered at once, so a
+     slow GPU is not held through a dozen of them while the page waits */
+  if (probing > 1 && dt > target * 6) {
+    med = dt;
+  } else {
+    if (probing > 3) times.push(dt);
+    probing++;
+    if (times.length < 8) return;
+    times.sort(function (a, b) { return a - b; });
+    med = times[4];
+  }
   times = [];
   probing = 0;
   if (med <= target) return;
