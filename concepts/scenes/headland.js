@@ -74,7 +74,7 @@ vec3 AMBU, AMBH, BNC, WATER, CLC;
 float HAZE, CAMT, LAMP, NIGHT;
 
 void setup() {
-  vec3 dSun = dirBE(82.0, 32.0), uSun = dirBE(54.0, 2.3), nMoon = dirBE(48.0, 6.5);
+  vec3 dSun = dirBE(82.0, 32.0), uSun = dirBE(54.0, 2.3), nMoon = dirBE(48.0, 4.0);
   SUN = normalize(dSun * uLook.x + uSun * uLook.y + nMoon * uLook.z);
   SUND = normalize(dSun * uLook.x + uSun * (uLook.y + uLook.z));
   MOON = nMoon;

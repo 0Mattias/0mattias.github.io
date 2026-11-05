@@ -642,7 +642,6 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
     n = normalize(n + vec3(RN.x, 0.0, RN.y) * sl);
   }
 
-  n = normalAt(p.xz, max(0.25, fpm), t); return n * 0.5 + 0.5;
   vec3 L = keyDir();
   float dif = max(dot(n, L), 0.0);
   float sh = dif > 0.0 ? shadow(p + n * 0.6, L, t) : 0.0;
@@ -738,7 +737,7 @@ vec3 scene(vec2 fc) {
   } else {
     col = shade(ro, rd, t, pix);
   }
-  return col * col * col;
+  col *= look3(vec3(1.0), vec3(0.76, 0.92, 1.5), vec3(0.8, 0.95, 1.3));
   col = max(mix(vec3(luma(col)), col, 1.0 + 0.12 * uLook.x), 0.0);
   vec3 grey = vec3(luma(col));
   col = mix(col, grey * vec3(0.5, 0.72, 1.35), 0.85 * gWM);
