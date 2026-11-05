@@ -827,9 +827,14 @@ vec3 scene(vec2 fc) {
 
   gSun = normalize(look3(azel(105.0, 30.0), azel(108.0, 3.0), azel(108.0, -8.0)));
   gMoon = azel(-29.0, 10.0);
-  gWS = uLook.x + uLook.y;
+  /* the exposure follows the sun down, so a turn between day and dusk
+     passes through an afternoon rather than a glare; and while the sun
+     hands over to the moon both fade, so a turn to night is dim twilight
+     all the way */
+  float se = sat((30.0 - degrees(asin(gSun.y))) / 27.0);
+  gEs = 6.5 * pow(40.0 / 6.5, se * se);
+  gWS = (uLook.x + uLook.y) * max(0.0, 1.0 - 3.8 * (uLook.x + uLook.y) * uLook.z);
   gWM = uLook.z;
-  gEs = look3(6.5, 40.0, 0.0);
   gEm = 1.7;
   gGain = look3(1.45, 0.42, 0.75);
 
