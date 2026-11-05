@@ -40,6 +40,15 @@ float crossMask(vec2 p) {
   return smoothstep(0.0, 0.6, sin(dot(p, RD) * 0.0011 + 1.3) + 0.5 * sin(dot(p, RN) * 0.0017)) * smoothstep(900.0, 1800.0, length(p));
 }
 
+/* the clay pan between the dunes: an ellipse with a ragged shore, 1 at
+   its edge, less inside */
+float panE(vec2 p) {
+  vec2 pq = vec2(dot(p - PAN, RN), dot(p - PAN, RD));
+  float e = length(pq / vec2(115.0, 250.0));
+  if (e < 2.6) e += 0.22 * (noise(p * 0.012) - 0.5) + 0.08 * (noise(p * 0.05) - 0.5);
+  return e;
+}
+
 /* a field of long sinuous ridges: d runs along them, the slip faces on
    the side away from dn. Crest k wanders across the field as it goes and
    rises and falls along its length */
@@ -192,8 +201,7 @@ float field(vec2 p, float lod, out vec4 info) {
   }
   float fl = 3.0 * noise(p * 0.004) + 1.5 * noise(p * 0.017);
   h = smax(h, fl, 14.0);
-  vec2 pq = vec2(dot(p - PAN, RN), dot(p - PAN, RD));
-  float e = length(pq / vec2(115.0, 250.0)) + 0.22 * (noise(p * 0.012) - 0.5) + 0.08 * (noise(p * 0.05) - 0.5);
+  float e = panE(p);
   float pan = 1.0 - smoothstep(0.75, 1.1, e);
   float lev = 1.0 - smoothstep(0.9, 2.0, e);
   h = mix(h, -1.0 + 0.2 * noise(p * 0.03), max(pan, lev * 0.85));
@@ -225,7 +233,7 @@ vec2 sunDepth(float h, float mu) {
   return vec2(HR * exp(-h / HR) / (m + 0.0283), HM * exp(-(h - ALT) / HM) / (m + 0.0095)) + (1.0 - vis) * 1e7;
 }
 
-void atmo(vec3 rd, vec3 L, float tEnd, out vec3 ins, out vec3 tr) {
+void atmoN(vec3 rd, vec3 L, float tEnd, int ns, out vec3 ins, out vec3 tr) {
   float r0 = RE + ALT + EYE;
   float mu = rd.y;
   float RT = RE + 60e3;
@@ -235,8 +243,10 @@ void atmo(vec3 rd, vec3 L, float tEnd, out vec3 ins, out vec3 tr) {
   float c = dot(rd, L);
   vec3 sR = vec3(0.0), sM = vec3(0.0);
   float odR = 0.0, odM = 0.0;
+  float fn = float(ns);
   for (int i = 0; i < 8; i++) {
-    float f0 = float(i) / 8.0, f1 = float(i + 1) / 8.0;
+    if (i >= ns) break;
+    float f0 = float(i) / fn, f1 = float(i + 1) / fn;
     float t0 = tm * f0 * f0, t1 = tm * f1 * f1;
     float t = 0.5 * (t0 + t1), dt = t1 - t0;
     vec3 pos = vec3(0.0, r0, 0.0) + rd * t;
@@ -255,6 +265,10 @@ void atmo(vec3 rd, vec3 L, float tEnd, out vec3 ins, out vec3 tr) {
   ins = sR * BR * phaseR(c) * pol + sM * BMS * phaseM(c);
   ins += (sR * BR + sM * BMS) * 0.03;
   tr = exp(-(BR + BO) * odR - BME * odM);
+}
+
+void atmo(vec3 rd, vec3 L, float tEnd, out vec3 ins, out vec3 tr) {
+  atmoN(rd, L, tEnd, 8, ins, tr);
 }
 
 vec3 sunAt(vec3 L, float h) {
@@ -445,10 +459,10 @@ float shadow(vec3 p, vec3 L, float lod) {
   return smoothstep(0.0, 1.0, res);
 }
 
-vec3 normalAt(vec2 p, float e, float lod) {
-  float hx = terrain(p + vec2(e, 0.0), lod) - terrain(p - vec2(e, 0.0), lod);
-  float hz = terrain(p + vec2(0.0, e), lod) - terrain(p - vec2(0.0, e), lod);
-  return normalize(vec3(-hx, 2.0 * e, -hz));
+vec3 normalAt(vec2 p, float h, float e, float lod) {
+  float hx = terrain(p + vec2(e, 0.0), lod) - h;
+  float hz = terrain(p + vec2(0.0, e), lod) - h;
+  return normalize(vec3(-hx, e, -hz));
 }
 
 /* the sky's light on a surface facing n, for one light: the zenith and
@@ -457,10 +471,10 @@ vec3 normalAt(vec2 p, float e, float lod) {
 vec3 skyLight(vec3 L, vec3 n, float hv) {
   vec3 zi, zt, hi, ht, si, st;
   vec2 lh = normalize(L.xz + 1e-5);
-  atmo(vec3(0.0, 1.0, 0.0), L, 1e9, zi, zt);
-  atmo(normalize(vec3(-lh.x, 0.1, -lh.y)), L, 1e9, hi, ht);
+  atmoN(vec3(0.0, 1.0, 0.0), L, 1e9, 4, zi, zt);
+  atmoN(normalize(vec3(-lh.x, 0.1, -lh.y)), L, 1e9, 4, hi, ht);
   vec2 ls = rot(1.1) * lh;
-  atmo(normalize(vec3(ls.x, 0.25, ls.y)), L, 1e9, si, st);
+  atmoN(normalize(vec3(ls.x, 0.25, ls.y)), L, 1e9, 4, si, st);
   vec3 hor = mix(hi, si, 0.5 + 0.5 * dot(n.xz, lh));
   float up = 0.5 + 0.5 * n.y;
   return PI * (zi * up * 0.75 + hor * (0.35 + 0.25 * (1.0 - n.y)) * hv);
@@ -472,9 +486,7 @@ vec3 skyLight(vec3 L, vec3 n, float hv) {
    a cell, each a black trunk and a flat spread of bare branches */
 const float TC = 40.0;
 float panMask(vec2 p) {
-  vec2 pq = vec2(dot(p - PAN, RN), dot(p - PAN, RD));
-  float e = length(pq / vec2(115.0, 250.0)) + 0.22 * (noise(p * 0.012) - 0.5) + 0.08 * (noise(p * 0.05) - 0.5);
-  return 1.0 - smoothstep(0.75, 1.1, e);
+  return 1.0 - smoothstep(0.75, 1.1, panE(p));
 }
 vec3 treeIn(vec2 c) {
   vec3 h = hash33(vec3(c, 3.7));
@@ -605,7 +617,7 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   vec4 info;
   p.y = field(p.xz, t, info);
   float fpm = t * pix;
-  vec3 n = normalAt(p.xz, max(0.25, fpm), t);
+  vec3 n = normalAt(p.xz, p.y, max(0.25, fpm), t);
   /* the sand's own slow undulation, finer than the heightfield carries */
   float dA = smoothstep(4.5, 1.0, fpm);
   if (dA > 0.0) {

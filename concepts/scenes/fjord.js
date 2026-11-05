@@ -429,11 +429,7 @@ vec3 stars(vec3 rd) {
    the display is strongest; rays rise from it and fade slowly over a
    hundred kilometres and more into a faint red-violet. Brighter knots and
    fainter stretches travel along it, and each curtain has its own reach
-   across the sky, densest over the gap and thinning away east. The line
-   of sight is followed over the ground to where it crosses each line; the
-   height it has there sets the colour, and the slant of the crossing how
-   much of the sheet it passes through, so a fold seen edge on gathers
-   light and a slanting look smears the edge over the heights it spans */
+   across the sky, densest over the gap and thinning away east */
 vec2 auroraPath(float u, float k, float Z) {
   float f1 = (k < 0.5 ? 27.0 : 14.0) * (1.0 + 0.15 * sin(u * 0.0037 + TT * 0.008 + k * 3.0));
   float f2 = 4.5 * (0.8 + 0.4 * sin(u * 0.009 - TT * 0.013 + k * 1.7));
@@ -443,7 +439,10 @@ vec2 auroraPath(float u, float k, float Z) {
               Z + 42.0 * sin(u * 0.0095 + TT * 0.012 + k) + f1 * 0.8 * cos(p1) + f2 * cos(p2));
 }
 
-vec3 auroraAt(float u, float x, float xa, float h, float blur, float boost, float k) {
+/* the light of a curtain at height h, split in two: low, the hem and the
+   foot of the rays, which a fold seen edge on gathers in full; and high,
+   the rays above, which it may brighten only a little */
+void auroraAt(float u, float x, float xa, float h, float k, out vec3 low, out vec3 high) {
   float r1 = noise(vec2(u * 0.09 + TT * 0.05, k * 13.0));
   float r2 = noise(vec2(u * 0.33 - TT * 0.12, k * 5.0 + 2.0));
   float rays = 0.2 + 0.8 * r1 * r1 * r1 + 0.45 * r2 * r2;
@@ -454,20 +453,22 @@ vec3 auroraAt(float u, float x, float xa, float h, float blur, float boost, floa
               : smoothstep(-0.7, -0.4, xa) * (1.0 - smoothstep(0.05, 0.45, xa));
   float base = 98.0 + 6.0 * noise(vec2(x * 0.02 + TT * 0.015, k + 7.0));
   float y = h - base;
-  float sg = sqrt(0.2 + blur * blur);
-  float edge = smoothstep(-sg, sg, y);
+  float edge = smoothstep(-0.5, 0.5, y);
   float yp = max(y, 0.0);
-  // a fold seen edge on gathers light low down, where the sheet is
-  // brightest, and less and less up through its rays
-  float lift = 1.0 + (boost - 1.0) * exp(-yp / 45.0);
-  float body = edge * (0.7 * exp(-yp / 22.0) + 0.3 * exp(-yp / 85.0)) * lift;
-  float hem = edge * exp(-yp / (2.2 + sg)) * lift;
-  float fringe = exp(-sq((y + 0.9 * sg) / (0.55 * sg))) * smoothstep(0.7, 1.6, kn);
+  float hem = edge * exp(-yp / 2.6);
+  float body = edge * (0.7 * exp(-yp / 22.0) + 0.3 * exp(-yp / 85.0));
+  float fringe = exp(-sq((y + 0.5) / 0.35)) * smoothstep(0.7, 1.6, kn);
   float top = smoothstep(150.0, 240.0, h) * exp(-max(h - 240.0, 0.0) / 90.0);
-  return reach * (rays * kn * (vec3(0.1, 1.0, 0.36) * body * 0.55 + vec3(0.55, 1.0, 0.7) * hem * 1.7)
-                + vec3(1.0, 0.16, 0.6) * fringe * 0.45 + vec3(0.6, 0.08, 0.42) * top * 0.3 * rays);
+  vec3 c = rays * kn * (vec3(0.1, 1.0, 0.36) * body * 0.55 + vec3(0.55, 1.0, 0.7) * hem * 1.7) + vec3(1.0, 0.16, 0.6) * fringe * 0.45;
+  float lw = exp(-yp / 45.0);
+  low = reach * c * lw;
+  high = reach * (c * (1.0 - lw) + vec3(0.6, 0.08, 0.42) * top * 0.3 * rays);
 }
 
+/* each curtain's line is walked in short steps, and every point of it near
+   the line of sight adds its light through the sheet's thickness: a sight
+   line crossing the sheet square on gathers it once, one running along a
+   fold gathers it many times, and nothing changes abruptly between */
 vec3 aurora(vec3 rd) {
   vec3 acc = vec3(0.0);
   float mu = max(rd.y, 0.0), hl = max(length(rd.xz), 1e-3);
@@ -477,47 +478,37 @@ vec3 aurora(vec3 rd) {
     float fk = float(k);
     float Z = k == 0 ? mix(205.0, 400.0, FRAMEK) : k == 1 ? mix(135.0, 255.0, FRAMEK) : mix(640.0, 800.0, FRAMEK);
     float gain = k == 0 ? 1.0 : k == 1 ? 0.45 : 0.4;
-    int n = int(float(k == 0 ? 44 : k == 1 ? 26 : 18) * AQ);
-    float u0 = Z * hd.x / max(hd.y, 0.3) - 150.0, du = 300.0 / float(n);
-    vec2 P0 = auroraPath(u0, fk, Z);
-    float f0 = hd.x * P0.y - hd.y * P0.x;
-    // each crossing waits for the next, so it can fade by how far the line
-    // swings across the sight line between it and its neighbours: a pair
-    // born where the sight line grazes a fold comes in gently as the fold
-    // deepens, as soft as a ray, never as a seam
-    vec3 pend = vec3(0.0);
-    float pdep = 1e4, gmax = 1e4;
-    for (int i = 1; i <= 44; i++) {
+    float sg = (k == 2 ? 6.0 : 4.0) / AQ;
+    float span = k == 1 ? 100.0 : 120.0;
+    int n = int(float(k == 0 ? 120 : k == 1 ? 80 : 60) * AQ);
+    float du = 2.0 * span / float(n);
+    float u0 = Z * hd.x / max(hd.y, 0.3) - span;
+    vec2 Pp = auroraPath(u0, fk, Z);
+    vec3 L = vec3(0.0), U = vec3(0.0);
+    float W = 0.0;
+    for (int i = 1; i <= 120; i++) {
       if (i > n) break;
       float u = u0 + du * float(i);
-      vec2 P1 = auroraPath(u, fk, Z);
-      float f1 = hd.x * P1.y - hd.y * P1.x;
-      if (f0 * f1 <= 0.0 && f0 != f1) {
-        float a = f0 / (f0 - f1);
-        vec2 P = mix(P0, P1, a);
-        float r = dot(P, hd);
-        if (r > 0.0) {
-          float sn = abs(f1 - f0) / max(length(P1 - P0), 1e-3);
-          float uc = u - du + du * a;
-          float h = r * te + r * r / 12742.0;
-          float win = smoothstep(0.0, 25.0, uc - u0) * smoothstep(0.0, 25.0, u0 + 300.0 - uc);
-          vec3 e = auroraAt(uc, P.x, P.x / Z, h, 1.5 * te / max(sn, 0.2), 1.0 / max(sn, 0.45), fk) * gain * win / hl;
-          acc += pend * smoothstep(0.0, 7.0, min(pdep, gmax));
-          pend = e;
-          pdep = gmax;
-          gmax = 0.0;
-        }
+      vec2 P = auroraPath(u, fk, Z);
+      float f = hd.x * P.y - hd.y * P.x;
+      float r = dot(P, hd);
+      if (abs(f) < 2.5 * sg && r > 0.0) {
+        float kern = exp(-sq(f / sg)) * length(P - Pp) / (sg * 1.7725)
+                   * smoothstep(0.0, 25.0, u - u0) * smoothstep(0.0, 25.0, u0 + 2.0 * span - u);
+        vec3 lo, hi;
+        auroraAt(u, P.x, P.x / Z, r * te + r * r / 12742.0, fk, lo, hi);
+        L += lo * kern;
+        U += hi * kern;
+        W += kern;
       }
-      gmax = max(gmax, abs(f1));
-      P0 = P1;
-      f0 = f1;
+      Pp = P;
     }
-    acc += pend * smoothstep(0.0, 7.0, pdep);
+    acc += gain * (L + U * min(W, 1.3) / max(W, 1e-3)) / hl;
   }
   // a faint glow low in the north, the oval beyond the horizon
   acc += vec3(0.05, 0.32, 0.14) * exp(-mu * 9.0) * smoothstep(0.2, 0.9, hd.y) * smoothstep(0.5, -0.2, hd.x / max(hd.y, 0.3)) * 0.5;
   vec3 T = exp(-(BR * 8000.0 * airmass(mu, 35.0) + MIE * 1332.0 * airmass(mu, 91.0)));
-  return acc * T * 0.32;
+  return acc * T * 0.4;
 }
 
 /* the whole sky in a direction: the air, the cirrus, the sun, and by
