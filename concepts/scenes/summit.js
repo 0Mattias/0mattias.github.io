@@ -38,7 +38,7 @@ window.CONCEPT = {
 const float EYE = 680.0;
 const float FOOT = EYE - 1.7;
 const float RE = 7.4e6;          /* the earth's radius, lengthened by refraction */
-const float TOPC = 500.0;        /* no cloud rises above this */
+const float TOPC = 400.0;        /* no cloud rises above this */
 
 float T, PA, ASP, WIDE, CIRR, KEY;
 vec3 LD, LP, LC, AMB, CUP;
@@ -124,7 +124,7 @@ vec3 cirrus(vec3 rd, vec3 c) {
   vec2 p = rd.xz / rd.y * 8.0 + vec2(0.012, 0.004) * T;
   vec2 q = vec2(dot(p, vec2(0.87, 0.49)), dot(p, vec2(-0.49, 0.87))) * vec2(0.35, 2.6);
   q.y += 0.9 * noise(q * vec2(0.4, 0.15));
-  float f = fbm(q + vec2(0.0, 3.0), 4);
+  float f = fbm(q + vec2(0.0, 3.0), 3);
   float d = smoothstep(0.55, 0.78, f) * smoothstep(0.5, 0.75, noise(p * 0.11 + 7.0));
   vec3 lit = LC / PI * (0.3 + 0.9 * hg(dot(rd, LP), 0.7)) + AMB * 1.5;
   return mix(c, lit, d * m * w);
@@ -184,7 +184,8 @@ float cloudH(vec2 x, float t, out float cav) {
     h += 38.0 * k2 * (d2 - 0.45) * (0.45 + 0.6 * sat(d1));
   }
   cav = sat(0.6 - d1) * 1.3 * (0.6 + 0.4 * (1.0 - d2));
-  return h;
+  /* the rare turret banked against a peak is held under the deck's lid */
+  return -smax(-h, -385.0, 25.0);
 }
 
 /* fine lumps, for the shading only */
@@ -201,7 +202,7 @@ float cloudFine(vec2 x, float t) {
    fall lines and stop short of the aretes. q is in units of the faces'
    reach; the aretes reach twice as far */
 
-float horn(vec2 x, vec4 P, vec4 Q, float t, out float rib) {
+float horn(vec2 x, vec4 P, vec4 Q, float t, float y, out float rib) {
   vec2 q = (x - P.xy) / P.w;
   /* the aretes bend a little, as worn ones do */
   q += 0.09 * (vec2(noise(q * 1.6 + P.xy * 0.003), noise(q * 1.6 + 7.3)) - 0.5);
@@ -215,6 +216,8 @@ float horn(vec2 x, vec4 P, vec4 Q, float t, out float rib) {
   float second = d0 >= max(d1, d2) ? max(d1, d2) : (d1 >= d2 ? max(d0, d2) : max(d0, d1));
   float u = dot(q, vec2(nf.y, -nf.x));
   float h = P.z * (1.0 - pow(max(D, 1e-4), Q.y));
+  rib = 0.5;
+  if (y - h > P.z * 0.28) return h + P.z * 0.25;
   float k = smoothstep(P.w * 40.0, P.w * 6.0, t);
   float rq = length(q), ang = atan(q.x, q.y);
   /* the aretes: shoulders, notches and gendarmes along them */
@@ -236,7 +239,7 @@ float horn(vec2 x, vec4 P, vec4 Q, float t, out float rib) {
    arete; the aretes wander and are notched. The faces are stepped by
    bands of rock with ledges over them where the snow lies, and ribbed
    down the fall line, couloirs between the ribs */
-float bigPeak(vec2 x, float t, out float rib) {
+float bigPeak(vec2 x, float t, float y, out float rib) {
   float H = P0.z;
   vec2 q = (x - P0.xy) / P0.w;
   float r0 = length(q);
@@ -251,6 +254,9 @@ float bigPeak(vec2 x, float t, out float rib) {
   float f1 = 1.0 - pow(max(d1, 1e-4), 0.68);
   float f2 = 1.0 - pow(max(d2, 1e-4), 0.76);
   float lo = min(min(f0, f1), f2);
+  /* far above its plain faces nothing it carries can reach the ray */
+  rib = 0.5;
+  if (y - H * lo > 420.0) return H * lo + 380.0;
   float mid = max(min(f0, f1), min(max(f0, f1), f2));
   vec2 nf = lo == f0 ? n0 : (lo == f1 ? n1 : n2);
   float h = H * lo;
@@ -290,26 +296,26 @@ bool inside(vec2 x, vec4 P) {
   return dot(d, d) < sq(reach(P));
 }
 
-float peaksH(vec2 x, float t, out float rib, out float pk) {
+float peaksH(vec2 x, float t, float y, out float rib, out float pk) {
   float h = -1e4, r = 0.0;
   rib = 0.0; pk = 0.0;
-  if (inside(x, P0)) { h = bigPeak(x, t, r); rib = r; pk = 1.0; }
+  if (inside(x, P0)) { h = bigPeak(x, t, y, r); rib = r; pk = 1.0; }
   if (inside(x, P1) || inside(x, P1B)) {
     float r2;
-    float a = horn(x, P1, Q1, t, r);
-    float b = horn(x, P1B, Q1B, t, r2);
+    float a = horn(x, P1, Q1, t, y, r);
+    float b = horn(x, P1B, Q1B, t, y, r2);
     float m = smax(a, b, 60.0);
     if (m > h) { h = m; rib = a > b ? r : r2; }
     pk = 1.0;
   }
-  if (inside(x, P2)) { float a = horn(x, P2, Q2, t, r); if (a > h) { h = a; rib = r; } pk = 1.0; }
-  if (inside(x, P3)) { float a = horn(x, P3, Q3, t, r); if (a > h) { h = a; rib = r; } pk = 1.0; }
+  if (inside(x, P2)) { float a = horn(x, P2, Q2, t, y, r); if (a > h) { h = a; rib = r; } pk = 1.0; }
+  if (inside(x, P3)) { float a = horn(x, P3, Q3, t, y, r); if (a > h) { h = a; rib = r; } pk = 1.0; }
   return h;
 }
 
-float farH(vec2 x, float t, out float mat, out float pk, out float cav, out float rib) {
+float farH(vec2 x, float t, float y, out float mat, out float pk, out float cav, out float rib) {
   float c = cloudH(x, t, cav);
-  float m = peaksH(x, t, rib, pk);
+  float m = peaksH(x, t, y + dot(x, x) / (2.0 * RE), rib, pk);
   mat = m - c;
   return max(c, m) - dot(x, x) / (2.0 * RE);
 }
@@ -348,14 +354,14 @@ float traceFar(vec3 ro, vec3 rd, out float mat, out vec2 near) {
   float pk, cav, rib;
   for (int i = 0; i < 120; i++) {
     vec3 p = ro + rd * t;
-    float h = farH(p.xz, t, mat, pk, cav, rib);
+    float h = farH(p.xz, t, p.y, mat, pk, cav, rib);
     float c = p.y - h;
     if (c < 0.0) {
       float a = lt, b = t;
       for (int j = 0; j < 5; j++) {
         float m = 0.5 * (a + b);
         vec3 q = ro + rd * m;
-        if (q.y - farH(q.xz, m, mat, pk, cav, rib) < 0.0) b = m; else a = m;
+        if (q.y - farH(q.xz, m, -1e9, mat, pk, cav, rib) < 0.0) b = m; else a = m;
       }
       return b;
     }
@@ -556,9 +562,9 @@ vec3 shadeCloud(vec3 ro, vec3 rd, float t) {
   vec3 p = ro + rd * t;
   float mat, pk, cav, rib;
   float e = max(2.0, t * PA * 1.2);
-  float hx = farH(p.xz + vec2(e, 0.0), t, mat, pk, cav, rib) + cloudFine(p.xz + vec2(e, 0.0), t);
-  float hz = farH(p.xz + vec2(0.0, e), t, mat, pk, cav, rib) + cloudFine(p.xz + vec2(0.0, e), t);
-  float h0 = farH(p.xz, t, mat, pk, cav, rib) + cloudFine(p.xz, t);
+  float hx = farH(p.xz + vec2(e, 0.0), t, -1e9, mat, pk, cav, rib) + cloudFine(p.xz + vec2(e, 0.0), t);
+  float hz = farH(p.xz + vec2(0.0, e), t, -1e9, mat, pk, cav, rib) + cloudFine(p.xz + vec2(0.0, e), t);
+  float h0 = farH(p.xz, t, -1e9, mat, pk, cav, rib) + cloudFine(p.xz, t);
   vec3 n = normalize(vec3(h0 - hx, e, h0 - hz));
   float psh = peakShadow(p);
   float csh = mix(0.22, 1.0, cloudShadow(p, t));
@@ -593,9 +599,9 @@ vec3 shadePeak(vec3 ro, vec3 rd, float t) {
   vec3 p = ro + rd * t;
   float mat, pk, cav, rib;
   float e = max(1.5, t * PA);
-  float hx = farH(p.xz + vec2(e, 0.0), t, mat, pk, cav, rib);
-  float hz = farH(p.xz + vec2(0.0, e), t, mat, pk, cav, rib);
-  float h0 = farH(p.xz, t, mat, pk, cav, rib);
+  float hx = farH(p.xz + vec2(e, 0.0), t, -1e9, mat, pk, cav, rib);
+  float hz = farH(p.xz + vec2(0.0, e), t, -1e9, mat, pk, cav, rib);
+  float h0 = farH(p.xz, t, -1e9, mat, pk, cav, rib);
   vec3 n = normalize(vec3(h0 - hx, e, h0 - hz));
   /* snow where it can lie: on the ledges and in the couloirs; rock on
      the steps, the ribs and wherever it is steep */
