@@ -1,9 +1,38 @@
 /* concepts/scenes/dunes.js · Erg
-   v2 work in progress */
+   A drone holding station a hundred and twenty metres over the Namib sand
+   sea at Sossusvlei, looking north along a corridor between the great red
+   dunes. The sand is a heightfield drawn deliberately rather than grown
+   from noise: long linear dunes whose crests wander and rise and fall
+   along their length, each a knife edge with a slip face at the angle of
+   repose on its lee and a long gentle back to windward; a second set of
+   ridges crossing them further out; small dunes riding obliquely on their
+   flanks; and, on the right, one great star dune, its arms sweeping down
+   from a single summit. Between them lies a white clay pan with dead
+   camelthorns standing in it, each a black trunk forking into a few bare
+   limbs, their shadows thrown across the clay.
+   The air is a small Rayleigh and dust model, marched for the sky and taken
+   in closed form along the low rays to the sand, so distance and the sun's
+   direction set the haze. The sand is lit by the sun through that air, by
+   the sky over it and the horizon the dunes leave open, and by light thrown
+   back from the sunlit sand. Shadows matter most here, so the long ones are
+   exact: the crests of each dune field are found where the light's path
+   crosses them, the star dune is sampled along it, and a short march finds
+   the small dunes. Wind ripples and a slow undulation run across the
+   windward sand and fade as they fall under a pixel; a skyline the ray
+   only just cleared is shaded as part sand, part sky. At noon the sand is
+   warm orange under a deep blue sky with the slip faces in crisp shadow; at
+   dusk the sun is three degrees up, half of every dune has gone violet and
+   the lit halves glow, with a pink belt in the west; at night the Milky Way
+   arches over the dunes with its core above the great dune, the moon at
+   tonight's phase lights the sand in cool tones, and the silhouettes stand
+   against the sky. The drone drifts a few metres and the sand streams off
+   the nearer crests in gusts; the stars twinkle a little, more near the
+   horizon. A tall frame turns toward the great dune so it stays in view.
+   WebGL2, no libraries, no build step. */
 
 window.CONCEPT = {
   id: 'dunes',
-  theme: { day: '#2a5a9e', dusk: '#3d3a68', night: '#0d1322' },
+  theme: { day: '#3c6597', dusk: '#4a6aab', night: '#202534' },
   t0: 20,
   frag: `
 const float RE = 6360e3;
@@ -15,7 +44,6 @@ const float BME = 7.7e-6;
 const float HR = 8000.0;
 const float HM = 900.0;
 const float EYE = 120.0;
-#define DBG 0
 
 vec3 azel(float az, float el) {
   az = radians(az); el = radians(el);
@@ -28,6 +56,10 @@ float smax(float a, float b, float k) {
 }
 
 /* ------------------------------------------------------------ the sand */
+
+/* the footprint of the pixel being shaded on the sand, in metres: the
+   shadows soften to it, so far edges do not shimmer */
+float gFp = 0.0;
 
 const vec2 RD = vec2(-0.13917, 0.99027);
 const vec2 RN = vec2(0.99027, 0.13917);
@@ -92,7 +124,7 @@ float ridges(vec2 p, vec2 d, float sp, float hb, float off, float seed, out vec3
    for each crest ahead, where the light's path crosses it (found by
    bisection, the crest being somewhere in its wander band) and how high
    it stands there. Exact for the long low-sun shadows, with no march */
-float crestLight(vec3 p, vec2 sh, float tanE, vec2 d, float sp, float hb, float off, float seed, float cross) {
+float crestLight(vec3 p, vec2 sh, float tanE, vec2 d, float sp, float hb, float off, float seed, float xm) {
   vec2 dn = vec2(d.y, -d.x);
   float su = dot(sh, dn), sv = dot(sh, d);
   if (abs(su) < 0.25) return 1.0;
@@ -116,8 +148,8 @@ float crestLight(vec3 p, vec2 sh, float tanE, vec2 d, float sp, float hb, float 
     if (tau < 2.0) continue;
     vec2 q = p.xz + sh * tau;
     float H = crestH(cr, v0 + sv * tau, hb);
-    if (cross > 0.5) H *= crossMask(q);
-    res = min(res, (p.y + tau * tanE - H) / (tau * 0.014) + 0.5);
+    if (xm > 0.5) H *= crossMask(q);
+    res = min(res, (p.y + tau * tanE - H) / (tau * 0.014 + gFp) + 0.5);
   }
   return res;
 }
@@ -161,38 +193,43 @@ float star(vec2 p, vec2 c, float H, float R, float a0, float seed, inout vec3 in
     ai += 0.9 * (r / R) * (hash11(seed + fi * 3.7) - 0.5) + 0.12 * sin(r * 0.006 + fi);
     float dp = mod(th - ai + PI, TAU) - PI;
     float al = r * cos(dp), s = r * sin(dp);
-    if (al <= 0.0) continue;
     float Ri = R * (0.55 + 0.45 * hash11(seed + fi * 5.3));
-    float x = min(al / Ri, 1.0);
+    float x = min(max(al, 0.0) / Ri, 1.0);
     float hc = H * (1.0 - x) * (1.0 - 0.45 * x);
     float lee = hash11(seed + fi * 7.1) > 0.5 ? 1.0 : -1.0;
     float ss = s * lee;
-    float h = hc - (ss < 0.0 ? 0.67 : 0.36) * abs(s);
-    if (h > best) {
-      best = h;
-      info = vec3(step(ss, 0.0), abs(s), al + fi * 1000.0);
-    }
+    /* across the arm, or behind the summit straight away from it */
+    float lat = al > 0.0 ? abs(s) : r;
+    float h = hc - (ss < 0.0 ? 0.67 : 0.36) * lat;
+    if (h > best) info = vec3(step(ss, 0.0), abs(s), al + fi * 1000.0);
+    best = smax(best, h, 6.0);
   }
-  return best;
+  return mix(best, -300.0, smoothstep(0.8 * R, R, r));
 }
 
 
 /* info: x lee side, y distance from the crest, z along the crest, w the pan */
 float field(vec2 p, float lod, out vec4 info) {
+  /* the long ridges, and the cross ridges over them where they rise */
   vec3 i1, i3;
-  float h = ridges(p, RD, 860.0, 100.0, 230.0, 0.31, i1);
+  float h = 0.0;
   float cm = crossMask(p);
-  if (cm > 0.0) {
-    float hc = ridges(p, CD, 1500.0, 70.0, 400.0, 5.7, i3);
-    if (hc * cm > h) i1 = i3;
-    h = mix(h, smax(h, hc, 18.0), cm);
+  for (int f = 0; f < 2; f++) {
+    bool c = f == 1;
+    if (c && cm <= 0.0) break;
+    float hr = ridges(p, c ? CD : RD, c ? 1500.0 : 860.0, c ? 70.0 : 100.0, c ? 400.0 : 230.0, c ? 5.7 : 0.31, i3);
+    if (!c) { h = hr; i1 = i3; }
+    else {
+      if (hr * cm > h) i1 = i3;
+      h = mix(h, smax(h, hr, 18.0), cm);
+    }
   }
   vec3 i2 = i1;
   float hs = star(p, STAR1, 290.0, 1500.0, 0.4, 11.0, i2);
   if (hs > h) i1 = i2;
-  h = smax(h, hs, 25.0);
+  h = smax(h, hs, 12.0);
   /* the small dunes, left out where they would be under a pixel */
-  float m = smoothstep(8.0, 45.0, h) * (1.0 - smoothstep(0.6, 0.85, 1.0 - i1.y / 320.0)) * smoothstep(9000.0, 4500.0, lod);
+  float m = smoothstep(8.0, 45.0, h) * (1.0 - smoothstep(0.6, 0.85, 1.0 - i1.y / 320.0)) * smoothstep(5000.0, 2500.0, lod);
   if (m > 0.0) {
     float sl, sc;
     float h2 = secondary(p, sl, sc);
@@ -311,7 +348,7 @@ vec3 starsAt(vec3 rd, float pix, float mw) {
     float d = length(rd - sp) / sig;
     float m = hash13(cell * 2.31 + 4.0 + fl);
     float flux = fl == 0.0 ? 1.5 * pow(m, 6.0) + 0.05 : (fl == 1.0 ? 0.09 * pow(m, 3.0) + 0.012 : (fl == 2.0 ? 0.022 * m : 0.012 * m));
-    float tw = 1.0 + (0.18 + 0.5 * sat(1.0 - rd.y * 5.0)) * sin(uTime * (1.7 + 4.0 * h.y) + h.z * TAU) * step(fl, 1.5);
+    float tw = 1.0 + (0.18 + 0.5 * sat(1.0 - rd.y * 5.0)) * sin(mod(uTime, 600.0) * (1.7 + 4.0 * h.y) + h.z * TAU) * step(fl, 1.5);
     vec3 tint = mix(vec3(1.0, 0.78, 0.55), vec3(0.72, 0.84, 1.0), smoothstep(0.2, 0.8, h.y));
     col += tint * flux * tw * exp(-0.5 * d * d);
   }
@@ -418,21 +455,18 @@ float march(vec3 ro, vec3 rd, float pix, out float rmin, out float tr, out float
     t += max(h * lip, t * (0.003 + t * 1.2e-6));
     if (t > tmax) break;
   }
-  /* the closest pass may touch the crest the steps stepped over: search
-     between its samples for the lowest point */
+  /* the closest pass may touch the crest the steps stepped over: look
+   between its samples for the lowest point */
   if (bB > 0.0) {
-    float lo = bA, hi = bB;
-    for (int k = 0; k < 5; k++) {
-      float m1 = mix(lo, hi, 0.382), m2 = mix(lo, hi, 0.618);
-      float g1 = hAt(ro, rd, m1), g2 = hAt(ro, rd, m2);
-      if (g1 < 0.0) { a = lo; b = m1; hitT = m1; break; }
-      if (g2 < 0.0) { a = m1; b = m2; hitT = m2; break; }
-      if (g1 < g2) hi = m2; else lo = m1;
+    float bh = 1e9, bt = 0.0, pt = bA;
+    for (int k = 1; k < 8; k++) {
+      float tm = mix(bA, bB, float(k) / 8.0);
+      float hm = hAt(ro, rd, tm);
+      if (hm < 0.0) { a = pt; b = tm; hitT = tm; bh = 1e9; break; }
+      if (hm < bh) { bh = hm; bt = tm; }
+      pt = tm;
     }
-    if (hitT < 0.0 || hitT > bB) {
-      float tm = 0.5 * (lo + hi), hm = hAt(ro, rd, tm);
-      if (hm > 0.0 && hm / (tm * pix) < rmin) { rmin = hm / (tm * pix); tr = tm; }
-    }
+    if (bh < 1e8 && bh / (bt * pix) < rmin) { rmin = bh / (bt * pix); tr = bt; }
   }
   if (hitT > 0.0) {
     for (int j = 0; j < 6; j++) {
@@ -450,8 +484,11 @@ float march(vec3 ro, vec3 rd, float pix, out float rmin, out float tr, out float
 float shadow(vec3 p, vec3 L, float lod) {
   vec2 sh = normalize(L.xz + 1e-6);
   float tanE = L.y / max(length(L.xz), 1e-4);
-  float res = crestLight(p, sh, tanE, RD, 860.0, 100.0, 230.0, 0.31, 0.0);
-  res = min(res, crestLight(p, sh, tanE, CD, 1500.0, 70.0, 400.0, 5.7, 1.0));
+  float res = 1.0;
+  for (int f = 0; f < 2; f++) {
+    bool c = f == 1;
+    res = min(res, crestLight(p, sh, tanE, c ? CD : RD, c ? 1500.0 : 860.0, c ? 70.0 : 100.0, c ? 400.0 : 230.0, c ? 5.7 : 0.31, c ? 1.0 : 0.0));
+  }
   vec2 sc = STAR1 - p.xz;
   float tc = dot(sc, sh), lat = abs(sc.x * sh.y - sc.y * sh.x);
   if (lat < 1500.0 && tc > -1500.0) {
@@ -461,24 +498,29 @@ float shadow(vec3 p, vec3 L, float lod) {
       float t = mix(t0, t1, (float(i) + 0.5) / 10.0);
       if (t < 2.0) continue;
       float H = star(p.xz + sh * t, STAR1, 290.0, 1500.0, 0.4, 11.0, inf);
-      res = min(res, (p.y + t * tanE - H) / (t * 0.014) + 0.5);
+      res = min(res, (p.y + t * tanE - H) / (t * 0.014 + gFp) + 0.5);
     }
   }
-  float t = 1.5;
+  float t = max(1.5, gFp);
   for (int i = 0; i < 24; i++) {
     vec3 q = p + L * t;
     float h = q.y - terrain(q.xz, lod);
-    res = min(res, 90.0 * h / t);
+    res = min(res, h / (t * 0.011) + 0.0);
     if (res < 0.0 || q.y > 330.0) break;
     t += max(h * 0.7, 1.5 + t * 0.12);
   }
   return smoothstep(0.0, 1.0, res);
 }
 
+/* central differences across the pixel's footprint, so a crest that is
+   narrower than a pixel shades as the mix of its two sides */
 vec3 normalAt(vec2 p, float h, float e, float lod) {
-  float hx = terrain(p + vec2(e, 0.0), lod) - h;
-  float hz = terrain(p + vec2(0.0, e), lod) - h;
-  return normalize(vec3(-hx, e, -hz));
+  vec4 d = vec4(0.0);
+  for (int i = 0; i < 4; i++) {
+    vec2 o = (i < 2 ? vec2(e, 0.0) : vec2(0.0, e)) * (i == 0 || i == 2 ? 1.0 : -1.0);
+    d[i] = terrain(p + o, lod);
+  }
+  return normalize(vec3(d.y - d.x, 2.0 * e, d.w - d.z));
 }
 
 /* the sky's light on a surface facing n, for one light: the zenith and
@@ -623,7 +665,7 @@ vec3 airTo(vec3 rd, float t, out vec3 trans) {
    in time never shows */
 float spindrift(float along, float down, float above) {
   float ph = fract(uTime / 24.0);
-  vec2 q = vec2(along * 0.32, down * 0.06 + max(above, 0.0) * 0.12);
+  vec2 q = vec2(along * 0.14, down * 0.05 + max(above, 0.0) * 0.1);
   float n1 = noise(q - vec2(0.0, ph * 24.0 * 0.35));
   float n2 = noise(q + vec2(17.3, 5.1) - vec2(0.0, (ph - 1.0) * 24.0 * 0.35));
   float n = mix(n1, n2, smoothstep(0.0, 1.0, ph));
@@ -638,9 +680,18 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   vec4 info;
   p.y = field(p.xz, t, info);
   float fpm = t * pix;
-  vec3 n = normalAt(p.xz, p.y, max(0.25, fpm), t);
+  /* the normal over the pixel's footprint, which a grazing view
+     stretches along the line of sight */
+  vec3 n = vec3(0.0, 1.0, 0.0);
+  float ne = max(0.25, fpm);
+  for (int i = 0; i < 2; i++) {
+    n = normalAt(p.xz, p.y, ne, t);
+    float gz = abs(dot(rd, n));
+    if (gz > 0.3) break;
+    ne = max(0.25, fpm) * min(0.3 / max(gz, 0.01), 5.0);
+  }
   /* the sand's own slow undulation, finer than the heightfield carries */
-  float dA = smoothstep(4.5, 1.0, fpm);
+  float dA = smoothstep(1.6, 0.5, fpm);
   if (dA > 0.0) {
     vec2 w = vec2(dot(p.xz, RN), dot(p.xz, RD));
     vec3 n1 = noised(w * vec2(0.03, 0.006) + 3.1);
@@ -681,6 +732,7 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
 
   vec3 L = keyDir();
   float dif = max(dot(n, L), 0.0);
+  gFp = fpm * 1.5;
   float sh = dif > 0.0 ? shadow(p + n * 0.6, L, t) : 0.0;
   vec2 lh = normalize(L.xz + 1e-5);
   float tanE = L.y / max(length(L.xz), 1e-4);
@@ -690,8 +742,11 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   /* the hollows see less of the sky */
   float ao = 1.0;
   if (fpm < 6.0) {
-    float r = 35.0;
-    float av = 0.25 * (terrain(p.xz + vec2(r, 0.0), t) + terrain(p.xz - vec2(r, 0.0), t) + terrain(p.xz + vec2(0.0, r), t) + terrain(p.xz - vec2(0.0, r), t));
+    float av = 0.0;
+    for (int i = 0; i < 4; i++) {
+      vec2 o = 35.0 * vec2(i == 0 ? 1.0 : (i == 1 ? -1.0 : 0.0), i == 2 ? 1.0 : (i == 3 ? -1.0 : 0.0));
+      av += 0.25 * terrain(p.xz + o, t);
+    }
     ao = mix(sat(1.0 + (p.y - av) / 30.0), 1.0, smoothstep(2.0, 6.0, fpm));
     ao = 0.55 + 0.45 * ao;
   }
@@ -700,7 +755,7 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   vec3 col = alb * (sunC * dif * sh + (skyC + bounce) * ao) / PI;
 
   /* sand streaming off the crest above a slip face */
-  float sd = lee * spindrift(info.z, info.y, 0.0) * smoothstep(2.5, 0.5, fpm);
+  float sd = lee * spindrift(info.z, info.y, 0.0) * smoothstep(1.0, 0.3, fpm);
   float fwd = 0.35 + 2.5 * pow(sat(dot(rd, L)), 6.0);
   col += sd * 0.45 * vec3(0.5, 0.3, 0.2) * (sunC * fwd + skyC * 0.25) / PI;
 
@@ -747,34 +802,34 @@ vec3 scene(vec2 fc) {
   gWM = uLook.z;
   gEs = look3(6.5, 40.0, 0.0);
   gEm = 1.7;
-  gGain = look3(1.2, 0.55, 0.75);
+  gGain = look3(1.45, 0.42, 0.75);
 
   float rmin, tr, hmin, th;
   float t = march(ro, rd, pix, rmin, tr, hmin, th);
-  vec3 col, lights = vec3(0.0);
+  vec3 col = vec3(0.0), lights = vec3(0.0);
+  /* the sky, and a skyline the ray only just cleared, where part of the
+     pixel is sand: one call to the sand either way */
+  float cov = 1.0;
   if (t < 0.0) {
     col = skyCol(rd, pix, lights);
-    /* a skyline that the ray only just cleared: part of the pixel is sand */
-    float cov = sat(0.5 - rmin);
-    if (cov > 0.0) {
-      col = mix(col, shade(ro, rd, max(tr - max(3.0, tr * pix * 4.0), 1.0), pix), cov);
-      lights *= 1.0 - cov;
-    }
-    /* sand blowing off a crest seen against the sky */
-    if (hmin < 20.0) {
-      vec4 info;
-      vec3 q = ro + rd * th;
-      field(q.xz, th, info);
-      float sd = spindrift(info.z, info.y, hmin) * smoothstep(2.5, 0.5, th * pix);
-      vec3 sunC, skyC;
-      lightsAt(q, vec3(0.0, 1.0, 0.0), sunC, skyC);
-      float fwd = 0.35 + 2.5 * pow(sat(dot(rd, keyDir())), 6.0);
-      col += sd * 0.45 * vec3(0.5, 0.3, 0.2) * (sunC * fwd + skyC * 0.25) / PI;
-    }
-  } else {
-    col = shade(ro, rd, t, pix);
+    cov = sat(0.5 - rmin);
   }
-  col *= look3(vec3(1.0), vec3(0.76, 0.92, 1.5), vec3(0.8, 0.95, 1.3));
+  if (cov > 0.0) {
+    float ts = t > 0.0 ? t : max(tr - max(3.0, tr * pix * 4.0), 1.0);
+    col = mix(col, shade(ro, rd, ts, pix), cov);
+    lights *= 1.0 - cov;
+  }
+  /* sand blowing off a crest, seen against the sky */
+  if (t < 0.0 && hmin < 20.0) {
+    vec4 info;
+    vec3 q = ro + rd * th;
+    field(q.xz, th, info);
+    float sd = spindrift(info.z, info.y, hmin) * smoothstep(1.0, 0.3, th * pix);
+    vec3 sunC = sunAt(gSun, q.y) * gEs * gWS + sunAt(gMoon, q.y) * gEm * gWM * 3.2;
+    float fwd = 0.35 + 2.5 * pow(sat(dot(rd, keyDir())), 6.0);
+    col += sd * 0.45 * vec3(0.5, 0.3, 0.2) * sunC * fwd / PI + sd * 0.1 * col;
+  }
+  col *= look3(vec3(1.0), vec3(0.8, 0.9, 1.42), vec3(0.8, 0.95, 1.3));
   col = max(mix(vec3(luma(col)), col, 1.0 + 0.15 * uLook.x + 0.12 * uLook.y), 0.0);
   vec3 grey = vec3(luma(col));
   col = mix(col, grey * vec3(0.5, 0.72, 1.35), 0.85 * gWM);

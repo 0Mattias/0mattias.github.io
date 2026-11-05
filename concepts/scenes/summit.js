@@ -38,9 +38,9 @@ window.CONCEPT = {
 const float EYE = 680.0;
 const float FOOT = EYE - 1.7;
 const float RE = 7.4e6;          /* the earth's radius, lengthened by refraction */
-const float TOPC = 400.0;        /* no cloud rises above this */
+const float TOPC = 500.0;        /* no cloud rises above this */
 
-float T, PA, ASP, WIDE;
+float T, PA, ASP, WIDE, CIRR;
 vec3 LD, LP, LC, AMB, CUP;
 vec2 DRIFT;
 vec3 SUN_D, SUN_U, MOON_D;
@@ -109,7 +109,25 @@ vec3 sky(vec3 rd) {
   float belt = exp(-sq((e - 5.5) / 4.5)) * side;
   c = mix(c, vec3(0.16, 0.17, 0.30), uLook.y * band * 0.6);
   c += uLook.y * belt * vec3(0.40, 0.14, 0.18);
+  /* by day the sky pales a little toward the sun's side */
+  c += uLook.x * vec3(0.07, 0.085, 0.1) * pow(max(mu, 0.0), 3.0) * (1.0 - t2);
   return c;
+}
+
+/* a few strands of cirrus, a sheet eight kilometres up, drawn out along
+   the wind and drifting slowly; kept well above the name */
+vec3 cirrus(vec3 rd, vec3 c) {
+  float w = look3(0.4, 0.25, 0.0);
+  if (rd.y < 0.05 || w <= 0.0) return c;
+  float m = smoothstep(CIRR, CIRR + 6.0 * DEG, asin(rd.y));
+  if (m <= 0.0) return c;
+  vec2 p = rd.xz / rd.y * 8.0 + vec2(0.012, 0.004) * T;
+  vec2 q = vec2(dot(p, vec2(0.87, 0.49)), dot(p, vec2(-0.49, 0.87))) * vec2(0.35, 2.6);
+  q.y += 0.9 * noise(q * vec2(0.4, 0.15));
+  float f = fbm(q + vec2(0.0, 3.0), 4);
+  float d = smoothstep(0.55, 0.78, f) * smoothstep(0.5, 0.75, noise(p * 0.11 + 7.0));
+  vec3 lit = LC / PI * (0.3 + 0.9 * hg(dot(rd, LP), 0.7)) + AMB * 1.5;
+  return mix(c, lit, d * m * w);
 }
 
 /* x z, summit over the cloud, faces' reach */
@@ -156,7 +174,8 @@ float cloudH(vec2 x, float t, out float cav) {
   float h = sw + 105.0 * d1;
   /* the deck banks up against the peaks */
   float b0 = length(x - P0.xy) / P0.w, b1 = length(x - P1.xy) / P1.w;
-  h += 70.0 * exp(-max(b0 - 0.6, 0.0) * 1.3) * (0.6 + 0.6 * d1) + 50.0 * exp(-max(b1 - 0.6, 0.0) * 1.3) * (0.6 + 0.6 * d1);
+  float bd = 0.6 + 0.6 * min(d1, 1.0);
+  h += 125.0 * exp(-max(b0 - 1.0, 0.0) * 1.1) * bd + 50.0 * exp(-max(b1 - 0.6, 0.0) * 1.3) * bd;
   float k2 = smoothstep(42000.0, 14000.0, t);
   float d2 = 0.5;
   if (k2 > 0.0) {
@@ -211,7 +230,60 @@ float horn(vec2 x, vec4 P, vec4 Q, float t, out float rib) {
   return h;
 }
 
-float reach(vec4 P) { return P.w * 2.4; }
+/* the great peak, drawn by hand: three faces of unequal steepness and
+   hollow, so the arete to the left runs long and gentle and the others
+   short; the top hooks over a little; a shoulder stands on the long
+   arete; the aretes wander and are notched. The faces are stepped by
+   bands of rock with ledges over them where the snow lies, and ribbed
+   down the fall line, couloirs between the ribs */
+float bigPeak(vec2 x, float t, out float rib) {
+  float H = P0.z;
+  vec2 q = (x - P0.xy) / P0.w;
+  float r0 = length(q);
+  q -= vec2(-0.075, 0.035) * sq(sat(1.0 - r0 * 2.2));
+  /* the aretes wander: the one toward the eye most, bending as it falls */
+  q += 0.13 * (vec2(noise(q * 1.25 + 2.0), noise(q * 1.25 + 7.3)) - 0.5);
+  q += vec2(0.766, 0.643) * 0.16 * (noise(vec2(r0 * 3.2, 1.7)) - 0.5) * sat(r0 * 3.0);
+  q += 0.045 * (vec2(noise(q * 3.3), noise(q * 3.3 + 4.1)) - 0.5);
+  vec2 n0 = vec2(0.643, -0.766), n1 = vec2(-0.985, -0.174), n2 = vec2(0.342, 0.940);
+  float d0 = dot(q, n0) * 1.1, d1 = dot(q, n1) * 1.0, d2 = dot(q, n2) * 0.9;
+  float f0 = 1.0 - pow(max(d0, 1e-4), 0.82);
+  float f1 = 1.0 - pow(max(d1, 1e-4), 0.68);
+  float f2 = 1.0 - pow(max(d2, 1e-4), 0.9);
+  float lo = min(min(f0, f1), f2);
+  float mid = max(min(f0, f1), min(max(f0, f1), f2));
+  vec2 nf = lo == f0 ? n0 : (lo == f1 ? n1 : n2);
+  float h = H * lo;
+  float k = smoothstep(P0.w * 40.0, P0.w * 6.0, t);
+  float rq = length(q), ang = atan(q.x, q.y);
+  /* notches and gendarmes along the aretes */
+  float ar = 1.0 - smoothstep(0.0, 0.07, mid - lo);
+  float sk = noise(vec2(rq * 3.0, ang * 1.5) + 4.0) + 0.6 * noise(vec2(rq * 7.5, ang * 3.0) + 9.0);
+  h += H * ar * sat(rq * 5.0) * (0.06 * sk - 0.05 * smoothstep(0.55, 0.85, noise(vec2(rq * 5.0, ang * 2.0) + 1.0)) - 0.025 * k * ridged(vec2(rq * 14.0, ang * 3.0)));
+  /* a shoulder on the long arete; on the short one a notch, and a
+     gendarme standing beyond it */
+  vec2 qs = q - 0.85 * vec2(-0.669, 0.743);
+  h = smax(h, H * (0.56 - 1.2 * length(qs * vec2(1.0, 1.3))) + 30.0 * noise(qs * 9.0), 40.0);
+  vec2 qn = q - 0.36 * vec2(0.985, 0.174), qg = q - 0.56 * vec2(0.985, 0.174);
+  h -= H * 0.05 * exp(-dot(qn, qn) / 0.004);
+  h = smax(h, H * (0.69 - 2.4 * length(qg)) + 20.0 * noise(qg * 14.0), 25.0);
+  /* ribs and couloirs down the fall line */
+  float u = dot(q, vec2(nf.y, -nf.x));
+  float g = ridged(vec2(u * 8.0, (1.0 - lo) * 1.7) + 3.0);
+  g = 0.6 * g + 0.4 * k * ridged(vec2(u * 20.0, (1.0 - lo) * 4.0) + 6.0);
+  rib = g;
+  h += H * 0.055 * (g - 0.55) * (1.0 - ar) * sat((1.0 - lo) * 5.0);
+  h += H * 0.04 * (fbm(q * 2.4 + 1.0, 3) - 0.5);
+  /* bands of rock: a steeper step in some of them, a ledge over it,
+     broken off across the face */
+  float by = h + 90.0 * noise(q * 2.2 + 1.0) + 0.14 * (x.x - P0.x);
+  float fb = fract(by / 260.0);
+  float bm = smoothstep(0.5, 0.75, noise(vec2(by / 260.0, u * 2.2) + 5.0));
+  h += 260.0 * 0.22 * bm * (smoothstep(0.4, 0.6, fb) - fb) * sat((1.0 - lo) * 6.0) * (1.0 - ar);
+  return h;
+}
+
+float reach(vec4 P) { return P.w * 2.6; }
 
 bool inside(vec2 x, vec4 P) {
   vec2 d = x - P.xy;
@@ -221,7 +293,7 @@ bool inside(vec2 x, vec4 P) {
 float peaksH(vec2 x, float t, out float rib, out float pk) {
   float h = -1e4, r = 0.0;
   rib = 0.0; pk = 0.0;
-  if (inside(x, P0)) { h = horn(x, P0, Q0, t, r); rib = r; pk = 1.0; }
+  if (inside(x, P0)) { h = bigPeak(x, t, r); rib = r; pk = 1.0; }
   if (inside(x, P1) || inside(x, P1B)) {
     float r2;
     float a = horn(x, P1, Q1, t, r);
@@ -308,46 +380,79 @@ const vec2 RA = vec2(-330.0, 140.0);
 const vec2 RDIR = vec2(0.8526, 0.5225);
 const vec2 RNRM = vec2(0.5225, -0.8526);
 
+/* the crest's own line, s along it: rising out of the frame to the
+   left toward the summit the eye stands on, then breaking off in steps */
 float crestY(float s) {
   float y = -18.0 + 0.05 * max(180.0 - s, 0.0);
-  y += 6.5 * exp(-sq((s - 232.0) / 15.0));
   float b = max(s - 262.0, 0.0);
-  /* the break: down in steps, a tower at each */
   y -= 1.35 * b + 0.004 * b * b;
   y += 7.0 * smoothstep(0.0, 6.0, b) * (1.0 - smoothstep(10.0, 16.0, b));
   y += 6.0 * smoothstep(26.0, 30.0, b) * (1.0 - smoothstep(36.0, 42.0, b));
-  return y;
+  return y + 0.7 * noise(vec2(s / 3.0, 1.0));
+}
+
+/* a gendarme on the crest: a tower whose sides lean in as they rise,
+   its top tilted; w and wl its half length along the crest and across */
+float tower(float s, float an, float s0, float w, float H, float tilt, float wl) {
+  return H + tilt * (s - s0) - 2.6 * max(abs(s - s0) - w, 0.0) - 2.2 * max(an - wl, 0.0);
+}
+
+/* fractured rock: the face broken into blocks of no set shape, each a
+   plane set out or back from the face and tilted its own way, a few
+   laid back as ledges; the joints between them worn into grooves. f is
+   on the face, across it and down it by height. Returns the offset, and
+   in .y how much the block is a ledge */
+vec2 facets(vec2 f, vec2 cell, float amp) {
+  vec2 p = f / cell;
+  vec2 i = floor(p), fr = fract(p);
+  float d1 = 9.0, d2 = 9.0;
+  vec2 best = vec2(0.0), bc = vec2(0.0);
+  for (int y = -1; y <= 1; y++)
+  for (int x = -1; x <= 1; x++) {
+    vec2 g = vec2(float(x), float(y));
+    vec2 r = g + hash22(i + g) - fr;
+    float d = dot(r, r);
+    if (d < d1) { d2 = d1; d1 = d; best = i + g; bc = r; }
+    else if (d < d2) d2 = d;
+  }
+  vec3 hs = hash33(vec3(best, 7.0));
+  float led = step(0.8, hs.y);
+  vec2 lp = -bc * cell;
+  float ty = mix((hs.z - 0.55) * 0.7, -0.8, led);
+  float h = (hs.x - 0.5) * amp + lp.x * (hs.y - 0.5) * 0.5 + lp.y * ty;
+  float joint = sqrt(d2) - sqrt(d1);
+  h -= amp * 0.3 * (1.0 - smoothstep(0.0, 0.14, joint));
+  return vec2(h, led * smoothstep(0.05, 0.2, joint));
 }
 
 float ridgeH(vec2 x, float t, out float snow) {
   vec2 q = RROT * x - RA;
   float s = dot(q, RDIR), n = dot(q, RNRM);
-  float k1 = smoothstep(1200.0, 300.0, t), k2 = smoothstep(400.0, 120.0, t);
-  /* the crest: teeth and notches */
-  float jag = 2.4 * ridged(vec2(s / 8.5, 0.5)) + 1.2 * ridged(vec2(s / 3.4, 2.5)) - 1.9;
-  float cy = crestY(s);
+  float k1 = smoothstep(1000.0, 250.0, t), k2 = smoothstep(400.0, 120.0, t);
   float an = sqrt(n * n + 1.0) - 1.0;
   float fall = mix(1.05, 1.45, smoothstep(-2.0, 2.0, n));
+  float cy = crestY(s);
   float face = cy - fall * an;
-  /* the detail is laid on the face itself, across it by s and down it
-     by the face's height, so a steep face is not streaked */
   vec2 f = vec2(s, face * 1.2);
-  /* buttresses of rock down the fall line, couloirs between them */
-  float sw = s + 6.0 * noise(f / 28.0);
-  float rib = ridged(vec2(sw / 16.0, f.y / 110.0) + 1.3);
-  rib = 0.6 * rib + 0.4 * ridged(vec2(sw / 6.0, f.y / 40.0) + 4.1);
-  float rk = face + jag * exp(-an * 0.15) + 7.0 * (rib - 0.55) * sat(an / 6.0);
-  rk += 1.6 * (noise(f / 7.0) - 0.5) + k1 * (1.3 * (ridged(f / 3.8 + 3.0) - 0.5) + 0.5 * (ridged(f / 1.7 + 6.0) - 0.5)) + k2 * 0.2 * (ridged(f / 0.8 + 1.0) - 0.5);
-  /* bedded rock: ledges dipping gently across the face */
-  float bed = f.y + 0.25 * s + 2.0 * noise(f / 11.0);
-  float bs = bed / 3.4;
-  rk += 0.7 * (smoothstep(0.25, 0.75, fract(bs)) - fract(bs));
-  /* snow: a cornice along the crest and ribbons down the couloirs */
-  float streak = noise(vec2(sw / 3.5, f.y / 30.0) + 7.7);
-  float cor = exp(-an / 2.5) * smoothstep(0.25, 0.6, noise(vec2(s / 6.0, 3.0)) + 0.25 * jag);
-  float cou = smoothstep(0.4, 0.33, rib + 0.3 * streak) * smoothstep(1.0, 4.0, an) * smoothstep(0.25, 0.5, noise(f / vec2(14.0, 40.0) + 2.0));
-  snow = sat(max(cor, cou));
-  return FOOT + rk + 0.5 * snow;
+  /* a few gendarmes on the crest, the highest the spur's top */
+  float g = max(max(tower(s, an, 191.0, 1.8, 3.0, 0.3, 1.6), tower(s, an, 207.0, 3.5, 1.6, -0.1, 2.2)),
+                max(tower(s, an, 221.0, 2.0, 5.0, 0.45, 1.8), tower(s, an, 236.0, 3.0, 8.5, -0.3, 2.6)));
+  g = max(g, tower(s, an, 251.0, 1.5, 4.2, 0.6, 1.5));
+  g = smax(g, 0.0, 0.6);
+  /* two couloirs, wandering and narrowing down the face, dying out */
+  float c2 = abs(s - 244.0 - 9.0 * noise(vec2(f.y / 26.0, 4.0))) / (2.0 + 3.0 * noise(vec2(f.y / 14.0, 2.0)));
+  float coul = (1.0 - smoothstep(0.4, 1.0, c2)) * smoothstep(2.0, 7.0, an) * smoothstep(0.3, 0.55, noise(vec2(s / 25.0, f.y / 22.0) + 3.0));
+  /* fractured gneiss, in large blocks and small */
+  vec2 fa = facets(f + vec2(0.0, 0.25 * s), vec2(9.0, 5.5), 2.6);
+  vec2 fb = k1 > 0.0 ? facets(f * 1.1 + 40.0, vec2(3.2, 2.2), 0.9) * k1 : vec2(0.0);
+  float rk = face + g + (fa.x + fb.x) * smoothstep(-1.0, 1.0, an) - 2.2 * coul;
+  rk += 1.0 * (noise(f / 7.0) - 0.5) + k2 * 0.15 * noise(f / 0.8);
+  /* snow along stretches of the crest between the towers, on the
+     ledges, and in the couloirs */
+  float cor = exp(-an / 2.6) * (1.0 - smoothstep(0.5, 1.5, g)) * smoothstep(0.25, 0.5, noise(vec2(s / 10.0, 3.0)));
+  float led = max(fa.y, fb.y * 0.6) * smoothstep(0.35, 0.6, noise(f / 11.0 + 5.0));
+  snow = sat(max(max(cor, led), coul * smoothstep(0.45, 0.65, noise(f / vec2(5.0, 9.0) + 2.0) + 0.25 * fa.x)));
+  return FOOT + rk + 0.4 * snow;
 }
 
 float traceRidge(vec3 ro, vec3 rd, out vec2 near) {
@@ -399,7 +504,7 @@ float coneShadow(vec3 p, vec4 P, vec4 Q) {
   float y = p.y + al * tl + dot(P.xy, P.xy) / (2.0 * RE);
   float f = sat(1.0 - y / P.z);
   float girth = P.w * 1.25 * pow(f, 1.0 / Q.y);
-  return smoothstep(girth * 0.7, girth * 1.1 + (60.0 + al * 0.006) * sat(f * 8.0) + 0.01, off);
+  return smoothstep(girth * 0.55, girth * 1.25 + (120.0 + al * 0.006) * sat(f * 8.0) + 0.01, off);
 }
 
 float peakShadow(vec3 p) {
@@ -492,16 +597,22 @@ vec3 shadePeak(vec3 ro, vec3 rd, float t) {
   float hz = farH(p.xz + vec2(0.0, e), t, mat, pk, cav, rib);
   float h0 = farH(p.xz, t, mat, pk, cav, rib);
   vec3 n = normalize(vec3(h0 - hx, e, h0 - hz));
-  float bandY = p.y + 0.18 * p.x - 0.1 * p.z + 70.0 * noise(p.xz / 500.0);
-  float band = smoothstep(0.55, 0.78, noise(vec2(bandY / 85.0, (p.x + p.z) / 900.0)));
-  float rock = smoothstep(0.8, 0.55, n.y) * smoothstep(0.45, 0.75, rib + 0.4 * band);
-  rock = max(rock, smoothstep(0.34, 0.2, n.y));
-  vec3 alb = mix(vec3(0.82, 0.85, 0.9), vec3(0.11, 0.1, 0.095), rock);
+  /* snow where it can lie: on the ledges and in the couloirs; rock on
+     the steps, the ribs and wherever it is steep */
+  float rock = smoothstep(0.62, 0.42, n.y);
+  rock = max(rock, smoothstep(0.85, 0.65, n.y) * smoothstep(0.55, 0.8, rib));
+  rock *= 0.75 + 0.25 * noise(p.xz / 60.0);
+  vec3 alb = mix(vec3(0.82, 0.85, 0.9), vec3(0.1, 0.092, 0.088), rock);
   float sh = peakShadow(p + vec3(0.0, 40.0, 0.0));
   vec3 col = alb * (LC / PI * max(dot(n, LD), 0.0) * sh + AMB * (0.6 + 0.4 * n.y) + CUP * sat(0.4 - 0.6 * n.y));
-  /* where the rock goes down into the cloud */
-  float into = smoothstep(120.0, 0.0, mat + 50.0 * (noise(p.xz / 120.0) - 0.5));
-  col = mix(col, CUP * 0.75, into * 0.8);
+  /* the cloud laps up the lower slopes in torn wisps, furthest up the
+     couloirs, lit as the deck is */
+  float torn = fbm3(vec3((p.x + DRIFT.x * 1.4) / 120.0, p.y / 55.0, (p.z + DRIFT.y * 1.4) / 120.0), 3);
+  float w = smoothstep(0.35, 0.7, torn + ((0.6 - rib) * 150.0 + 50.0 - mat) / 220.0) + smoothstep(70.0, 0.0, mat);
+  /* wisps against a face turned from the light are in its shadow */
+  float ps = min(peakShadow(p), smoothstep(-0.15, 0.25, dot(n, LD)));
+  vec3 ct = LC / PI * (0.62 * sat((LD.y + 0.25) / 1.25) + 0.12) * ps + AMB * 0.85 + LC * hg(dot(rd, LP), 0.6) * 0.1 * ps;
+  col = mix(col, ct, sat(w) * 0.92);
   return col;
 }
 
@@ -513,15 +624,23 @@ vec3 shadeRidge(vec3 ro, vec3 rd, float t) {
   float hz = ridgeH(p.xz + vec2(0.0, e), t, sn);
   float h0 = ridgeH(p.xz, t, sn);
   vec3 n = normalize(vec3(h0 - hx, e, h0 - hz));
-  float var = noise(p.xz / 2.5 + p.y * 0.3);
-  vec3 rockc = mix(vec3(0.06, 0.057, 0.054), vec3(0.095, 0.077, 0.062), smoothstep(0.6, 0.85, noise(p.xz / 13.0 + 3.0))) * (0.55 + 0.8 * var);
-  vec2 bq = p.xz * 0.9 + p.y * 0.5;
-  vec2 bump = vec2(noise(bq) - noise(bq + vec2(0.5, 0.0)), noise(bq) - noise(bq + vec2(0.0, 0.5)));
-  n = normalize(n + (1.0 - sn) * 0.6 * vec3(bump.x, 0.0, bump.y));
-  vec3 alb = mix(rockc, vec3(0.88, 0.9, 0.94), sn);
+  vec3 ng = n;
+  /* grain and colour from the rock's own place in space, the same on
+     every face of a block */
+  vec3 pp = p * 1.3;
+  float b0 = noise3(pp);
+  vec3 bump = vec3(noise3(pp + vec3(0.35, 0.0, 0.0)), noise3(pp + vec3(0.0, 0.35, 0.0)), noise3(pp + vec3(0.0, 0.0, 0.35))) - b0;
+  n = normalize(n - (1.0 - sn) * 1.6 * bump);
+  float var = noise3(p * 0.35);
+  vec3 rockc = mix(vec3(0.062, 0.061, 0.06), vec3(0.09, 0.078, 0.066), smoothstep(0.6, 0.85, noise3(p * 0.07 + 3.0)));
+  rockc *= 0.6 + 0.75 * var;
+  vec3 alb = mix(rockc, vec3(0.86, 0.89, 0.94), sn);
   float nl = max(dot(n, LD), 0.0);
   float sh = nl > 0.0 ? ridgeShadow(p + n * 0.05) : 0.0;
-  vec3 col = alb * (LC / PI * nl * sh + AMB * (0.55 + 0.45 * n.y) + CUP * sat(0.5 - 0.5 * n.y));
+  vec3 col = alb * (LC / PI * nl * sh + AMB * (0.5 + 0.5 * n.y) + CUP * sat(0.5 - 0.5 * n.y));
+  /* edges turned from the eye catch the sky behind them */
+  float rim = pow(1.0 - sat(dot(ng, -rd)), 4.0);
+  col += rim * alb * (AMB * 1.5 + LC * 0.04 * sat(dot(ng, LD) + 0.4));
   return col;
 }
 
@@ -538,7 +657,7 @@ vec4 wisps(vec3 ro, vec3 rd, float tHit) {
   float d = fbm(w, 3) + 0.06 * noise(w * 8.3);
   d = smoothstep(0.5, 0.76, d) * smoothstep(0.35, 0.6, noise(w * 0.23 + 4.0));
   float a = (1.0 - exp(-d * 0.05 / -rd.y)) * smoothstep(-0.035, -0.06, rd.y);
-  a = min(a, 0.42) * smoothstep(0.0, 700.0, tHit - t);
+  a = min(a, 0.42) * smoothstep(300.0, 2500.0, tHit - t);
   vec3 p = ro + rd * t;
   float mu = dot(rd, LP);
   vec3 c = LC / PI * (0.55 + 0.8 * hg(mu, 0.55)) * peakShadow(p) + AMB * 1.1;
@@ -629,6 +748,8 @@ void setup() {
   SUN_U = dirAE(mix(27.5, 33.0, WIDE), 1.0);
   float th = mix(tan(32.0 * DEG), tan(36.0 * DEG) / ASP, WIDE);
   float top = (atan(0.15 * th) + atan(th)) / DEG;
+  /* the name stands 8 % of the half-height over the middle */
+  CIRR = atan((2.0 * mix(0.6, 0.575, WIDE) - 1.0) * th) + atan(0.08 * th) + 10.0 * DEG;
   MOON_D = dirAE(mix(4.0, -9.0, WIDE), min(mix(30.0, 22.0, WIDE), top - 5.0));
   /* the moon's light is laid on from further round than its disc, so
      the snow faces toward the eye take it; its path stays under it */
@@ -656,11 +777,13 @@ vec3 scene(vec2 fc) {
     float tF = traceFar(ro, rd, mat, nearF);
     if (tF > 0.0) {
       col = mat > 0.0 ? shadePeak(ro, rd, tF) : shadeCloud(ro, rd, tF);
-      vec4 wv = wisps(ro, rd, tF);
-      col = mix(col, wv.rgb, wv.a);
+      if (mat <= 0.0) {
+        vec4 wv = wisps(ro, rd, tF);
+        col = mix(col, wv.rgb, wv.a);
+      }
       col = aerial(col, ro, rd, tF);
     } else {
-      col = sky(rd);
+      col = cirrus(rd, sky(rd));
       col += uLook.y * sunDisc(rd, SUN_U, vec3(30.0, 14.0, 4.0)) + uLook.x * sunDisc(rd, SUN_D, vec3(80.0, 76.0, 70.0));
       /* the night's own sky, skipped only where its weight is nil */
       if (uLook.z > 0.0) col += uLook.z * (moon(rd) + (stars(rd) + milky(rd)) * smoothstep(-0.01, 0.08, rd.y));
