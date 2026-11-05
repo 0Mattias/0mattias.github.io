@@ -691,7 +691,7 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
     ne = max(0.25, fpm) * min(0.3 / max(gz, 0.01), 5.0);
   }
   /* the sand's own slow undulation, finer than the heightfield carries */
-  float dA = smoothstep(1.6, 0.5, fpm);
+  float dA = 0.0;
   if (dA > 0.0) {
     vec2 w = vec2(dot(p.xz, RN), dot(p.xz, RD));
     vec3 n1 = noised(w * vec2(0.03, 0.006) + 3.1);
