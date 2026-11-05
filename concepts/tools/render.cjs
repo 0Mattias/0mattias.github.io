@@ -8,7 +8,10 @@
 
    node concepts/tools/render.cjs [scene ...] [--looks day,dusk,night]
         [--sizes wide,tall,ultra] [--out DIR] [--t SECONDS] [--stills]
-        [--moon PHASE]
+        [--moon PHASE] [--mix D,U,N]
+
+   --mix holds the look weights between day, dusk and night, as a turn
+   passes through them; the shot is named for the weights.
 
    Scenes default to every one in concepts/list.js. Shots go to
    concepts/.renders/ unless --out says otherwise. */
@@ -29,7 +32,7 @@ const SIZES = {
 const STILL_KIND = { wide: 'wide', ultra: 'wide', tall: 'tall' };
 
 function args() {
-  const a = process.argv.slice(2), o = { scenes: [], looks: ['day', 'dusk', 'night'], sizes: ['wide', 'tall'], out: path.join(REPO, 'concepts', '.renders'), t: null, stills: false, moon: null };
+  const a = process.argv.slice(2), o = { scenes: [], looks: ['day', 'dusk', 'night'], sizes: ['wide', 'tall'], out: path.join(REPO, 'concepts', '.renders'), t: null, stills: false, moon: null, mix: null };
   for (let i = 0; i < a.length; i++) {
     const k = a[i];
     if (k === '--looks') o.looks = a[++i].split(',');
@@ -37,6 +40,7 @@ function args() {
     else if (k === '--out') o.out = path.resolve(a[++i]);
     else if (k === '--t') o.t = a[++i];
     else if (k === '--moon') o.moon = a[++i];
+    else if (k === '--mix') o.mix = a[++i];
     else if (k === '--stills') o.stills = true;
     else o.scenes.push(k);
   }
@@ -89,6 +93,7 @@ async function main() {
         let url = `${base}/concepts/view.html?scene=${id}&look=${look}&still&scale=${S.scale}`;
         if (o.t !== null) url += '&t=' + o.t;
         if (o.moon !== null) url += '&moon=' + o.moon;
+        if (o.mix !== null) url += '&mix=' + o.mix;
         await page.goto(url);
         let state;
         try {
@@ -102,10 +107,10 @@ async function main() {
           console.log(`FAIL ${id} ${look} ${size}: ${state}\n${errors.join('\n')}`);
           continue;
         }
-        const shot = path.join(o.out, `${id}-${look}-${size}.png`);
+        const shot = path.join(o.out, `${id}-${o.mix ? 'mix' + o.mix.replace(/,/g, '-') : look}-${size}.png`);
         await page.locator('.letterhead').screenshot({ path: shot });
         let note = '';
-        if (o.stills) {
+        if (o.stills && !o.mix) {
           const data = await page.evaluate(() => document.getElementById('sky').toDataURL('image/webp', 0.82));
           const still = path.join(REPO, 'concepts', 'stills', `${id}-${look}-${STILL_KIND[size]}.webp`);
           fs.writeFileSync(still, Buffer.from(data.split(',')[1], 'base64'));

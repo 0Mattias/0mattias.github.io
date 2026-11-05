@@ -145,6 +145,13 @@ if (!LOOKS[initial]) initial = 'day';
 setLook(initial, true);
 root.classList.add('sky');
 
+/* a capture may hold the weights anywhere between the looks (?mix=d,u,n),
+   to see a scene partway through a turn */
+if (STILL && q.get('mix')) {
+  var mix = q.get('mix').split(',').map(Number), sum = mix[0] + mix[1] + mix[2];
+  if (mix.length === 3 && sum > 0) w = mix.map(function (v) { return v / sum; });
+}
+
 /* ----------------------------------------------------------- shaders */
 
 var VERT = '#version 300 es\n' +
