@@ -57,6 +57,8 @@ float MIE;         // haze
 float AIRLIT;      // how much of the fjord's air the key light reaches
 float FRAMEK;      // 0 on a tall frame, 1 on a wide one
 float AQ;          // the aurora's care: full in the sky, half in the water
+float KEYS;        // how far the key light has passed from the sun to the moon
+float TWI;         // twilight, where the sun hands the sky over to the moon
 vec3 MSL;          // the light that has scattered more than once, as a source
 
 const vec3 BR = vec3(5.8e-6, 13.5e-6, 33.1e-6);   // Rayleigh, per metre
@@ -99,11 +101,17 @@ vec3 skyMS(float mu) {
   return MSL * BR * 8000.0 * 0.0796 * (1.0 + look3(1.6, 0.3, 1.6) * sq(1.0 - mu));
 }
 
+/* the sky when neither sun nor moon lights it, while one hands over to the
+   other: dim, violet low down and deep blue overhead */
+vec3 twilight(float mu) {
+  return TWI * mix(vec3(0.06, 0.05, 0.085), vec3(0.016, 0.024, 0.06), sqrt(mu));
+}
+
 vec3 skyRad(vec3 rd) {
   float mu = max(rd.y, 0.0);
   vec3 tR = BR * 8000.0 * airmass(mu, 35.0);
   float tM = MIE * 1200.0 * airmass(mu, 91.0);
-  return scatter1(tR, tM, dot(rd, KEY), keyLight(KEY.y, mix(1.0, 0.06, pow(mu, 0.25)))) + skyMS(mu);
+  return scatter1(tR, tM, dot(rd, KEY), keyLight(KEY.y, mix(1.0, 0.06, pow(mu, 0.25)))) + skyMS(mu) + twilight(mu);
 }
 
 float densInt(float y0, float mu, float d, float H) {
@@ -117,7 +125,7 @@ vec3 air(vec3 col, vec3 ro, vec3 rd, float d) {
   vec3 tR = BR * densInt(ro.y, rd.y, d, 8000.0);
   float tM = MIE * densInt(ro.y, rd.y, d, 1200.0);
   vec3 T = exp(-(tR + tM * 1.11));
-  return col * T + scatter1(tR, tM, dot(rd, KEY), KEYG * AIRLIT) + skyMS(0.0) * (1.0 - T);
+  return col * T + scatter1(tR, tM, dot(rd, KEY), KEYG * AIRLIT) + (skyMS(0.0) + twilight(0.0)) * (1.0 - T);
 }
 
 /* ------------------------------------------------------------ the land */
@@ -518,7 +526,7 @@ vec3 sky(vec3 rd) {
   vec4 cl = cirrus(rd);
   c = c * (1.0 - cl.a) + cl.rgb;
   float sd = dot(rd, KEY);
-  c += keyLight(KEY.y, 1.0) * smoothstep(0.999986, 0.999992, sd) * 40000.0 * (1.0 - uLook.z) * (1.0 - cl.a);
+  c += keyLight(KEY.y, 1.0) * smoothstep(0.999986, 0.999992, sd) * 40000.0 * (1.0 - KEYS) * (1.0 - cl.a);
   if (uLook.z > 0.001) {
     float mu = max(rd.y, 0.0);
     vec3 T = exp(-(BR * 8000.0 * airmass(mu, 35.0)));
@@ -595,8 +603,16 @@ vec3 scene(vec2 fc) {
   FRAMEK = fk;
   float tv = asp >= 1.0 ? 0.64 / min(asp, 1.9) : 0.64 + 0.12 * (1.0 - asp);
   MOOND = normalize(mix(dirAE(-9.0, 36.0), dirAE(-15.0, 19.0), fk));
-  KEY = normalize(dirAE(-110.0, 36.0) * uLook.x + dirAE(-124.0, 1.7) * uLook.y + MOOND * uLook.z);
-  E0 = look3(vec3(9.0), vec3(24.0), vec3(0.5, 0.75, 1.5) * 0.5);
+  /* the sun's way is blended over day and dusk only; the moon is a light
+     of its own. Where one hands over to the other the light dips nearly
+     to dark, as the sun sets before the moon takes the sky, and swings
+     across while it is dim; twilight holds the sky meanwhile */
+  vec3 sunD = normalize(dirAE(-110.0, 36.0) * uLook.x + dirAE(-124.0, 1.7) * uLook.y + vec3(0.0, 1e-6, 0.0));
+  float dip = max(0.0, 1.0 - 3.8 * (uLook.x + uLook.y) * uLook.z);
+  TWI = 1.0 - dip;
+  KEYS = smoothstep(0.3, 0.7, uLook.z);
+  KEY = normalize(mix(sunD, MOOND, KEYS));
+  E0 = look3(vec3(9.0), vec3(24.0), vec3(0.5, 0.75, 1.5) * 0.5) * dip;
   MIE = look3(3.5e-6, 8e-6, 5e-6);
   AIRLIT = look3(1.0, 0.25, 0.8);
   KEYG = keyLight(KEY.y, 1.0);
@@ -669,8 +685,10 @@ vec3 scene(vec2 fc) {
   if (tb > 0.0 && tb < (t > 0.0 ? t : tw) + 60.0) {
     vec3 c = (ro + rd * tb - B) / vec3(60.0, 32.0, 60.0);
     float sp = exp(-dot(c, c)) * look3(0.32, 0.22, 0.18);
-    vec3 spc = (SKYZ * 0.5 + SKYH * 0.5) * PI * 0.3 + KEYG * max(KEY.y, 0.0) * 0.1 * look3(1.0, 0.1, 0.5);
-    col = mix(col, spc, sp);
+    if (sp > 0.002) {
+      vec3 spc = (SKYZ * 0.5 + SKYH * 0.5) * PI * 0.2 + KEYG * max(KEY.y, 0.0) * 0.1 * shadow(B + vec3(-40.0, 10.0, 0.0), 8);
+      col = mix(col, spc, sp);
+    }
   }
   return col;
 }

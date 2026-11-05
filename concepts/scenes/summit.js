@@ -40,7 +40,7 @@ const float FOOT = EYE - 1.7;
 const float RE = 7.4e6;          /* the earth's radius, lengthened by refraction */
 const float TOPC = 500.0;        /* no cloud rises above this */
 
-float T, PA, ASP, WIDE, CIRR;
+float T, PA, ASP, WIDE, CIRR, KEY;
 vec3 LD, LP, LC, AMB, CUP;
 vec2 DRIFT;
 vec3 SUN_D, SUN_U, MOON_D;
@@ -98,8 +98,8 @@ vec3 sky(vec3 rd) {
   /* the glow about the light: a tight aureole, and a broad warm sweep
      low down on its side of the sky */
   vec3 gc = look3(vec3(1.0, 0.95, 0.85), vec3(1.0, 0.42, 0.11), vec3(0.6, 0.7, 0.9));
-  c += gc * hg(mu, 0.85) * look3(0.025, 0.06, 0.004);
-  c += gc * pow(max(mu, 0.0), 8.0) * exp(-ep / 7.0) * look3(0.08, 0.8, 0.01);
+  c += gc * hg(mu, 0.85) * look3(0.025, 0.06, 0.004) * KEY;
+  c += gc * pow(max(mu, 0.0), 8.0) * exp(-ep / 7.0) * look3(0.08, 0.8, 0.01) * KEY;
   /* a thin bright haze on the cloud's horizon */
   c += exp(-abs(e + 0.8) / 0.9) * look3(vec3(0.10, 0.12, 0.14), vec3(0.20, 0.10, 0.06), vec3(0.006, 0.008, 0.012)) * (0.5 + 0.5 * toS);
   /* away from a low sun: the earth's shadow along the horizon and the
@@ -110,7 +110,7 @@ vec3 sky(vec3 rd) {
   c = mix(c, vec3(0.16, 0.17, 0.30), uLook.y * band * 0.6);
   c += uLook.y * belt * vec3(0.40, 0.14, 0.18);
   /* by day the sky pales a little toward the sun's side */
-  c += uLook.x * vec3(0.07, 0.085, 0.1) * pow(max(mu, 0.0), 3.0) * (1.0 - t2);
+  c += uLook.x * vec3(0.07, 0.085, 0.1) * pow(max(mu, 0.0), 3.0) * (1.0 - t2) * KEY;
   return c;
 }
 
@@ -425,7 +425,7 @@ vec2 facets(vec2 f, vec2 cell, float amp) {
   return vec2(h, led * smoothstep(0.05, 0.2, joint));
 }
 
-float ridgeH(vec2 x, float t, out float snow) {
+float ridgeH(vec2 x, float t, float fine, out float snow) {
   vec2 q = RROT * x - RA;
   float s = dot(q, RDIR), n = dot(q, RNRM);
   float k1 = smoothstep(1000.0, 250.0, t), k2 = smoothstep(400.0, 120.0, t);
@@ -444,7 +444,7 @@ float ridgeH(vec2 x, float t, out float snow) {
   float coul = (1.0 - smoothstep(0.4, 1.0, c2)) * smoothstep(2.0, 7.0, an) * smoothstep(0.3, 0.55, noise(vec2(s / 25.0, f.y / 22.0) + 3.0));
   /* fractured gneiss, in large blocks and small */
   vec2 fa = facets(f + vec2(0.0, 0.25 * s), vec2(9.0, 5.5), 2.6);
-  vec2 fb = k1 > 0.0 ? facets(f * 1.1 + 40.0, vec2(3.2, 2.2), 0.9) * k1 : vec2(0.0);
+  vec2 fb = k1 * fine > 0.0 ? facets(f * 1.1 + 40.0, vec2(3.2, 2.2), 0.9) * k1 : vec2(0.0);
   float rk = face + g + (fa.x + fb.x) * smoothstep(-1.0, 1.0, an) - 2.2 * coul;
   rk += 1.0 * (noise(f / 7.0) - 0.5) + k2 * 0.15 * noise(f / 0.8);
   /* snow along stretches of the crest between the towers, on the
@@ -469,13 +469,13 @@ float traceRidge(vec3 ro, vec3 rd, out vec2 near) {
   float t = t0, lt = t0, sn;
   for (int i = 0; i < 90; i++) {
     vec3 p = ro + rd * t;
-    float c = p.y - ridgeH(p.xz, t, sn);
+    float c = p.y - ridgeH(p.xz, t, 0.0, sn);
     if (c < 0.0) {
       float a = lt, b = t;
       for (int j = 0; j < 5; j++) {
         float m = 0.5 * (a + b);
         vec3 q = ro + rd * m;
-        if (q.y - ridgeH(q.xz, m, sn) < 0.0) b = m; else a = m;
+        if (q.y - ridgeH(q.xz, m, 1.0, sn) < 0.0) b = m; else a = m;
       }
       return b;
     }
@@ -528,11 +528,11 @@ float cloudShadow(vec3 p, float far) {
 
 float ridgeShadow(vec3 p) {
   float s = 1.0, t = 0.8, sn;
-  for (int i = 0; i < 11; i++) {
+  for (int i = 0; i < 9; i++) {
     vec3 q = p + LD * t;
-    float h = ridgeH(q.xz, 1500.0, sn);
+    float h = ridgeH(q.xz, 1500.0, 0.0, sn);
     s = min(s, sat(0.5 + (q.y - h) / (0.06 * t + 0.15)));
-    t *= 1.75;
+    t *= 1.95;
     if (q.y > FOOT + 10.0) break;
   }
   return s;
@@ -620,9 +620,9 @@ vec3 shadeRidge(vec3 ro, vec3 rd, float t) {
   vec3 p = ro + rd * t;
   float sn;
   float e = max(0.08, t * PA);
-  float hx = ridgeH(p.xz + vec2(e, 0.0), t, sn);
-  float hz = ridgeH(p.xz + vec2(0.0, e), t, sn);
-  float h0 = ridgeH(p.xz, t, sn);
+  float hx = ridgeH(p.xz + vec2(e, 0.0), t, 1.0, sn);
+  float hz = ridgeH(p.xz + vec2(0.0, e), t, 1.0, sn);
+  float h0 = ridgeH(p.xz, t, 1.0, sn);
   vec3 n = normalize(vec3(h0 - hx, e, h0 - hz));
   vec3 ng = n;
   /* grain and colour from the rock's own place in space, the same on
@@ -755,9 +755,13 @@ void setup() {
      the snow faces toward the eye take it; its path stays under it */
   LP = normalize(look3(SUN_D, SUN_U, MOON_D));
   LD = normalize(look3(SUN_D, SUN_U, dirAE(-32.0, 30.0)));
-  LC = look3(vec3(5.6, 5.35, 4.9), vec3(7.5, 3.3, 1.0), vec3(0.75, 0.95, 1.4));
+  /* while the sun's weight hands over to the moon's the light is a blend
+     of both directions; it is dimmed there, so a turn to night passes
+     through dusk and never through a flash of day */
+  KEY = max(0.0, 1.0 - 3.8 * (uLook.x + uLook.y) * uLook.z);
+  LC = look3(vec3(5.6, 5.35, 4.9), vec3(7.5, 3.3, 1.0), vec3(0.75, 0.95, 1.4)) * KEY;
   AMB = look3(vec3(0.12, 0.17, 0.30), vec3(0.06, 0.06, 0.12), vec3(0.02, 0.029, 0.058));
-  CUP = look3(vec3(1.6, 1.6, 1.65), vec3(0.5, 0.32, 0.28), vec3(0.15, 0.19, 0.28));
+  CUP = look3(vec3(1.6, 1.6, 1.65), vec3(0.5, 0.32, 0.28), vec3(0.15, 0.19, 0.28)) * (0.2 + 0.8 * KEY);
   RROT = rot(mix(-26.0, 0.0, WIDE) * DEG);
 }
 
@@ -784,7 +788,7 @@ vec3 scene(vec2 fc) {
       col = aerial(col, ro, rd, tF);
     } else {
       col = cirrus(rd, sky(rd));
-      col += uLook.y * sunDisc(rd, SUN_U, vec3(30.0, 14.0, 4.0)) + uLook.x * sunDisc(rd, SUN_D, vec3(80.0, 76.0, 70.0));
+      col += KEY * (uLook.y * sunDisc(rd, SUN_U, vec3(30.0, 14.0, 4.0)) + uLook.x * sunDisc(rd, SUN_D, vec3(80.0, 76.0, 70.0)));
       /* the night's own sky, skipped only where its weight is nil */
       if (uLook.z > 0.0) col += uLook.z * (moon(rd) + (stars(rd) + milky(rd)) * smoothstep(-0.01, 0.08, rd.y));
       /* a peak's edge against the sky, within a pixel: blend it in */
