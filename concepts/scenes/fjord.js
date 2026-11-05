@@ -481,11 +481,12 @@ vec3 aurora(vec3 rd) {
     float u0 = Z * hd.x / max(hd.y, 0.3) - 150.0, du = 300.0 / float(n);
     vec2 P0 = auroraPath(u0, fk, Z);
     float f0 = hd.x * P0.y - hd.y * P0.x;
-    // each crossing waits for the next, so it can fade by how near along
-    // the line its neighbours lie: a pair just born at a fold comes in
-    // gently, as wide as a ray, never as a seam
+    // each crossing waits for the next, so it can fade by how far the line
+    // swings across the sight line between it and its neighbours: a pair
+    // born where the sight line grazes a fold comes in gently as the fold
+    // deepens, as soft as a ray, never as a seam
     vec3 pend = vec3(0.0);
-    float pu = -1e4, pd = 1e4;
+    float pdep = 1e4, gmax = 1e4;
     for (int i = 1; i <= 44; i++) {
       if (i > n) break;
       float u = u0 + du * float(i);
@@ -500,19 +501,18 @@ vec3 aurora(vec3 rd) {
           float uc = u - du + du * a;
           float h = r * te + r * r / 12742.0;
           float win = smoothstep(0.0, 25.0, uc - u0) * smoothstep(0.0, 25.0, u0 + 300.0 - uc);
-          float vis = sq(smoothstep(0.0, 0.6, sn));
-          vec3 e = auroraAt(uc, P.x, P.x / Z, h, 1.5 * te / max(sn, 0.2), 1.0 / max(sn, 0.45), fk) * gain * win * vis / hl;
-          float d = uc - pu;
-          acc += pend * smoothstep(du, 3.5 * du, min(pd, d));
+          vec3 e = auroraAt(uc, P.x, P.x / Z, h, 1.5 * te / max(sn, 0.2), 1.0 / max(sn, 0.45), fk) * gain * win / hl;
+          acc += pend * smoothstep(0.0, 7.0, min(pdep, gmax));
           pend = e;
-          pd = d;
-          pu = uc;
+          pdep = gmax;
+          gmax = 0.0;
         }
       }
+      gmax = max(gmax, abs(f1));
       P0 = P1;
       f0 = f1;
     }
-    acc += pend * smoothstep(du, 3.5 * du, pd);
+    acc += pend * smoothstep(0.0, 7.0, pdep);
   }
   // a faint glow low in the north, the oval beyond the horizon
   acc += vec3(0.05, 0.32, 0.14) * exp(-mu * 9.0) * smoothstep(0.2, 0.9, hd.y) * smoothstep(0.5, -0.2, hd.x / max(hd.y, 0.3)) * 0.5;
