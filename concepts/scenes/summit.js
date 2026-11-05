@@ -10,20 +10,26 @@
    through the shaded sides, darker and bluer into the creases between
    the billows, a little powder on the crests, the thin crests bright
    toward the sun, and the shadows of its own billows and of the peaks
-   laid across it. Through it stand a pyramid of three faces nine
-   kilometres off, a crown of two summits to the left and two far tops
-   on the horizon, worn into ribs and couloirs and banded with rock; and
-   below the eye on the left a spur of the ridge, its teeth against the
-   cloud and its face in buttresses with snow in the couloirs. By day
-   the sky is the deep blue of the height over a brilliant deck; at dusk
+   laid across it. Through it stands a great peak nine kilometres off,
+   three faces of unequal steepness, a long arete with a shoulder on it
+   and a short one notched and carrying a gendarme, its top hooked over;
+   the faces ribbed and banded, snow on the ledges and in the couloirs,
+   the cloud lapping up its gullies in torn wisps. A crown of two
+   summits stands to the left and two far tops on the horizon. Below the
+   eye on the left is a spur of the ridge: gendarmes of granite on its
+   crest and buttresses under them, the rock fractured into blocks,
+   snow on the ledges, along the crest and in a couloir, its edges
+   catching the sky. By day the sky is the deep blue of the height over
+   a brilliant deck, with a few strands of cirrus high up; at dusk
    the sun stands just over the cloud, its light grazing the tops and the
-   pyramid's long shadow reaching across the deck toward the eye, the
+   great peak's long shadow reaching across the deck toward the eye, the
    sky pink and gold, with the earth's shadow and the belt of Venus low
    on the side away from it; at night the moon lays a glittering path
    across the tops, under the stars and a faint Milky Way. Thin veils of
-   cloud drift over the deck below. A phone turns toward the pyramid and
-   sits up a little, the spur swung into its corner. WebGL2, no
-   libraries, no build step. */
+   cloud drift over the deck below. While the looks turn between the sun
+   and the moon the light dims, so the turn passes through twilight. A
+   phone turns toward the great peak and sits up a little, the spur
+   swung into its corner. WebGL2, no libraries, no build step. */
 
 window.CONCEPT = {
   id: 'summit',
@@ -122,10 +128,12 @@ vec3 cirrus(vec3 rd, vec3 c) {
   float m = smoothstep(CIRR, CIRR + 6.0 * DEG, asin(rd.y));
   if (m <= 0.0) return c;
   vec2 p = rd.xz / rd.y * 8.0 + vec2(0.012, 0.004) * T;
+  float pm = smoothstep(0.5, 0.75, noise(p * 0.11 + 7.0));
+  if (pm <= 0.0) return c;
   vec2 q = vec2(dot(p, vec2(0.87, 0.49)), dot(p, vec2(-0.49, 0.87))) * vec2(0.35, 2.6);
   q.y += 0.9 * noise(q * vec2(0.4, 0.15));
   float f = fbm(q + vec2(0.0, 3.0), 3);
-  float d = smoothstep(0.55, 0.78, f) * smoothstep(0.5, 0.75, noise(p * 0.11 + 7.0));
+  float d = smoothstep(0.55, 0.78, f) * pm;
   vec3 lit = LC / PI * (0.3 + 0.9 * hg(dot(rd, LP), 0.7)) + AMB * 1.5;
   return mix(c, lit, d * m * w);
 }
@@ -202,7 +210,7 @@ float cloudFine(vec2 x, float t) {
    fall lines and stop short of the aretes. q is in units of the faces'
    reach; the aretes reach twice as far */
 
-float horn(vec2 x, vec4 P, vec4 Q, float t, float y, out float rib) {
+float horn(vec2 x, vec4 P, vec4 Q, float t, float y, float cl, out float rib) {
   vec2 q = (x - P.xy) / P.w;
   /* the aretes bend a little, as worn ones do */
   q += 0.09 * (vec2(noise(q * 1.6 + P.xy * 0.003), noise(q * 1.6 + 7.3)) - 0.5);
@@ -217,6 +225,7 @@ float horn(vec2 x, vec4 P, vec4 Q, float t, float y, out float rib) {
   float u = dot(q, vec2(nf.y, -nf.x));
   float h = P.z * (1.0 - pow(max(D, 1e-4), Q.y));
   rib = 0.5;
+  if (cl - h > P.z * 0.28) return h;
   if (y - h > P.z * 0.28) return h + P.z * 0.25;
   float k = smoothstep(P.w * 40.0, P.w * 6.0, t);
   float rq = length(q), ang = atan(q.x, q.y);
@@ -239,7 +248,7 @@ float horn(vec2 x, vec4 P, vec4 Q, float t, float y, out float rib) {
    arete; the aretes wander and are notched. The faces are stepped by
    bands of rock with ledges over them where the snow lies, and ribbed
    down the fall line, couloirs between the ribs */
-float bigPeak(vec2 x, float t, float y, out float rib) {
+float bigPeak(vec2 x, float t, float y, float cl, out float rib) {
   float H = P0.z;
   vec2 q = (x - P0.xy) / P0.w;
   float r0 = length(q);
@@ -254,8 +263,10 @@ float bigPeak(vec2 x, float t, float y, out float rib) {
   float f1 = 1.0 - pow(max(d1, 1e-4), 0.68);
   float f2 = 1.0 - pow(max(d2, 1e-4), 0.76);
   float lo = min(min(f0, f1), f2);
-  /* far above its plain faces nothing it carries can reach the ray */
+  /* where the cloud lies, or the ray passes, far above its plain faces,
+     nothing it carries could reach them */
   rib = 0.5;
+  if (cl - H * lo > 420.0) return H * lo;
   if (y - H * lo > 420.0) return H * lo + 380.0;
   float mid = max(min(f0, f1), min(max(f0, f1), f2));
   vec2 nf = lo == f0 ? n0 : (lo == f1 ? n1 : n2);
@@ -296,26 +307,26 @@ bool inside(vec2 x, vec4 P) {
   return dot(d, d) < sq(reach(P));
 }
 
-float peaksH(vec2 x, float t, float y, out float rib, out float pk) {
+float peaksH(vec2 x, float t, float y, float cl, out float rib, out float pk) {
   float h = -1e4, r = 0.0;
   rib = 0.0; pk = 0.0;
-  if (inside(x, P0)) { h = bigPeak(x, t, y, r); rib = r; pk = 1.0; }
+  if (inside(x, P0)) { h = bigPeak(x, t, y, cl, r); rib = r; pk = 1.0; }
   if (inside(x, P1) || inside(x, P1B)) {
     float r2;
-    float a = horn(x, P1, Q1, t, y, r);
-    float b = horn(x, P1B, Q1B, t, y, r2);
+    float a = horn(x, P1, Q1, t, y, cl, r);
+    float b = horn(x, P1B, Q1B, t, y, cl, r2);
     float m = smax(a, b, 60.0);
     if (m > h) { h = m; rib = a > b ? r : r2; }
     pk = 1.0;
   }
-  if (inside(x, P2)) { float a = horn(x, P2, Q2, t, y, r); if (a > h) { h = a; rib = r; } pk = 1.0; }
-  if (inside(x, P3)) { float a = horn(x, P3, Q3, t, y, r); if (a > h) { h = a; rib = r; } pk = 1.0; }
+  if (inside(x, P2)) { float a = horn(x, P2, Q2, t, y, cl, r); if (a > h) { h = a; rib = r; } pk = 1.0; }
+  if (inside(x, P3)) { float a = horn(x, P3, Q3, t, y, cl, r); if (a > h) { h = a; rib = r; } pk = 1.0; }
   return h;
 }
 
 float farH(vec2 x, float t, float y, out float mat, out float pk, out float cav, out float rib) {
   float c = cloudH(x, t, cav);
-  float m = peaksH(x, t, y + dot(x, x) / (2.0 * RE), rib, pk);
+  float m = peaksH(x, t, y + dot(x, x) / (2.0 * RE), c, rib, pk);
   mat = m - c;
   return max(c, m) - dot(x, x) / (2.0 * RE);
 }
@@ -400,7 +411,12 @@ float crestY(float s) {
 /* a gendarme on the crest: a tower whose sides lean in as they rise,
    its top tilted; w and wl its half length along the crest and across */
 float tower(float s, float an, float s0, float w, float H, float tilt, float wl) {
-  return H + tilt * (s - s0) - 2.6 * max(abs(s - s0) - w, 0.0) - 2.2 * max(an - wl, 0.0);
+  float top = H + tilt * (s - s0) - 2.6 * max(abs(s - s0) - w, 0.0) - 2.2 * max(an - wl, 0.0);
+  /* its buttress, falling with the face below it and merging into it,
+     each at its own depth */
+  float depth = 10.0 + 26.0 * hash11(s0);
+  float but = (H * 0.55 + 0.3 * an) * (1.0 - smoothstep(depth * 0.3, depth, an)) - 1.8 * max(abs(s - s0) - w * 1.3, 0.0);
+  return max(top, min(but, H));
 }
 
 /* fractured rock: the face broken into blocks of no set shape, each a
@@ -424,41 +440,51 @@ vec2 facets(vec2 f, vec2 cell, float amp) {
   vec3 hs = hash33(vec3(best, 7.0));
   float led = step(0.8, hs.y);
   vec2 lp = -bc * cell;
-  float ty = mix((hs.z - 0.55) * 0.7, -0.8, led);
-  float h = (hs.x - 0.5) * amp + lp.x * (hs.y - 0.5) * 0.5 + lp.y * ty;
+  float ty = mix((hs.z - 0.55) * 0.35, -0.45, led);
+  float h = (hs.x - 0.5) * amp + lp.x * (hs.y - 0.5) * 0.3 + lp.y * ty;
   float joint = sqrt(d2) - sqrt(d1);
   h -= amp * 0.3 * (1.0 - smoothstep(0.0, 0.14, joint));
   return vec2(h, led * smoothstep(0.05, 0.2, joint));
 }
 
-float ridgeH(vec2 x, float t, float fine, out float snow) {
+/* the spur's plain shape: the face, its gendarmes and its couloir,
+   without the blocks; with what the rock is built from */
+struct Spur { float s, an, face, g, coul; vec2 f; };
+
+float spurBase(vec2 x, out Spur S) {
   vec2 q = RROT * x - RA;
   float s = dot(q, RDIR), n = dot(q, RNRM);
-  float k1 = smoothstep(1000.0, 250.0, t), k2 = smoothstep(400.0, 120.0, t);
   float an = sqrt(n * n + 1.0) - 1.0;
-  float fall = mix(1.05, 1.45, smoothstep(-2.0, 2.0, n));
-  float cy = crestY(s);
-  float face = cy - fall * an;
+  float face = crestY(s) - mix(1.05, 1.45, smoothstep(-2.0, 2.0, n)) * an;
   vec2 f = vec2(s, face * 1.2);
   /* a few gendarmes on the crest, the highest the spur's top */
   float g = max(max(tower(s, an, 191.0, 1.8, 3.0, 0.3, 1.6), tower(s, an, 207.0, 3.5, 1.6, -0.1, 2.2)),
                 max(tower(s, an, 221.0, 2.0, 5.0, 0.45, 1.8), tower(s, an, 236.0, 3.0, 8.5, -0.3, 2.6)));
-  g = max(g, tower(s, an, 251.0, 1.5, 4.2, 0.6, 1.5));
-  g = smax(g, 0.0, 0.6);
-  /* two couloirs, wandering and narrowing down the face, dying out */
-  float c2 = abs(s - 244.0 - 9.0 * noise(vec2(f.y / 26.0, 4.0))) / (2.0 + 3.0 * noise(vec2(f.y / 14.0, 2.0)));
-  float coul = (1.0 - smoothstep(0.4, 1.0, c2)) * smoothstep(2.0, 7.0, an) * smoothstep(0.3, 0.55, noise(vec2(s / 25.0, f.y / 22.0) + 3.0));
-  /* fractured gneiss, in large blocks and small */
-  vec2 fa = facets(f + vec2(0.0, 0.25 * s), vec2(9.0, 5.5), 2.6);
-  vec2 fb = k1 * fine > 0.0 ? facets(f * 1.1 + 40.0, vec2(3.2, 2.2), 0.9) * k1 : vec2(0.0);
-  float rk = face + g + (fa.x + fb.x) * smoothstep(-1.0, 1.0, an) - 2.2 * coul;
-  rk += 1.0 * (noise(f / 7.0) - 0.5) + k2 * 0.15 * noise(f / 0.8);
+  g = smax(max(g, tower(s, an, 251.0, 1.5, 4.2, 0.6, 1.5)), 0.0, 0.6);
+  /* a couloir, wandering and narrowing down the face, dying out */
+  float cw = abs(s - 244.0 - 9.0 * noise(vec2(f.y / 26.0, 4.0))) / (2.0 + 3.0 * noise(vec2(f.y / 14.0, 2.0)));
+  float coul = (1.0 - smoothstep(0.4, 1.0, cw)) * smoothstep(2.0, 7.0, an) * smoothstep(0.3, 0.55, noise(vec2(s / 25.0, f.y / 22.0) + 3.0));
+  S = Spur(s, an, face, g, coul, f);
+  return FOOT + face + g - 2.2 * coul + (noise(f / 7.0) - 0.5);
+}
+
+/* the rock itself: the plain shape broken into fractured gneiss, large
+   blocks and, near, small ones; with the snow lying on it */
+float ridgeH(vec2 x, float t, out float snow) {
+  Spur S;
+  float h = spurBase(x, S);
+  float k1 = smoothstep(1000.0, 250.0, t), k2 = smoothstep(400.0, 120.0, t);
+  vec2 fa = facets(S.f + vec2(0.0, 0.25 * S.s), vec2(9.0, 5.5), 2.6);
+  vec2 fb = k1 > 0.0 ? facets(S.f * 1.1 + 40.0, vec2(3.2, 2.2), 0.9) * k1 : vec2(0.0);
+  /* the couloir is filled smooth with snow, the blocks buried in it */
+  float fill = smoothstep(0.2, 0.7, S.coul);
+  h += (fa.x + fb.x) * smoothstep(-1.0, 1.0, S.an) * (1.0 - 0.9 * fill) + k2 * 0.15 * noise(S.f / 0.8);
   /* snow along stretches of the crest between the towers, on the
-     ledges, and in the couloirs */
-  float cor = exp(-an / 2.6) * (1.0 - smoothstep(0.5, 1.5, g)) * smoothstep(0.25, 0.5, noise(vec2(s / 10.0, 3.0)));
-  float led = max(fa.y, fb.y * 0.6) * smoothstep(0.35, 0.6, noise(f / 11.0 + 5.0));
-  snow = sat(max(max(cor, led), coul * smoothstep(0.45, 0.65, noise(f / vec2(5.0, 9.0) + 2.0) + 0.25 * fa.x)));
-  return FOOT + rk + 0.4 * snow;
+     ledges, and in the couloir */
+  float cor = exp(-S.an / 1.8) * (1.0 - smoothstep(0.2, 0.8, S.g)) * smoothstep(0.3, 0.55, noise(vec2(S.s / 10.0, 3.0)));
+  float led = fa.y * smoothstep(0.45, 0.7, noise(S.f / 13.0 + 5.0)) * smoothstep(1.5, 4.0, S.an);
+  snow = sat(max(max(cor, led), fill * smoothstep(0.3, 0.55, noise(S.f / vec2(5.0, 9.0) + 2.0))));
+  return h + 0.4 * snow;
 }
 
 float traceRidge(vec3 ro, vec3 rd, out vec2 near) {
@@ -473,22 +499,26 @@ float traceRidge(vec3 ro, vec3 rd, out vec2 near) {
   float t0 = max(max(tn.x, tn.y), 20.0), t1 = min(min(tf.x, tf.y), 900.0);
   if (t1 <= t0) return -1.0;
   float t = t0, lt = t0, sn;
+  Spur S;
   for (int i = 0; i < 90; i++) {
     vec3 p = ro + rd * t;
-    float c = p.y - ridgeH(p.xz, t, 0.0, sn);
+    /* the blocks never stand more than 5 m proud of the plain shape, so
+       until the ray is that close only the plain shape is reckoned */
+    float c = p.y - spurBase(p.xz, S) - 4.5;
+    if (c < 0.6) c = p.y - ridgeH(p.xz, t, sn);
     if (c < 0.0) {
       float a = lt, b = t;
       for (int j = 0; j < 5; j++) {
         float m = 0.5 * (a + b);
         vec3 q = ro + rd * m;
-        if (q.y - ridgeH(q.xz, m, 1.0, sn) < 0.0) b = m; else a = m;
+        if (q.y - ridgeH(q.xz, m, sn) < 0.0) b = m; else a = m;
       }
       return b;
     }
     float cn = c / (t * PA);
     if (cn < near.x) near = vec2(cn, t);
     lt = t;
-    t += max(c * 0.4, 0.003 * t + 0.03);
+    t += max(c * 0.35, 0.003 * t + 0.03);
     if (t > t1 || p.y < FOOT - 500.0) break;
   }
   return -1.0;
@@ -533,10 +563,11 @@ float cloudShadow(vec3 p, float far) {
 }
 
 float ridgeShadow(vec3 p) {
-  float s = 1.0, t = 0.8, sn;
+  float s = 1.0, t = 0.8;
   for (int i = 0; i < 9; i++) {
     vec3 q = p + LD * t;
-    float h = ridgeH(q.xz, 1500.0, 0.0, sn);
+    Spur S;
+    float h = spurBase(q.xz, S);
     s = min(s, sat(0.5 + (q.y - h) / (0.06 * t + 0.15)));
     t *= 1.95;
     if (q.y > FOOT + 10.0) break;
@@ -558,14 +589,22 @@ vec3 aerial(vec3 col, vec3 ro, vec3 rd, float t) {
   return col * tr + ins * (1.0 - tr);
 }
 
-vec3 shadeCloud(vec3 ro, vec3 rd, float t) {
+/* the far field's normal, by differences; the cloud's fine lumps are in
+   it, the peaks' are their own. The last sample, the point itself,
+   leaves what it found there in the outputs */
+vec3 farNormal(vec3 p, float t, out float mat, out float cav, out float rib) {
+  float e = max(1.5, t * PA * 1.1), pk;
+  vec3 hh;
+  for (int k = 0; k < 3; k++) {
+    vec2 x = p.xz + (k == 0 ? vec2(e, 0.0) : (k == 1 ? vec2(0.0, e) : vec2(0.0)));
+    float h = farH(x, t, -1e9, mat, pk, cav, rib);
+    hh[k] = h + (mat > 0.0 ? 0.0 : cloudFine(x, t));
+  }
+  return normalize(vec3(hh.z - hh.x, e, hh.z - hh.y));
+}
+
+vec3 shadeCloud(vec3 ro, vec3 rd, float t, vec3 n, float mat, float cav) {
   vec3 p = ro + rd * t;
-  float mat, pk, cav, rib;
-  float e = max(2.0, t * PA * 1.2);
-  float hx = farH(p.xz + vec2(e, 0.0), t, -1e9, mat, pk, cav, rib) + cloudFine(p.xz + vec2(e, 0.0), t);
-  float hz = farH(p.xz + vec2(0.0, e), t, -1e9, mat, pk, cav, rib) + cloudFine(p.xz + vec2(0.0, e), t);
-  float h0 = farH(p.xz, t, -1e9, mat, pk, cav, rib) + cloudFine(p.xz, t);
-  vec3 n = normalize(vec3(h0 - hx, e, h0 - hz));
   float psh = peakShadow(p);
   float csh = mix(0.22, 1.0, cloudShadow(p, t));
   float mu = dot(rd, LP);
@@ -595,14 +634,8 @@ vec3 shadeCloud(vec3 ro, vec3 rd, float t) {
   return col;
 }
 
-vec3 shadePeak(vec3 ro, vec3 rd, float t) {
+vec3 shadePeak(vec3 ro, vec3 rd, float t, vec3 n, float mat, float rib) {
   vec3 p = ro + rd * t;
-  float mat, pk, cav, rib;
-  float e = max(1.5, t * PA);
-  float hx = farH(p.xz + vec2(e, 0.0), t, -1e9, mat, pk, cav, rib);
-  float hz = farH(p.xz + vec2(0.0, e), t, -1e9, mat, pk, cav, rib);
-  float h0 = farH(p.xz, t, -1e9, mat, pk, cav, rib);
-  vec3 n = normalize(vec3(h0 - hx, e, h0 - hz));
   /* snow where it can lie: on the ledges and in the couloirs; rock on
      the steps, the ribs and wherever it is steep */
   float rock = smoothstep(0.62, 0.42, n.y);
@@ -626,10 +659,9 @@ vec3 shadeRidge(vec3 ro, vec3 rd, float t) {
   vec3 p = ro + rd * t;
   float sn;
   float e = max(0.08, t * PA);
-  float hx = ridgeH(p.xz + vec2(e, 0.0), t, 1.0, sn);
-  float hz = ridgeH(p.xz + vec2(0.0, e), t, 1.0, sn);
-  float h0 = ridgeH(p.xz, t, 1.0, sn);
-  vec3 n = normalize(vec3(h0 - hx, e, h0 - hz));
+  vec3 hh;
+  for (int k = 0; k < 3; k++) hh[k] = ridgeH(p.xz + (k == 0 ? vec2(e, 0.0) : (k == 1 ? vec2(0.0, e) : vec2(0.0))), t, sn);
+  vec3 n = normalize(vec3(hh.z - hh.x, e, hh.z - hh.y));
   vec3 ng = n;
   /* grain and colour from the rock's own place in space, the same on
      every face of a block */
@@ -775,34 +807,38 @@ vec3 scene(vec2 fc) {
   setup();
   vec3 ro;
   vec3 rd = camera(fc, ro);
-  vec3 col;
   vec2 nearR = vec2(1e9, -1.0), nearF = vec2(1e9, -1.0);
   float tR = -1.0;
   float raz = atan(rd.x, rd.z) - mix(13.0, 0.0, WIDE) * DEG;
   if (rd.y < -0.02 && raz < 6.0 * DEG) tR = traceRidge(ro, rd, nearR);
-  if (tR > 0.0) {
-    col = shadeRidge(ro, rd, tR);
-  } else {
+  /* the spur, hit or passed within a pixel of its edge */
+  float aR = tR > 0.0 ? 1.0 : (nearR.x < 1.0 ? 0.5 * (1.0 - nearR.x) : 0.0);
+  float tRs = tR > 0.0 ? tR : nearR.y;
+  vec3 col = vec3(0.0);
+  if (aR < 1.0) {
     float mat;
     float tF = traceFar(ro, rd, mat, nearF);
-    if (tF > 0.0) {
-      col = mat > 0.0 ? shadePeak(ro, rd, tF) : shadeCloud(ro, rd, tF);
-      if (mat <= 0.0) {
-        vec4 wv = wisps(ro, rd, tF);
-        col = mix(col, wv.rgb, wv.a);
-      }
-      col = aerial(col, ro, rd, tF);
-    } else {
+    /* the far field likewise: a hit, or a peak's edge against the sky */
+    float aF = tF > 0.0 ? 1.0 : (nearF.x < 1.0 ? 0.5 * (1.0 - nearF.x) : 0.0);
+    float tFs = tF > 0.0 ? tF : nearF.y;
+    if (aF < 1.0) {
       col = cirrus(rd, sky(rd));
       col += KEY * (uLook.y * sunDisc(rd, SUN_U, vec3(30.0, 14.0, 4.0)) + uLook.x * sunDisc(rd, SUN_D, vec3(80.0, 76.0, 70.0)));
       /* the night's own sky, skipped only where its weight is nil */
       if (uLook.z > 0.0) col += uLook.z * (moon(rd) + (stars(rd) + milky(rd)) * smoothstep(-0.01, 0.08, rd.y));
-      /* a peak's edge against the sky, within a pixel: blend it in */
-      if (nearF.x < 1.0) col = mix(col, aerial(shadePeak(ro, rd, nearF.y), ro, rd, nearF.y), 0.5 * (1.0 - nearF.x));
     }
-    /* the spur's crest, within a pixel */
-    if (nearR.x < 1.0) col = mix(col, shadeRidge(ro, rd, nearR.y), 0.5 * (1.0 - nearR.x));
+    if (aF > 0.0) {
+      float m, cav, rib;
+      vec3 n = farNormal(ro + rd * tFs, tFs, m, cav, rib);
+      vec3 fcol = m > 0.0 ? shadePeak(ro, rd, tFs, n, m, rib) : shadeCloud(ro, rd, tFs, n, m, cav);
+      if (m <= 0.0) {
+        vec4 wv = wisps(ro, rd, tFs);
+        fcol = mix(fcol, wv.rgb, wv.a);
+      }
+      col = mix(col, aerial(fcol, ro, rd, tFs), aF);
+    }
   }
+  if (aR > 0.0) col = mix(col, shadeRidge(ro, rd, tRs), aR);
   return col;
 }
 `
