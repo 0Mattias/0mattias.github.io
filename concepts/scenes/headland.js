@@ -1,36 +1,45 @@
 /* concepts/scenes/headland.js · the headland
 
-   High on a sea cliff on the Atlantic coast, a few steps back from the
-   edge, looking along the line of the cliffs to the point where a small
-   white lighthouse stands. The coast is drawn as one long bay: its edge
-   is a wide arc broken into shallow scallops between sharp promontories,
-   so that each buttress turns a different face to the light, and it
-   ends in a cap where the land stops and the open sea begins. The faces
+   Standing at the end of a narrow spur of cliff top on the Atlantic
+   coast, a stride from the drop, looking along the line of the cliffs to
+   the point where a small white lighthouse stands with its keeper's
+   house. The coast bows gently out to sea and is cut into a run of
+   buttresses: each a long face that swings out to a nose and falls back
+   steeply behind it, so the faces stack one behind another into the
+   distance and each turns a little differently to the light. The faces
    are sheer and banded, hard beds of sandstone standing proud of the
-   softer shale between them, with grass on the ledges, a damp dark foot
-   and a skirt of fallen blocks in the surf. The tops are green pasture
-   cut into fields by drystone walls, rising inland to low hills.
+   softer shale between them, worn into rounded buttresses between sharp
+   gullies, grained finer than the surface is traced, with grass on the
+   ledges, a damp dark foot and a skirt of fallen blocks in the surf.
+   Past the last buttress the headland swings out and the land stops at
+   a cap, and beyond it an island lies far out in the haze.
 
-   The sea is a plane given a long westerly swell and a wind chop over
-   it; each train fades as it shrinks under a pixel and hands its slope
-   to the glints, so the sun's path widens with distance as a real one
-   does. White water works at the foot of every cliff, flaring as each
-   swell comes in, with lace drawn out along the coast. Haze thickens
-   toward the horizon and toward the light.
+   The sea is a plane given three long trains of westerly swell and a
+   wind sea over them; each fades as it shrinks under a pixel and hands
+   its slope to the glints, so the sun's path widens toward the eye as a
+   real one does. White water works at the foot of every cliff, flaring
+   as each swell comes in, with lace drawn out along the coast and spray
+   hanging low over it. Haze thickens toward the horizon and toward the
+   light, and the edges of the land against sky and sea are softened by
+   how near each ray passed them.
 
-   By day the Atlantic light comes from high over the sea, with scattered
-   cumulus drifting in and their shadows crossing the water. At dusk the
-   sun sits just above the horizon on the left, laying a path of gold on
-   the sea, and the faces that turn to it burn orange while the rest go
-   blue. At night the moon hangs low over the water with its path below
-   it, the cliffs stand dark, the stars are out, and the lighthouse is
-   lit: two beams turn once every ten seconds through the damp air,
-   integrated analytically across their cones, flashing as they pass the
-   eye. WebGL2, no libraries, no build step. */
+   By day the Atlantic light comes from high over the sea behind the
+   left shoulder, with scattered cumulus drifting in, their shadows
+   crossing the water. At dusk the sun stands just above the horizon on
+   the left, laying a path of gold on the sea, the faces and noses that
+   turn to it burn orange while the rest go blue, and the clouds before
+   it are rimmed with light. At night the moon hangs low over the water
+   with its path below it, the cliffs stand dark, the stars are out, and
+   the lighthouse is lit: two beams turn once every ten seconds through
+   the damp air, each a cone whose scattered light is integrated across
+   it at the ray's nearest pass, flaring as they swing toward the eye.
+   A wide frame looks across the water with the cliffs on the right; a
+   tall one lowers its horizon so the words stand in the sky and the
+   cliffs recede below them. WebGL2, no libraries, no build step. */
 
 window.CONCEPT = {
   id: 'headland',
-  theme: { day: '#5a83bb', dusk: '#3f4a7a', night: '#141a2a' },
+  theme: { day: '#6890c6', dusk: '#b5959a', night: '#1b2234' },
   t0: 12,
   frag: `
 /* ------------------------------------------------------------ the world
@@ -65,7 +74,7 @@ vec3 AMBU, AMBH, BNC, WATER;
 float HAZE, CAMT, LAMP, NIGHT;
 
 void setup() {
-  vec3 dSun = dirBE(112.0, 38.0), uSun = dirBE(58.0, 2.3), nMoon = dirBE(53.0, 5.8);
+  vec3 dSun = dirBE(82.0, 32.0), uSun = dirBE(58.0, 2.3), nMoon = dirBE(53.0, 5.8);
   SUN = normalize(dSun * uLook.x + uSun * uLook.y + nMoon * uLook.z);
   SUND = normalize(dSun * uLook.x + uSun * (uLook.y + uLook.z));
   MOON = nMoon;
@@ -81,7 +90,7 @@ void setup() {
   WATER = look3(vec3(0.010, 0.034, 0.048), vec3(0.008, 0.022, 0.034), vec3(0.008, 0.026, 0.040));
   HAZE = look3(1.0 / 9000.0, 1.0 / 8500.0, 1.0 / 10000.0);
   CAMT = look3(0.62, 0.48, 0.3);
-  LAMP = uLook.z + 0.2 * uLook.y;
+  LAMP = uLook.z + 0.1 * uLook.y;
   NIGHT = uLook.z;
 }
 
@@ -112,7 +121,7 @@ float coast(vec2 xz, out float s) {
   float u = dot(q, CDIR), v = dot(q, CNRM);
   s = u;
   float e = edgeAt(u);
-  float de = (edgeAt(u + 1.0) - edgeAt(u - 1.0)) * 0.5;
+  float de = edgeAt(u + 1.0) - e;
   float d = (e - v) * inversesqrt(1.0 + de * de);
   d = smax(d, dot(xz - TIP, CAP_N), 70.0);
   vec2 pa = xz - SPA, ba = SPB - SPA;
@@ -236,12 +245,13 @@ vec3 aerial(vec3 col, vec3 ro, vec3 rd, float t) {
 
 /* clouds: cumulus drifting in off the sea, and a high veil above them.
    The cumulus live in a grid of cells that drifts with the wind; a cell
-   may hold one cloud, a cluster of five puffs cut off flat at a common
+   may hold one cloud, a cluster of ten puffs cut off flat at a common
    base. A ray walks the cells its path crosses inside the layer, nearest
-   first, and stops at the first puff it meets; the puff is shaded by its
-   own roundness, roughened with noise, by which side of the cluster it
-   is on, and by its height over the dark base, and its rim is worn away
-   so the edges are soft */
+   first, and stops at the first puff it meets; the cloud is shaded by
+   the puffs' surfaces blended into one and roughened with noise, by
+   which side of the cluster it is on, and by its height over the dark
+   base, and its rim is worn away so the edges are soft. The sea's
+   reflection takes only each cloud's rounded outline */
 const float CB = 1300.0, CV = 6500.0, CS = 8000.0;
 const vec2 CWIND = vec2(7.0, 2.5);
 
@@ -392,7 +402,7 @@ vec3 stars(vec3 rd, float pa) {
     vec2 id = floor(g);
     vec2 h = hash22(id + float(k) * 41.0);
     float b = hash12(id * 1.7 + float(k) * 13.0);
-    float m = k == 0 ? pow(b, 30.0) * 6.0 : pow(b, 60.0) * 2.0;
+    float m = k == 0 ? pow(b, 30.0) * 5.0 : pow(b, 70.0) * 1.3;
     m *= 0.75 + 0.25 * sin(uTime * (2.0 + 4.0 * h.x) + h.y * TAU);
     vec2 dd = (fract(g) - 0.5 - (h - 0.5) * 0.8) / sc;
     c += m * exp(-dot(dd, dd) / (pa * pa) * 1.4) * mix(vec3(1.0, 0.85, 0.7), vec3(0.75, 0.85, 1.0), h.x);
@@ -486,6 +496,7 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
   float var;
   vec2 g = seaSlope(p.xz, fp, var);
   /* the backwash off the cliffs roughens the water at their foot */
+  var += 0.012 * exp(-max(d, 0.0) / 70.0);
   vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
   vec3 v = -rd;
   float nv = max(dot(n, v), 0.02);
@@ -497,7 +508,7 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
   vec4 cr = vec4(0.0);
   if (r.y > 0.01) {
     cr = cumulus(p + vec3(0.0, 1.0, 0.0), r, true);
-    cr.a *= 0.75 / (1.0 + var * 60.0);
+    cr.a *= 0.55 / (1.0 + var * 90.0);
   }
   refl = mix(refl, cr.rgb, cr.a);
   /* near the foot the faces stand in the reflection instead of the sky */
@@ -515,6 +526,19 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
   float spec = beckmann(nh, m2) * smithG(nv, sqrt(m2)) * smithG(max(dot(n, SUN), 0.0), sqrt(m2)) / (4.0 * nv);
   float Fh = 0.02 + 0.98 * pow(1.0 - max(dot(v, h), 0.0), 5.0);
   vec3 col = refl * F + SUNC * spec * Fh * csh * step(0.0, SUN.y);
+  /* sparkle: facets of the wind sea too small to draw, each rocking and
+     catching the light for a moment as it tilts to it */
+  float pw = t * pa;
+  if (pw < 0.6) {
+    vec2 gq = p.xz / 1.1;
+    vec2 gi = floor(gq), gf = fract(gq) - 0.5;
+    vec3 hh = hash33(vec3(gi, 7.0));
+    float ph = hh.z * TAU + uTime * (1.5 + 2.5 * hh.x);
+    vec2 sl = (hh.xy - 0.5) * 1.1 + 0.1 * vec2(sin(ph), cos(ph * 1.3)) + g;
+    float al = dot(normalize(vec3(-sl.x, 1.0, -sl.y)), h);
+    float spot = exp(-dot(gf, gf) * 1.21 / (pw * pw + 0.004));
+    col += SUNC * Fh * smoothstep(0.9975, 1.0, al) * spot * 28.0 * (1.0 - pw / 0.6) * csh * step(0.0, SUN.y);
+  }
   /* light from under the surface: deep blue-green, lighter where the
      water is churned near the cliffs */
   vec3 body = WATER * (SUNC * max(SUN.y, 0.0) * csh * 0.6 + AMBU * 1.2);
@@ -523,8 +547,8 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
 
   /* white water at the foot, flaring with each swell, and lace drawn out
      from it */
+  float fd = d < 220.0 ? map(vec3(p.x, 0.0, p.z)) : 1e3;
   if (d < 220.0) {
-    float fd = map(vec3(p.x, 0.0, p.z));
     float ph = dot(SWELL, p.xz) * TAU / 150.0 - sqrt(9.81 * TAU / 150.0) * uTime;
     float surge = 0.5 + 0.5 * sin(ph + s * 0.004);
     float band = exp(-max(fd, 0.0) / (3.0 + 6.0 * surge));
@@ -541,7 +565,7 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
   float wc = smoothstep(0.93, 0.99, noise(rot(0.35) * p.xz / vec2(9.0, 3.0) + vec2(uTime * 0.2, 0.0))) * smoothstep(0.7, 0.9, noise(p.xz / 60.0 - uTime * 0.02));
   wc *= sat(1.0 - fp / 2.0);
   col = mix(col, vec3(0.8) * (SUNC * max(SUN.y, 0.0) * csh + AMBU * 1.6), wc * 0.35);
-  if (d < 200.0) col = spray(col, p, map(vec3(p.x, 0.0, p.z)), rd);
+  if (d < 200.0) col = spray(col, p, fd, rd);
   return col;
 }
 
@@ -691,10 +715,10 @@ vec3 beams(vec3 ro, vec3 rd, float tEnd, vec3 L) {
     float ub = ew + sr * bd;
     float dm = length(w0 + rd * sr - b * ub);
     float w = 0.8 + 0.035 * max(ub, 0.0);
-    float sg = max(sqrt(den), 0.03);
+    float sg = max(sqrt(den), 0.1);
     float I = 1.772 * w * exp(-dm * dm / (w * w)) / (sg * (ub * ub + 400.0));
     I *= smoothstep(0.0, 30.0, ub) * smoothstep(-40.0, 60.0, sr) * smoothstep(-80.0, 0.0, tEnd - sr);
-    float ph = hg(dot(b, -rd), 0.55) + 0.04;
+    float ph = hg(dot(b, -rd), 0.4) + 0.04;
     c += I * ph * exp(-sr / 9000.0);
   }
   return c * vec3(1.0, 0.86, 0.62) * 8.0e7 * HAZE;

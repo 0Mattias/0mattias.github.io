@@ -270,17 +270,17 @@ vec3 sunAt(vec3 L, float h) {
 vec3 starsAt(vec3 rd, float pix, float mw) {
   vec3 col = vec3(0.0);
   float sig = max(pix, 6e-4) * 0.75;
-  for (int l = 0; l < 3; l++) {
+  for (int l = 0; l < 4; l++) {
     float fl = float(l);
-    float sc = fl == 0.0 ? 70.0 : (fl == 1.0 ? 160.0 : 360.0);
+    float sc = fl == 0.0 ? 70.0 : (fl == 1.0 ? 160.0 : (fl == 2.0 ? 360.0 : 820.0));
     vec3 cell = floor(rd * sc);
     vec3 h = hash33(cell + fl * 17.31);
-    float occ = fl == 0.0 ? 0.16 : (fl == 1.0 ? 0.35 : 0.2 + 0.8 * mw);
+    float occ = fl == 0.0 ? 0.16 : (fl == 1.0 ? 0.35 : (fl == 2.0 ? 0.2 + 0.8 * mw : 0.95 * mw));
     if (h.x > occ) continue;
     vec3 sp = normalize(cell + 0.25 + 0.5 * hash33(cell * 1.7 + fl * 5.0));
     float d = length(rd - sp) / sig;
     float m = hash13(cell * 2.31 + 4.0 + fl);
-    float flux = fl == 0.0 ? 1.5 * pow(m, 6.0) + 0.05 : (fl == 1.0 ? 0.09 * pow(m, 3.0) + 0.012 : 0.022 * m);
+    float flux = fl == 0.0 ? 1.5 * pow(m, 6.0) + 0.05 : (fl == 1.0 ? 0.09 * pow(m, 3.0) + 0.012 : (fl == 2.0 ? 0.022 * m : 0.012 * m));
     float tw = 1.0 + (0.18 + 0.5 * sat(1.0 - rd.y * 5.0)) * sin(uTime * (1.7 + 4.0 * h.y) + h.z * TAU) * step(fl, 1.5);
     vec3 tint = mix(vec3(1.0, 0.78, 0.55), vec3(0.72, 0.84, 1.0), smoothstep(0.2, 0.8, h.y));
     col += tint * flux * tw * exp(-0.5 * d * d);
@@ -291,21 +291,22 @@ vec3 starsAt(vec3 rd, float pix, float mw) {
 /* the Milky Way: a band along the galactic plane, its core low over the
    great dune, star clouds and the dark rift through them */
 vec3 milky(vec3 rd, out float band) {
-  vec3 GCORE = azel(27.0, 9.0);
-  vec3 GAL = normalize(cross(GCORE, azel(-22.0, 38.0)));
+  vec3 GCORE = azel(26.0, 12.5);
+  vec3 GAL = normalize(cross(GCORE, azel(-2.0, 19.0)));
   float b = dot(rd, GAL);
   vec3 cp = normalize(GCORE - GAL * dot(GCORE, GAL));
   vec3 ip = normalize(rd - GAL * b);
   float l = acos(clamp(dot(ip, cp), -1.0, 1.0));
-  float wid = 0.11 + 0.08 * exp(-l * l * 3.0);
+  float wid = 0.085 + 0.05 * exp(-l * l * 4.0);
   band = exp(-b * b / (wid * wid));
-  float bulge = exp(-l * l * 2.2 - b * b * 30.0);
-  float clouds = fbm3(rd * 7.0, 5);
-  float fine = fbm3(rd * 23.0 + 7.0, 3);
-  float rift = smoothstep(0.42, 0.68, fbm3(rd * 4.0 + vec3(3.0, 1.0, 7.0), 4) + 0.18 * exp(-l * 1.5))
-             * exp(-pow(b - 0.012 * sin(l * 5.0), 2.0) / (0.0012 + 0.003 * l));
-  float m = band * (0.25 + 0.75 * smoothstep(0.3, 0.75, clouds)) * (0.75 + 0.5 * fine);
-  vec3 c = vec3(0.62, 0.68, 0.85) * m + vec3(1.0, 0.8, 0.58) * bulge * (1.2 + 1.6 * smoothstep(0.35, 0.7, clouds));
+  float halo = exp(-b * b / 0.05);
+  float bulge = exp(-(l * l + b * b * 2.6) / 0.012);
+  float clouds = fbm3(rd * 22.0, 4);
+  float knots = smoothstep(0.4, 0.75, clouds) * (0.7 + 0.6 * fbm3(rd * 6.0 + 9.0, 2));
+  float rift = smoothstep(0.4, 0.62, fbm3(rd * 6.0 + vec3(3.0, 1.0, 7.0), 3))
+             * exp(-pow(b - 0.012 - 0.01 * sin(l * 6.0), 2.0) / (0.0005 + 0.0015 * l)) * smoothstep(0.04, 0.2, l);
+  float m = band * (0.55 + 0.8 * exp(-l * l * 3.0)) * (0.65 + 0.6 * knots) + halo * 0.12;
+  vec3 c = vec3(0.72, 0.78, 1.0) * m + vec3(1.0, 0.9, 0.74) * bulge * (2.0 + 1.5 * knots);
   return c * (1.0 - 0.85 * rift);
 }
 
@@ -341,10 +342,10 @@ vec3 camRay(vec2 fc, out vec3 ro, out float pix) {
   float asp = uRes.x / uRes.y;
   float wide = smoothstep(0.7, 1.5, asp);
   float tanH = 0.62;
-  float tanV = min(tanH / asp, 0.52);
-  float hY = mix(0.60, 0.57, wide);
+  float tanV = min(tanH / asp, 0.42);
+  float hY = mix(0.62, 0.57, wide);
   vec2 q = (fc - 0.5 * uRes) / (0.5 * uRes.y);
-  float yaw = radians(mix(10.0, 0.0, wide)) + uPoint.x * 0.012 + 0.0025 * sin(loopT(310.0));
+  float yaw = radians(mix(14.0, 0.0, wide)) + uPoint.x * 0.012 + 0.0025 * sin(loopT(310.0));
   float pitch = radians(-2.5) + uPoint.y * 0.006 + 0.0012 * sin(loopT(230.0));
   float sh = -tan(pitch) / tanV - (1.0 - 2.0 * hY);
   vec3 r = normalize(vec3(q.x * tanV, (q.y + sh) * tanV, 1.0));
@@ -554,10 +555,10 @@ void lightsAt(vec3 p, vec3 n, out vec3 sunC, out vec3 skyC) {
   float hv = sat(0.3 + p.y / 110.0);
   if (gWS > 0.001) {
     sunC += sunAt(gSun, p.y) * gEs * gWS;
-    skyC += skyLight(gSun, n, hv) * gEs * gWS;
+    skyC += skyLight(gSun, n, hv * look3(1.0, 0.4, 1.0)) * gEs * gWS;
   }
   if (gWM > 0.001) {
-    sunC += sunAt(gMoon, p.y) * gEm * gWM * 2.2;
+    sunC += sunAt(gMoon, p.y) * gEm * gWM * 3.2;
     skyC += skyLight(gMoon, n, hv) * gEm * gWM;
   }
   skyC *= mix(1.0, gGain, 0.5);
@@ -601,6 +602,16 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   p.y = field(p.xz, t, info);
   float fpm = t * pix;
   vec3 n = normalAt(p.xz, max(0.25, fpm), t);
+  /* the sand's own slow undulation, finer than the heightfield carries */
+  float dA = smoothstep(4.5, 1.0, fpm);
+  if (dA > 0.0) {
+    vec2 w = vec2(dot(p.xz, RN), dot(p.xz, RD));
+    vec3 n1 = noised(w * vec2(0.03, 0.009) + 3.1);
+    vec3 n2 = noised(w * vec2(0.1, 0.03) + 7.7);
+    vec2 gw = n1.yz * vec2(0.03, 0.009) * 0.9 + n2.yz * vec2(0.1, 0.03) * 0.18 * smoothstep(1.6, 0.5, fpm);
+    vec2 gr = RN * gw.x + RD * gw.y;
+    n = normalize(n - vec3(gr.x, 0.0, gr.y) * dA * (1.0 - info.w));
+  }
 
   /* red on the dunes, a little darker down the slip faces where the
      avalanches run; paler and duller on the corridor floor; the clay of
@@ -670,17 +681,20 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   return col * trans + air;
 }
 
-vec3 skyCol(vec3 rd, float pix) {
+/* the sky; the stars, the Milky Way and the moon go to lights, added
+   after the night's grade so they keep their colour */
+vec3 skyCol(vec3 rd, float pix, out vec3 lights) {
   vec3 trans;
   vec3 col = airTo(rd, 1e9, trans);
   float sd = length(rd - gSun);
   col += smoothstep(0.0052, 0.0044, sd) * sunAt(gSun, 0.0) * gEs * 400.0 * gWS;
+  lights = vec3(0.0);
   if (gWM > 0.001) {
     float band;
     vec3 mw = milky(rd, band);
-    vec3 night = starsAt(rd, pix, band) + mw * 0.16;
-    col += night * trans * gWM * smoothstep(0.0, 0.04, rd.y);
-    col += moonDisc(rd, gMoon, gSun, pix) * gWM;
+    vec3 night = starsAt(rd, pix, band) + mw * 0.095;
+    lights = night * trans * gWM * smoothstep(0.0, 0.04, rd.y);
+    lights += moonDisc(rd, gMoon, gSun, pix) * gWM;
   }
   return col;
 }
@@ -691,21 +705,24 @@ vec3 scene(vec2 fc) {
   vec3 rd = camRay(fc, ro, pix);
 
   gSun = normalize(look3(azel(105.0, 30.0), azel(112.0, 2.4), azel(112.0, -8.0)));
-  gMoon = azel(-27.0, 17.0);
+  gMoon = azel(-29.0, 10.0);
   gWS = uLook.x + uLook.y;
   gWM = uLook.z;
   gEs = look3(6.5, 40.0, 0.0);
   gEm = 1.7;
-  gGain = look3(1.2, 0.55, 1.0);
+  gGain = look3(1.2, 0.55, 0.75);
 
   float rmin, tr, hmin, th;
   float t = march(ro, rd, pix, rmin, tr, hmin, th);
-  vec3 col;
+  vec3 col, lights = vec3(0.0);
   if (t < 0.0) {
-    col = skyCol(rd, pix);
+    col = skyCol(rd, pix, lights);
     /* a skyline that the ray only just cleared: part of the pixel is sand */
     float cov = sat(0.5 - rmin);
-    if (cov > 0.0) col = mix(col, shade(ro, rd, tr, pix), cov);
+    if (cov > 0.0) {
+      col = mix(col, shade(ro, rd, tr, pix), cov);
+      lights *= 1.0 - cov;
+    }
     /* sand blowing off a crest seen against the sky */
     if (hmin < 20.0) {
       vec4 info;
@@ -721,9 +738,10 @@ vec3 scene(vec2 fc) {
     col = shade(ro, rd, t, pix);
   }
   col *= look3(vec3(1.0), vec3(0.76, 0.92, 1.5), vec3(0.8, 0.95, 1.3));
+  col = max(mix(vec3(luma(col)), col, 1.0 + 0.12 * uLook.x), 0.0);
   vec3 grey = vec3(luma(col));
-  col = mix(col, grey * vec3(0.56, 0.76, 1.3), 0.7 * gWM);
-  return col;
+  col = mix(col, grey * vec3(0.5, 0.72, 1.35), 0.85 * gWM);
+  return col + lights * vec3(0.9, 0.95, 1.08);
 }
 `
 };
