@@ -240,7 +240,7 @@ float bigPeak(vec2 x, float t, out float rib) {
   float H = P0.z;
   vec2 q = (x - P0.xy) / P0.w;
   float r0 = length(q);
-  q -= vec2(-0.075, 0.035) * sq(sat(1.0 - r0 * 2.2));
+  q -= vec2(-0.12, 0.05) * sq(sat(1.0 - r0 * 2.0));
   /* the aretes wander: the one toward the eye most, bending as it falls */
   q += 0.13 * (vec2(noise(q * 1.25 + 2.0), noise(q * 1.25 + 7.3)) - 0.5);
   q += vec2(0.766, 0.643) * 0.16 * (noise(vec2(r0 * 3.2, 1.7)) - 0.5) * sat(r0 * 3.0);
@@ -249,7 +249,7 @@ float bigPeak(vec2 x, float t, out float rib) {
   float d0 = dot(q, n0) * 1.1, d1 = dot(q, n1) * 1.0, d2 = dot(q, n2) * 0.9;
   float f0 = 1.0 - pow(max(d0, 1e-4), 0.82);
   float f1 = 1.0 - pow(max(d1, 1e-4), 0.68);
-  float f2 = 1.0 - pow(max(d2, 1e-4), 0.9);
+  float f2 = 1.0 - pow(max(d2, 1e-4), 0.76);
   float lo = min(min(f0, f1), f2);
   float mid = max(min(f0, f1), min(max(f0, f1), f2));
   vec2 nf = lo == f0 ? n0 : (lo == f1 ? n1 : n2);
@@ -265,8 +265,8 @@ float bigPeak(vec2 x, float t, out float rib) {
   vec2 qs = q - 0.85 * vec2(-0.669, 0.743);
   h = smax(h, H * (0.56 - 1.2 * length(qs * vec2(1.0, 1.3))) + 30.0 * noise(qs * 9.0), 40.0);
   vec2 qn = q - 0.36 * vec2(0.985, 0.174), qg = q - 0.56 * vec2(0.985, 0.174);
-  h -= H * 0.05 * exp(-dot(qn, qn) / 0.004);
-  h = smax(h, H * (0.69 - 2.4 * length(qg)) + 20.0 * noise(qg * 14.0), 25.0);
+  h -= H * 0.085 * exp(-dot(qn, qn) / 0.005);
+  h = smax(h, H * (0.75 - 3.0 * length(qg)) + 20.0 * noise(qg * 14.0), 25.0);
   /* ribs and couloirs down the fall line */
   float u = dot(q, vec2(nf.y, -nf.x));
   float g = ridged(vec2(u * 8.0, (1.0 - lo) * 1.7) + 3.0);

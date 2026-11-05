@@ -355,26 +355,40 @@ vec3 starsAt(vec3 rd, float pix, float mw) {
   return col;
 }
 
-/* the Milky Way: a band along the galactic plane, its core low over the
-   great dune, star clouds and the dark rift through them */
-vec3 milky(vec3 rd, out float band) {
-  vec3 GCORE = azel(26.0, 12.5);
+/* the Milky Way: a band along the galactic plane of unresolved stars,
+   grain on grain, gathered into clouds; the core, warm and bright, low
+   over the great dune; and the dark lanes of dust along the plane with
+   fairly sharp edges, dimming the clouds and the grain alike. Away from
+   the core the band is a cooler blue-white */
+vec3 milky(vec3 rd, float pix, out float band) {
+  vec3 GCORE = azel(27.0, 16.0);
   vec3 GAL = normalize(cross(GCORE, azel(-2.0, 19.0)));
   float b = dot(rd, GAL);
   vec3 cp = normalize(GCORE - GAL * dot(GCORE, GAL));
   vec3 ip = normalize(rd - GAL * b);
   float l = acos(clamp(dot(ip, cp), -1.0, 1.0));
-  float wid = 0.085 + 0.05 * exp(-l * l * 4.0);
+  float wid = 0.07 + 0.05 * exp(-l * l * 5.0);
   band = exp(-b * b / (wid * wid));
-  float halo = exp(-b * b / 0.05);
-  float bulge = exp(-(l * l + b * b * 2.6) / 0.012);
-  float clouds = fbm3(rd * 22.0, 4);
-  float knots = smoothstep(0.4, 0.75, clouds) * (0.7 + 0.6 * fbm3(rd * 6.0 + 9.0, 2));
-  float rift = smoothstep(0.4, 0.62, fbm3(rd * 6.0 + vec3(3.0, 1.0, 7.0), 3))
-             * exp(-pow(b - 0.012 - 0.01 * sin(l * 6.0), 2.0) / (0.0005 + 0.0015 * l)) * smoothstep(0.04, 0.2, l);
-  float m = band * (0.55 + 0.8 * exp(-l * l * 3.0)) * (0.65 + 0.6 * knots) + halo * 0.12;
-  vec3 c = vec3(0.72, 0.78, 1.0) * m + vec3(1.0, 0.9, 0.74) * bulge * (2.0 + 1.5 * knots);
-  return c * (1.0 - 0.85 * rift);
+  float halo = exp(-b * b / 0.04);
+  float core = exp(-(l * l + b * b * 3.0) / 0.006);
+  float bulge = exp(-(l * l + b * b * 2.0) / 0.04);
+  /* star clouds, and the grain of stars too faint to resolve; the finest
+     grain gives way to its mean as it falls under a pixel */
+  float clouds = smoothstep(0.3, 0.78, fbm3(rd * 16.0, 3)) * (0.55 + 0.9 * noise3(rd * 48.0));
+  float g1 = noise3(rd * 380.0);
+  float g2 = noise3(rd * 950.0 + 3.0);
+  float grain = g1 * g1 * g1 * 1.4 + mix(0.2, g2 * g2 * g2 * g2, smoothstep(2.2, 0.9, 950.0 * pix)) * 1.6;
+  /* the dust: a main rift along the plane, wandering, and broken lanes */
+  float lane = fbm3(rd * 6.5 + vec3(3.0, 1.0, 7.0), 4) + 0.18 * noise3(rd * 36.0);
+  float zone = exp(-pow((b - 0.012 - 0.012 * sin(l * 5.0 + 1.0)) / (0.016 + 0.02 * exp(-l * l * 5.0)), 2.0));
+  float rift = smoothstep(0.47, 0.52, lane) * zone * smoothstep(0.03, 0.12, l);
+  float lanes = smoothstep(0.6, 0.64, fbm3(rd * 13.0 + 11.0, 3) + 0.1 * noise3(rd * 60.0)) * band;
+  float dust = max(rift * 0.9, lanes * 0.55);
+  float m = band * (0.25 + 0.75 * clouds) * (0.35 + grain) + halo * 0.05;
+  vec3 cool = vec3(0.64, 0.76, 1.0), warm = vec3(1.0, 0.87, 0.68);
+  vec3 c = mix(cool, warm, sat(bulge * 1.2)) * m * (1.0 + 1.2 * bulge);
+  c += warm * core * (1.2 + 1.5 * clouds) * (0.5 + grain);
+  return c * (1.0 - dust);
 }
 
 /* the moon at tonight's phase, lit from the side the sun has gone down */
@@ -691,7 +705,7 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
     ne = max(0.25, fpm) * min(0.3 / max(gz, 0.01), 5.0);
   }
   /* the sand's own slow undulation, finer than the heightfield carries */
-  float dA = 0.0;
+  float dA = smoothstep(1.6, 0.5, fpm);
   if (dA > 0.0) {
     vec2 w = vec2(dot(p.xz, RN), dot(p.xz, RD));
     vec3 n1 = noised(w * vec2(0.03, 0.006) + 3.1);
@@ -709,8 +723,9 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   float mott = noise(p.xz * 0.011) * 0.6 + noise(p.xz * 0.05) * 0.4;
   vec3 alb = vec3(0.43, 0.165, 0.085) * (0.9 + 0.2 * mott);
   alb = mix(alb, vec3(0.4, 0.148, 0.075), lee);
-  float streak = noise(vec2(info.z * 0.09, info.y * 0.012));
-  alb *= 1.0 - lee * 0.18 * smoothstep(0.3, 0.8, streak);
+  /* grain flows down the slip faces: short lobes, faint, here and there */
+  float streak = noise(vec2(info.z * 0.05, info.y * 0.03)) * noise(p.xz * 0.013 + 5.0);
+  alb *= 1.0 - lee * 0.07 * smoothstep(0.25, 0.6, streak);
   alb = mix(alb, vec3(0.44, 0.22, 0.12) * (0.85 + 0.3 * mott), flo * 0.8);
   /* tufts of grass dotted over the corridor floor */
   vec2 gc = floor(p.xz / 16.0);
@@ -718,12 +733,23 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   float tuft = step(gh.z, 0.1) * sat((0.9 * gh.x + 0.4 - length(p.xz - (gc + 0.2 + 0.6 * gh.xy) * 16.0)) / fpm + 0.5);
   alb *= 1.0 - 0.55 * tuft * flo;
   float rim = smoothstep(0.0, 0.5, pan) * (1.0 - smoothstep(0.5, 1.0, pan));
-  alb = mix(alb, vec3(0.6, 0.53, 0.44) * (0.9 + 0.15 * noise(p.xz * 0.09)) * (1.0 - 0.3 * rim), pan);
+  alb = mix(alb, vec3(0.45, 0.4, 0.33) * look3(1.0, 1.0, 0.8) * (0.9 + 0.15 * noise(p.xz * 0.09)) * (1.0 - 0.3 * rim), pan);
 
-  /* wind ripples across the windward sand and the floor, fading as they
-     fall under a pixel */
+  /* wind ripples across the windward sand and the floor, and the larger
+     coarse-grained ripples between them, their crests darker with the
+     heavier grains; each fades as it falls under a pixel */
   float g = fpm / max(abs(dot(rd, n)), 0.2);
-  float rip = (1.0 - lee) * (1.0 - pan) * smoothstep(0.42, 0.16, g);
+  float open = (1.0 - lee) * (1.0 - pan);
+  float mrip = open * smoothstep(2.4, 0.9, g);
+  if (mrip > 0.0) {
+    vec2 w = rot(0.12) * p.xz;
+    float ph = dot(w, RN) * (TAU / 7.5) + 7.0 * noise(p.xz * 0.018) + 2.0 * noise(p.xz * 0.07);
+    float cr = sin(ph);
+    float sl = (cr + 0.4 * sin(2.0 * ph + 0.6)) * 0.16 * mrip * (0.5 + noise(p.xz * 0.025));
+    n = normalize(n + vec3(RN.x, 0.0, RN.y) * sl);
+    alb *= 1.0 - 0.09 * mrip * smoothstep(0.55, 0.95, cr) * (1.0 - flo * 0.5);
+  }
+  float rip = open * smoothstep(0.42, 0.16, g);
   if (rip > 0.0) {
     float ph = dot(p.xz, RN) * (TAU / 1.7) + 9.0 * noise(p.xz * 0.04) + 2.5 * noise(p.xz * 0.23);
     float sl = (sin(ph) + 0.35 * sin(2.0 * ph)) * 0.22 * rip;
@@ -739,6 +765,9 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   if (pan > 0.01 && sh > 0.0) sh *= treeShade(p, lh, tanE, fpm);
   vec3 sunC, skyC;
   lightsAt(p, n, sunC, skyC);
+  /* the pan lies deep among the dunes: they hide most of the blue sky
+     from it and light it with their own warm sand instead */
+  skyC = mix(skyC, vec3(luma(skyC)) * vec3(1.05, 0.95, 0.85), 0.65 * pan) * (1.0 - 0.35 * pan);
   /* the hollows see less of the sky */
   float ao = 1.0;
   if (fpm < 6.0) {
@@ -783,7 +812,7 @@ vec3 skyCol(vec3 rd, float pix, out vec3 lights) {
   lights = vec3(0.0);
   if (gWM > 0.001) {
     float band;
-    vec3 mw = milky(rd, band);
+    vec3 mw = milky(rd, pix, band);
     vec3 night = starsAt(rd, pix, band) + mw * 0.095;
     lights = night * trans * gWM * smoothstep(0.0, 0.04, rd.y);
     lights += moonDisc(rd, gMoon, gSun, pix) * gWM;
