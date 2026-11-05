@@ -300,9 +300,9 @@ float traceFar(vec3 ro, vec3 rd, out float mat, out vec2 near) {
 /* the ridge the eye stands on runs off to the left and swings forward
    into a spur, three hundred metres off: its crest a row of teeth and
    notches against the cloud, a rocky top, then a break where it falls
-   away to the cloud. Its face toward the eye is steep rock in ribs,
-   with snow in the couloirs between them and on the ledges where the
-   rock is bedded. s runs along the crest, n out from it toward the eye */
+   away to the cloud. Its face toward the eye is steep bedded rock in
+   buttresses, with snow in the couloirs between them and a cornice
+   along the crest. s runs along the crest, n out from it toward the eye */
 
 const vec2 RA = vec2(-330.0, 140.0);
 const vec2 RDIR = vec2(0.8526, 0.5225);

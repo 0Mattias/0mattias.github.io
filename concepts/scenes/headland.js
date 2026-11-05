@@ -2,17 +2,22 @@
 
    Standing at the end of a narrow spur of cliff top on the Atlantic
    coast, a stride from the drop, looking along the line of the cliffs to
-   the point where a small white lighthouse stands with its keeper's
-   house. The coast bows gently out to sea and is cut into a run of
-   buttresses: each a long face that swings out to a nose and falls back
-   steeply behind it, so the faces stack one behind another into the
-   distance and each turns a little differently to the light. The faces
-   are sheer and banded, hard beds of sandstone standing proud of the
-   softer shale between them, worn into rounded buttresses between sharp
-   gullies, grained finer than the surface is traced, with grass on the
-   ledges, a damp dark foot and a skirt of fallen blocks in the surf.
-   Past the last buttress the headland swings out and the land stops at
-   a cap, and beyond it an island lies far out in the haze.
+   the point, some 850 m off, where a lighthouse stands: a white tower
+   with a red band and a dark lantern, its keepers' houses under slate
+   and the white wall of the compound about them. The coast bows gently
+   out to sea and is cut into a run of buttresses, each a long face that
+   swings out to a nose and falls back steeply behind it, so the faces
+   stack one behind another into the distance and each turns a little
+   differently to the light. The faces are sheer and banded, hard beds
+   of sandstone standing proud of the softer shale and here and there
+   cut back into deep notches whose ledges hold grass; they are worn
+   into rounded buttresses between sharp gullies, grained finer than the
+   surface is traced, streaked pale below the birds' ledges and touched
+   with lichen high up, dark and weed-black where the sea wets them. Sea
+   caves open at the foot of some, scree slumps into fans at others, and
+   at the top the beds crumble back raggedly under a lip of overhanging
+   turf. Past the last buttress the headland swings out and the land
+   stops at a cap, and beyond it an island lies far out in the haze.
 
    The sea is a plane given three long trains of westerly swell and a
    wind sea over them; each fades as it shrinks under a pixel and hands
@@ -23,19 +28,25 @@
    light, and the edges of the land against sky and sea are softened by
    how near each ray passed them.
 
-   By day the Atlantic light comes from high over the sea behind the
-   left shoulder, with scattered cumulus drifting in, their shadows
-   crossing the water. At dusk the sun stands just above the horizon on
-   the left, laying a path of gold on the sea, the faces and noses that
-   turn to it burn orange while the rest go blue, and the clouds before
-   it are rimmed with light. At night the moon hangs low over the water
-   with its path below it, the cliffs stand dark, the stars are out, and
-   the lighthouse is lit: two beams turn once every ten seconds through
-   the damp air, each a cone whose scattered light is integrated across
-   it at the ray's nearest pass, flaring as they swing toward the eye.
-   A wide frame looks across the water with the cliffs on the right; a
-   tall one lowers its horizon so the words stand in the sky and the
-   cliffs recede below them. WebGL2, no libraries, no build step. */
+   The cumulus are drawn as sheets turned to the eye on a drifting grid,
+   so they keep true perspective, crowding small toward the horizon;
+   each is a heap on a flat base with a billowed top, lit by the slope
+   of its billows and the cloud between it and the light. By day the
+   Atlantic light comes from high over the sea off the left shoulder,
+   the clouds' shadows cross the water and small facets of the wind sea
+   sparkle as they tilt to the sun. At dusk the sun stands just above
+   the horizon on the left, laying a path of gold on the sea; the faces
+   and noses that turn to it burn orange while the rest go blue, and the
+   clouds catch gold and rose on their sunward sides. At night the moon
+   hangs low over the water with its path below it, the clouds hang dim
+   and grey-blue, the cliffs stand dark with the moon just finding their
+   noses, the stars are out, and the lighthouse is lit: two beams turn
+   once every ten seconds through the damp air, each a cone whose
+   scattered light is integrated across it at the ray's nearest pass,
+   flaring as they swing toward the eye. A wide frame looks across the
+   water with the cliffs on the right; a tall one lowers its horizon so
+   the words stand in the sky and the cliffs recede below them.
+   WebGL2, no libraries, no build step. */
 
 window.CONCEPT = {
   id: 'headland',
@@ -610,8 +621,8 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa) {
   rock *= 0.8 + 0.4 * noise(vec2(s / 2.0, p.y / 30.0));
   /* where the birds nest, pale streaks run down from the ledges */
   float colony = smoothstep(0.55, 0.8, noise(vec2(s / 45.0, p.y / 35.0) + 5.0)) * smoothstep(20.0, 45.0, p.y) * (1.0 - smoothstep(110.0, 150.0, p.y));
-  float streak = smoothstep(0.62, 0.9, noise(vec2(s / 2.2, p.y / 28.0 + 9.0))) * smoothstep(0.3, 0.75, bf);
-  rock = mix(rock, vec3(0.34, 0.33, 0.3), colony * streak * 0.75);
+  float streak = smoothstep(0.72, 0.93, noise(vec2(s / 1.4, p.y / 60.0 + 9.0))) * smoothstep(0.35, 0.75, noise(vec2(s / 1.4 + 5.0, p.y / 11.0)));
+  rock = mix(rock, vec3(0.27, 0.265, 0.24), colony * streak * 0.6);
   /* orange and grey lichen high on the face */
   float lich = smoothstep(0.8, 0.92, noise(vec2(s / 3.0, p.y / 2.5) + 2.0)) * smoothstep(0.5, 0.8, noise(vec2(s / 60.0, p.y / 40.0) + 1.0)) * smoothstep(45.0, 100.0, p.y);
   rock = mix(rock, vec3(0.17, 0.1, 0.045), lich * 0.4);
@@ -667,7 +678,7 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa) {
   amb += GLOW * (0.05 + 0.6 * NIGHT) * sat(dot(normalize(n.xz + 1e-5), normalize(SUN.xz + 1e-5))) * (1.0 - abs(n.y));
   /* by night the eye opens: the moon's light and the sky's are given a
      little more, so the stone still reads */
-  float moonlit = 1.0 + 2.2 * NIGHT;
+  float moonlit = 1.0 + 3.0 * NIGHT;
   vec3 col = alb * (SUNC * dif * moonlit + amb * ao * (1.0 + 1.2 * NIGHT) + BNC * sat(-n.y + 0.3) * ao * (1.0 + 3.0 * NIGHT));
   /* grass glows a little when the light comes through it toward the eye */
   col += alb * SUNC * gw * 0.6 * pow(sat(dot(rd, SUN)), 3.0) * sh * csh;

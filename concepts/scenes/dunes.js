@@ -193,7 +193,7 @@ float field(vec2 p, float lod, out vec4 info) {
   float fl = 3.0 * noise(p * 0.004) + 1.5 * noise(p * 0.017);
   h = smax(h, fl, 14.0);
   vec2 pq = vec2(dot(p - PAN, RN), dot(p - PAN, RD));
-  float e = length(pq / vec2(115.0, 250.0));
+  float e = length(pq / vec2(115.0, 250.0)) + 0.22 * (noise(p * 0.012) - 0.5) + 0.08 * (noise(p * 0.05) - 0.5);
   float pan = 1.0 - smoothstep(0.75, 1.1, e);
   float lev = 1.0 - smoothstep(0.9, 2.0, e);
   h = mix(h, -1.0 + 0.2 * noise(p * 0.03), max(pan, lev * 0.85));
@@ -473,7 +473,8 @@ vec3 skyLight(vec3 L, vec3 n, float hv) {
 const float TC = 40.0;
 float panMask(vec2 p) {
   vec2 pq = vec2(dot(p - PAN, RN), dot(p - PAN, RD));
-  return 1.0 - smoothstep(0.75, 1.1, length(pq / vec2(115.0, 250.0)));
+  float e = length(pq / vec2(115.0, 250.0)) + 0.22 * (noise(p * 0.012) - 0.5) + 0.08 * (noise(p * 0.05) - 0.5);
+  return 1.0 - smoothstep(0.75, 1.1, e);
 }
 vec3 treeIn(vec2 c) {
   vec3 h = hash33(vec3(c, 3.7));
@@ -582,16 +583,19 @@ vec3 airTo(vec3 rd, float t, out vec3 trans) {
   return air + belt * (t > 1e8 ? 1.0 : 1.0 - trans.g);
 }
 
-/* sand lifted off a crest by the wind, streaming down over the slip face:
-   a few metres of glowing haze, its streamers running with the wind */
+/* sand lifted off a crest by the wind and streaming down over the slip
+   face: thin streamers a few metres long, running with the wind, coming
+   and going in gusts. along runs the crest, down away from it, above is
+   the height over the sand. Two drifting copies cross-fade so the loop
+   in time never shows */
 float spindrift(float along, float down, float above) {
-  float ph = fract(uTime / 40.0);
-  vec2 q = vec2(along * 0.07, down * 0.09 + above * 0.2);
-  float n1 = noise(q - vec2(0.3, ph * 40.0 * 0.55));
-  float n2 = noise(q + vec2(5.2, 1.3) - vec2(0.3, (ph - 1.0) * 40.0 * 0.55));
-  float n = mix(n1, n2, ph);
-  float gust = 0.55 + 0.45 * sin(along * 0.004 + loopT(37.0));
-  return smoothstep(0.38, 0.82, n) * gust * exp(-down / 22.0) * exp(-max(above, 0.0) / 4.5);
+  float ph = fract(uTime / 24.0);
+  vec2 q = vec2(along * 0.32, down * 0.06 + max(above, 0.0) * 0.12);
+  float n1 = noise(q - vec2(0.0, ph * 24.0 * 0.35));
+  float n2 = noise(q + vec2(17.3, 5.1) - vec2(0.0, (ph - 1.0) * 24.0 * 0.35));
+  float n = mix(n1, n2, smoothstep(0.0, 1.0, ph));
+  float gust = sat(0.35 + 0.65 * sin(along * 0.011 + loopT(29.0)) + 0.3 * sin(along * 0.037 - loopT(11.0)));
+  return smoothstep(0.5, 0.85, n) * gust * exp(-down / 7.0) * exp(-max(above, 0.0) / 2.2);
 }
 
 /* ----------------------------------------------------------- the sand */
@@ -619,8 +623,8 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   float lee = info.x, pan = info.w;
   float flo = (1.0 - smoothstep(3.0, 14.0, p.y)) * (1.0 - pan);
   float mott = noise(p.xz * 0.011) * 0.6 + noise(p.xz * 0.05) * 0.4;
-  vec3 alb = vec3(0.42, 0.175, 0.092) * (0.9 + 0.2 * mott);
-  alb = mix(alb, vec3(0.39, 0.155, 0.08), lee);
+  vec3 alb = vec3(0.43, 0.165, 0.085) * (0.9 + 0.2 * mott);
+  alb = mix(alb, vec3(0.4, 0.148, 0.075), lee);
   float streak = noise(vec2(info.z * 0.09, info.y * 0.012));
   alb *= 1.0 - lee * 0.18 * smoothstep(0.3, 0.8, streak);
   alb = mix(alb, vec3(0.44, 0.22, 0.12) * (0.85 + 0.3 * mott), flo * 0.8);
@@ -630,7 +634,7 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   float tuft = step(gh.z, 0.1) * sat((0.9 * gh.x + 0.4 - length(p.xz - (gc + 0.2 + 0.6 * gh.xy) * 16.0)) / fpm + 0.5);
   alb *= 1.0 - 0.55 * tuft * flo;
   float rim = smoothstep(0.0, 0.5, pan) * (1.0 - smoothstep(0.5, 1.0, pan));
-  alb = mix(alb, vec3(0.66, 0.6, 0.5) * (0.92 + 0.12 * noise(p.xz * 0.09)) * (1.0 - 0.25 * rim), pan);
+  alb = mix(alb, vec3(0.6, 0.53, 0.44) * (0.9 + 0.15 * noise(p.xz * 0.09)) * (1.0 - 0.3 * rim), pan);
 
   /* wind ripples across the windward sand and the floor, fading as they
      fall under a pixel */
@@ -663,9 +667,9 @@ vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
   vec3 col = alb * (sunC * dif * sh + (skyC + bounce) * ao) / PI;
 
   /* sand streaming off the crest above a slip face */
-  float sd = lee * spindrift(info.z, info.y, 0.0) * smoothstep(40.0, 4.0, fpm);
+  float sd = lee * spindrift(info.z, info.y, 0.0) * smoothstep(2.5, 0.5, fpm);
   float fwd = 0.35 + 2.5 * pow(sat(dot(rd, L)), 6.0);
-  col += sd * 0.9 * vec3(0.5, 0.3, 0.2) * (sunC * fwd + skyC * 0.25) / PI;
+  col += sd * 0.45 * vec3(0.5, 0.3, 0.2) * (sunC * fwd + skyC * 0.25) / PI;
 
   /* a dead tree standing in front */
   if (pan > 0.0 || info.w > 0.0) {
@@ -704,7 +708,7 @@ vec3 scene(vec2 fc) {
   float pix;
   vec3 rd = camRay(fc, ro, pix);
 
-  gSun = normalize(look3(azel(105.0, 30.0), azel(112.0, 2.4), azel(112.0, -8.0)));
+  gSun = normalize(look3(azel(105.0, 30.0), azel(108.0, 3.0), azel(108.0, -8.0)));
   gMoon = azel(-29.0, 10.0);
   gWS = uLook.x + uLook.y;
   gWM = uLook.z;
@@ -728,17 +732,17 @@ vec3 scene(vec2 fc) {
       vec4 info;
       vec3 q = ro + rd * th;
       field(q.xz, th, info);
-      float sd = spindrift(info.z, info.y, hmin) * smoothstep(60.0, 6.0, th * pix);
+      float sd = spindrift(info.z, info.y, hmin) * smoothstep(2.5, 0.5, th * pix);
       vec3 sunC, skyC;
       lightsAt(q, vec3(0.0, 1.0, 0.0), sunC, skyC);
       float fwd = 0.35 + 2.5 * pow(sat(dot(rd, keyDir())), 6.0);
-      col += sd * 0.9 * vec3(0.5, 0.3, 0.2) * (sunC * fwd + skyC * 0.25) / PI;
+      col += sd * 0.45 * vec3(0.5, 0.3, 0.2) * (sunC * fwd + skyC * 0.25) / PI;
     }
   } else {
     col = shade(ro, rd, t, pix);
   }
   col *= look3(vec3(1.0), vec3(0.76, 0.92, 1.5), vec3(0.8, 0.95, 1.3));
-  col = max(mix(vec3(luma(col)), col, 1.0 + 0.12 * uLook.x), 0.0);
+  col = max(mix(vec3(luma(col)), col, 1.0 + 0.15 * uLook.x + 0.12 * uLook.y), 0.0);
   vec3 grey = vec3(luma(col));
   col = mix(col, grey * vec3(0.5, 0.72, 1.35), 0.85 * gWM);
   return col + lights * vec3(0.9, 0.95, 1.08);

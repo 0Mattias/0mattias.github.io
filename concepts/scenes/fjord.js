@@ -443,7 +443,7 @@ vec2 auroraPath(float u, float k, float Z) {
               Z + 42.0 * sin(u * 0.0095 + TT * 0.012 + k) + f1 * 0.8 * cos(p1) + f2 * cos(p2));
 }
 
-vec3 auroraAt(float u, float x, float xa, float h, float blur, float k) {
+vec3 auroraAt(float u, float x, float xa, float h, float blur, float boost, float k) {
   float r1 = noise(vec2(u * 0.09 + TT * 0.05, k * 13.0));
   float r2 = noise(vec2(u * 0.33 - TT * 0.12, k * 5.0 + 2.0));
   float rays = 0.2 + 0.8 * r1 * r1 * r1 + 0.45 * r2 * r2;
@@ -457,8 +457,11 @@ vec3 auroraAt(float u, float x, float xa, float h, float blur, float k) {
   float sg = sqrt(0.2 + blur * blur);
   float edge = smoothstep(-sg, sg, y);
   float yp = max(y, 0.0);
-  float body = edge * (0.7 * exp(-yp / 22.0) + 0.3 * exp(-yp / 85.0));
-  float hem = edge * exp(-yp / (2.2 + sg));
+  // a fold seen edge on gathers light low down, where the sheet is
+  // brightest, and less and less up through its rays
+  float lift = 1.0 + (boost - 1.0) * exp(-yp / 45.0);
+  float body = edge * (0.7 * exp(-yp / 22.0) + 0.3 * exp(-yp / 85.0)) * lift;
+  float hem = edge * exp(-yp / (2.2 + sg)) * lift;
   float fringe = exp(-sq((y + 0.9 * sg) / (0.55 * sg))) * smoothstep(0.7, 1.6, kn);
   float top = smoothstep(150.0, 240.0, h) * exp(-max(h - 240.0, 0.0) / 90.0);
   return reach * (rays * kn * (vec3(0.1, 1.0, 0.36) * body * 0.55 + vec3(0.55, 1.0, 0.7) * hem * 1.7)
@@ -478,6 +481,11 @@ vec3 aurora(vec3 rd) {
     float u0 = Z * hd.x / max(hd.y, 0.3) - 150.0, du = 300.0 / float(n);
     vec2 P0 = auroraPath(u0, fk, Z);
     float f0 = hd.x * P0.y - hd.y * P0.x;
+    // each crossing waits for the next, so it can fade by how near along
+    // the line its neighbours lie: a pair just born at a fold comes in
+    // gently, as wide as a ray, never as a seam
+    vec3 pend = vec3(0.0);
+    float pu = -1e4, pd = 1e4;
     for (int i = 1; i <= 44; i++) {
       if (i > n) break;
       float u = u0 + du * float(i);
@@ -492,12 +500,19 @@ vec3 aurora(vec3 rd) {
           float uc = u - du + du * a;
           float h = r * te + r * r / 12742.0;
           float win = smoothstep(0.0, 25.0, uc - u0) * smoothstep(0.0, 25.0, u0 + 300.0 - uc);
-          acc += auroraAt(uc, P.x, P.x / Z, h, 1.5 * te / max(sn, 0.2), fk) * gain * win * smoothstep(0.04, 0.2, sn) / (hl * max(sn, 0.4));
+          float vis = sq(smoothstep(0.0, 0.6, sn));
+          vec3 e = auroraAt(uc, P.x, P.x / Z, h, 1.5 * te / max(sn, 0.2), 1.0 / max(sn, 0.45), fk) * gain * win * vis / hl;
+          float d = uc - pu;
+          acc += pend * smoothstep(du, 3.5 * du, min(pd, d));
+          pend = e;
+          pd = d;
+          pu = uc;
         }
       }
       P0 = P1;
       f0 = f1;
     }
+    acc += pend * smoothstep(du, 3.5 * du, pd);
   }
   // a faint glow low in the north, the oval beyond the horizon
   acc += vec3(0.05, 0.32, 0.14) * exp(-mu * 9.0) * smoothstep(0.2, 0.9, hd.y) * smoothstep(0.5, -0.2, hd.x / max(hd.y, 0.3)) * 0.5;
