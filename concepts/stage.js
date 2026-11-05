@@ -393,8 +393,8 @@ function wake(redraw) {
 }
 
 /* the first frames are timed to the GPU's finish; if they run long the
-   canvas is drawn smaller, and once it is as small as it goes the picture
-   holds still, turning between looks at once */
+   canvas is drawn smaller, and once it is as small as it goes the page
+   takes the still of its look, turning between looks at once */
 function timed(now) {
   var t0 = performance.now();
   draw(now);
@@ -420,13 +420,15 @@ function timed(now) {
     probing = 1;
     return;
   }
+  /* too slow to move even at its smallest: the still of the look, drawn
+     at full size, says more than a coarse canvas held still */
   slow = true;
   if (tr) {
     tr = null;
     w = LOOKS[look].slice();
     themeColor();
   }
-  dirty = true;
+  fail();
 }
 
 function reveal() {
