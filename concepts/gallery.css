@@ -1,0 +1,298 @@
+/* The concepts side by side: each a wide frame and a phone's, the name set
+   over both as the page sets it, under the look chosen at the top. The
+   sheet wears the site's own colours for that look, and turns with it. */
+
+:root {
+    --serif: Charter, 'Bitstream Charter', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
+    --paper: #f6f3ec;
+    --ink: #211f19;
+    --quiet: rgba(33, 31, 25, 0.62);
+    --rule: rgba(33, 31, 25, 0.14);
+    --accent: #9a4a12;
+    --frame: #d9d2c4;
+    --cream: #f6f3ec;
+    --day: #7ea9de;
+    --dusk: #d8938a;
+    --night: #1a2237;
+    color-scheme: light;
+}
+
+:root[data-look="dusk"] {
+    --paper: #231e22;
+    --ink: #ede3d9;
+    --quiet: rgba(237, 227, 217, 0.6);
+    --rule: rgba(237, 227, 217, 0.14);
+    --accent: #e2a27c;
+    --frame: #3a3034;
+    color-scheme: dark;
+}
+
+:root[data-look="night"] {
+    --paper: #15181d;
+    --ink: #e3dfd5;
+    --quiet: rgba(227, 223, 213, 0.58);
+    --rule: rgba(227, 223, 213, 0.13);
+    --accent: #d8a467;
+    --frame: #262b34;
+    color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; }
+
+body {
+    background: var(--paper);
+    color: var(--ink);
+    font: 17px/1.6 var(--serif);
+    font-kerning: normal;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.6s ease, color 0.6s ease;
+}
+
+.sheet {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-block: clamp(32px, 6vw, 72px) 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+a { color: var(--ink); text-decoration-color: var(--quiet); text-underline-offset: 3px; }
+a:hover { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.mast {
+    display: grid;
+    gap: 14px;
+    max-width: 40em;
+    margin-bottom: clamp(36px, 6vw, 64px);
+}
+
+.kicker {
+    margin: 0;
+    font-size: 14px;
+    color: var(--quiet);
+}
+
+h1 {
+    margin: 0;
+    font: 400 clamp(36px, 5.4vw, 60px)/1.05 var(--serif);
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+}
+
+.lede {
+    margin: 0;
+    max-width: 34em;
+    color: var(--quiet);
+    text-wrap: pretty;
+}
+
+.pick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.pick button {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    height: 38px;
+    padding: 0 16px 0 12px;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink);
+    font: 400 16px/1 var(--serif);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.pick button:hover { border-color: var(--quiet); }
+
+.pick button[aria-checked="true"] {
+    border-color: var(--ink);
+    background: var(--rule);
+}
+
+.pick i {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid var(--rule);
+}
+
+.pick [data-look="day"] i { background: var(--day); }
+.pick [data-look="dusk"] i { background: var(--dusk); }
+.pick [data-look="night"] i { background: var(--night); }
+
+.concepts {
+    display: grid;
+    gap: clamp(48px, 7vw, 88px);
+}
+
+.concept {
+    display: grid;
+    gap: 18px;
+    scroll-margin-top: 24px;
+}
+
+.frames {
+    display: grid;
+    grid-template-columns: minmax(0, 3.85fr) minmax(0, 1fr);
+    gap: 12px;
+}
+
+.frame {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    border-radius: 6px;
+    background: var(--frame);
+    color: var(--cream);
+    text-decoration: none;
+    container-type: inline-size;
+    box-shadow: 0 1px 0 var(--rule), 0 14px 40px -24px rgba(10, 12, 20, 0.5);
+}
+
+.frame.wide { aspect-ratio: 16 / 9; max-width: 100%; }
+
+.frame img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.45s ease;
+}
+
+.frame img.next { opacity: 0; }
+
+/* the name as the page sets it: centred, a little above the middle,
+   with the bottom of the picture dissolving into the paper */
+.over {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6%;
+    padding-bottom: 8%;
+    text-align: center;
+    pointer-events: none;
+    background: linear-gradient(to bottom, transparent 80%, var(--paper) 100%);
+    transition: background 0.6s ease;
+}
+
+.over b {
+    font: 400 clamp(15px, 6.2cqi, 72px)/1.08 var(--serif);
+    letter-spacing: -0.012em;
+    text-shadow: 0 2px 22px rgba(20, 30, 60, 0.34);
+}
+
+.over span {
+    margin-top: 0.7em;
+    font: 400 clamp(7px, 1.35cqi, 18px)/1.5 var(--serif);
+    color: rgba(246, 243, 236, 0.88);
+    text-shadow: 0 1px 12px rgba(20, 30, 60, 0.34);
+}
+
+.tall .over b { font-size: clamp(13px, 11.5cqi, 40px); }
+.tall .over span { display: none; }
+
+.frame:hover { box-shadow: 0 0 0 1px var(--accent), 0 14px 40px -24px rgba(10, 12, 20, 0.5); }
+
+.frame .go {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(18, 20, 28, 0.45);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    font-size: 13px;
+    line-height: 1.2;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.frame:hover .go, .frame:focus-visible .go { opacity: 1; }
+
+.caption {
+    display: grid;
+    grid-template-columns: minmax(0, 15em) minmax(0, 1fr) auto;
+    gap: 6px 32px;
+    align-items: baseline;
+}
+
+.caption h2 {
+    margin: 0;
+    font: 400 26px/1.2 var(--serif);
+    letter-spacing: -0.01em;
+}
+
+.caption .place {
+    margin: 2px 0 0;
+    font: italic 400 15px/1.4 var(--serif);
+    color: var(--quiet);
+}
+
+.caption .blurb {
+    margin: 0;
+    max-width: 36em;
+    text-wrap: pretty;
+}
+
+.caption .open {
+    white-space: nowrap;
+    font-size: 16px;
+}
+
+.concept.current .caption h2::after {
+    content: 'now';
+    margin-left: 10px;
+    padding: 2px 8px 3px;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    font: italic 400 13px/1 var(--serif);
+    color: var(--quiet);
+    vertical-align: 4px;
+}
+
+.foot {
+    margin-top: clamp(48px, 7vw, 80px);
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-size: 15px;
+    color: var(--quiet);
+}
+
+.foot p { margin: 0; max-width: 46em; }
+
+kbd, code {
+    padding: 1px 6px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--ink);
+}
+
+@media (max-width: 860px) {
+    .caption { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+    body { font-size: 16px; }
+    .frames { grid-template-columns: minmax(0, 1fr) minmax(0, 0.42fr); gap: 8px; }
+    .frame.wide { aspect-ratio: auto; }
+    .over span { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body, .frame img, .over { transition: none; }
+}
