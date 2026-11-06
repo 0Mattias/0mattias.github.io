@@ -356,8 +356,9 @@ vec2 deckShape(vec2 x, vec2 w) {
   float sw = (noise(w / 9000.0) - 0.5) * 80.0 + (noise(w / 3100.0 + 5.0) - 0.5) * 36.0;
   float zb = 26000.0 + 1700.0 * (noise(vec2(w.x / 7000.0, 2.0)) - 0.5);
   float bank = exp(-sq((x.y - zb) / 1700.0)) * smoothstep(0.3, 0.62, noise(vec2(w.x / 3600.0, 5.0)));
-  float hp = smoothstep(0.62, 0.88, noise(w / 2300.0 + 3.0));
   float foot = exp(-max(length(x - FJ) - 6500.0, 0.0) / 3500.0);
+  /* the heaps keep off Fuji's foot, and are lost in the haze far out */
+  float hp = smoothstep(0.62, 0.88, noise(w / 2300.0 + 3.0)) * (1.0 - foot) * smoothstep(90000.0, 55000.0, length(x));
   return vec2(sw + 220.0 * bank + 230.0 * hp, foot);
 }
 

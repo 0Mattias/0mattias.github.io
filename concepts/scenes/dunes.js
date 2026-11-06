@@ -625,8 +625,8 @@ vec3 sandAlbedo(vec3 p, vec3 n, float fp) {
   float gf = 0.22 * (smoothstep(0.5, 0.8, tongue) - 0.2) + 0.1 * (fine - 0.5) * lod + 0.12 * (scar - 0.5);
   alb *= 1.0 + gf * steep;
   /* the backs: broad soft mottling, faint streaks along the wind */
-  float back = noise(vec2(u * 0.008, v * 0.02) + 9.0) * 0.6 + noise(p.xz * vec2(0.05, 0.012)) * 0.4;
-  alb *= 1.0 + 0.12 * (back - 0.5) * (1.0 - steep);
+  float back = noise(p.xz * 0.0043 + 9.0) * 0.5 + noise(rot(0.7) * p.xz * 0.013) * 0.3 + noise(rot(2.1) * p.xz * 0.037) * 0.2;
+  alb *= 1.0 + 0.1 * (back - 0.5) * (1.0 - steep);
   /* the backs a touch paler and duller */
   alb = mix(alb, alb * vec3(1.04, 1.12, 1.15), (1.0 - steep) * 0.6);
   /* grass on the lower slopes and the foot */
@@ -737,9 +737,8 @@ vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune) {
     /* the backs are not turned on a lathe: broad low swells over them */
     float back = 1.0 - smoothstep(0.88, 0.82, n.y);
     vec2 wq = rot(0.6) * p.xz;
-    vec3 w1 = noised(wq * vec2(0.004, 0.016) + 4.0), w2 = noised(wq * vec2(0.012, 0.06) + 1.0);
-    vec2 gw = w1.yz * vec2(0.004, 0.016) * 3.0 + w2.yz * vec2(0.012, 0.06) * 0.5 * smoothstep(3.0, 0.8, fp);
-    gw = gw * rot(0.6);
+    vec3 w1 = noised(p.xz * 0.0031 + 4.0), w2 = noised(wq * vec2(0.0055, 0.0097) + 1.0), w3 = noised(rot(1.9) * p.xz * 0.017 + 6.0);
+    vec2 gw = w1.yz * 0.0031 * 9.0 + (w2.yz * vec2(0.0055, 0.0097) * 4.0) * rot(0.6) + (w3.yz * 0.017 * 0.6) * rot(1.9) * smoothstep(3.0, 0.8, fp);
     n = normalize(n - vec3(gw.x, 0.0, gw.y) * back);
     /* the slip faces: grainflow lobes running down from the brink, a
        little proud of the face, so a grazing sun picks out their flanks */
