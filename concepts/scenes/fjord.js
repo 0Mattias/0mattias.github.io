@@ -46,8 +46,10 @@
    clouds; at night the moon over the west wall lights the east wall
    faintly and the aurora folds over the north, curtains brightest and
    sharpest at their lower edge and fading upward through tall rays, once
-   in the sky and once in the water. A phone looks from closer to Bakka
-   and to the west shore, so that the village stands at its foot.
+   in the sky and once in the water. A phone or a tablet sees the
+   desktop's picture, framed as the meadow frames it: as wide as a 3:2
+   frame, the lens widened up into the sky, and on a phone a crop of that
+   turned toward the far end of the fjord.
 
    Each ray, the eye's and the one the water throws back, marches the land
    once, and the land, the buildings and the sky are each shaded at one
@@ -1057,15 +1059,32 @@ vec4 mist(vec3 ro, vec3 rd, float d) {
 vec3 scene(vec2 fc) {
   TT = mod(uTime, 1800.0);
   AQ = 1.0;
-  /* the frame holds its width on wide screens, to 1.9:1, and beyond that
-     its height; on tall ones it widens a little, and the eye drifts back
-     and over toward the west wall, so that it towers over the phone while
-     the gap stays above the words */
+  /* every frame is the desktop's picture, framed as the meadow frames it.
+     A frame of 3:2 and wider holds its width, to 1.9:1, and beyond that
+     its height. A narrower one, down to 7:10, sees exactly as wide as a
+     3:2 frame, its lens widening up into the sky, and the horizon holds
+     its height on the screen (the lens shifts, it does not tilt), so the
+     water is seen at the same slant and the far end of the fjord stands
+     in the same place. Narrower still, the lens widens no further: the
+     frame is a crop of the 7:10 one, turned toward the far end so that it
+     keeps its place across the screen */
   float asp = uRes.x / uRes.y;
-  float fk = smoothstep(0.6, 1.5, asp);
-  FRAMEK = fk;
-  float tv = asp >= 1.0 ? 0.62 / min(asp, 1.9) : 0.62 + 0.12 * (1.0 - asp);
-  MOOND = normalize(mix(dirAE(-9.0, 31.0), dirAE(-25.0, 20.0), fk));
+  FRAMEK = 1.0;
+  const float T1 = 0.62, TV15 = 0.62 / 1.5, HZ = -0.31, YAW0 = 0.012, SUBJ = 0.025;
+  float tv = T1 / clamp(asp, 0.7, 1.9);
+  float yaw = SUBJ - atan(tan(SUBJ - YAW0) / T1 * min(asp * tv, T1));
+  /* the moon lights the fjord from where it stands for the desktop; its
+     disc is drawn, as the meadow draws its moon, at the same place on the
+     screen as in a 3:2 frame, so a phone keeps it in view */
+  vec3 MOONL = dirAE(-25.0, 20.0);
+  MOOND = MOONL;
+  if (asp < 1.5) {
+    vec3 mc = MOONL;
+    mc.xz = rot(-YAW0) * mc.xz;
+    float xn = mc.x / mc.z / TV15 / 1.5, y15 = mc.y / mc.z / TV15 + HZ;
+    MOOND = normalize(vec3(xn * asp * tv, (y15 - HZ) * tv, 1.0));
+    MOOND.xz = rot(yaw) * MOOND.xz;
+  }
   /* the sun's way is blended over day and dusk only; the moon is a light
      of its own. Where one hands over to the other the light dips nearly
      to dark, as the sun sets before the moon takes the sky, and swings
@@ -1074,7 +1093,7 @@ vec3 scene(vec2 fc) {
   float dip = max(0.0, 1.0 - 3.8 * (uLook.x + uLook.y) * uLook.z);
   TWI = 1.0 - dip;
   KEYS = smoothstep(0.3, 0.7, uLook.z);
-  KEY = normalize(mix(sunD, MOOND, KEYS));
+  KEY = normalize(mix(sunD, MOONL, KEYS));
   E0 = look3(vec3(9.0), vec3(24.0), vec3(0.5, 0.75, 1.5) * 1.5) * dip;
   MIE = look3(3.5e-6, 1.2e-5, 5e-6);
   HAZE = look3(4.2e-5, 4.6e-5, 1.8e-5);
@@ -1087,13 +1106,12 @@ vec3 scene(vec2 fc) {
   GLOWA = vec3(0.004, 0.022, 0.012) * uLook.z;
 
   vec2 uv = (2.0 * fc - uRes) / uRes.y;
-  float hz = mix(-0.27, -0.31, fk);
-  vec3 rd = normalize(vec3(uv.x * tv, (uv.y - hz) * tv, 1.0));
-  rd.xz = rot(mix(-0.045, 0.012, fk)) * rd.xz;
+  vec3 rd = normalize(vec3(uv.x * tv, (uv.y - HZ) * tv, 1.0));
+  rd.xz = rot(yaw) * rd.xz;
   rd.yz = rot(-uPoint.y * 0.007) * rd.yz;
   rd.xz = rot(uPoint.x * 0.012) * rd.xz;
   PXA = 2.0 * tv / uRes.y;
-  vec3 ro = vec3(mix(-150.0, 10.0, fk), 2.4 + 0.04 * sin(TT * 0.8), mix(950.0, 0.0, fk));
+  vec3 ro = vec3(10.0, 2.4 + 0.04 * sin(TT * 0.8), 0.0);
   CAM = ro;
   REFL = false;
   float jit = hash12(fc + fract(TT) * 17.0);
@@ -1111,8 +1129,10 @@ vec3 scene(vec2 fc) {
      small stop, so that only the water within a few tens of metres goes
      soft; the water's pixels lie at the water's own distance, so the near
      ripples blur and the far mirror stays sharp */
-  gFocus = mix(480.0, 700.0, fk);
-  gAperture = 1.3e-4;
+  gFocus = 700.0;
+  // the same blur by angle at every aspect: a share of the frame's height
+  // that shrinks as the lens widens
+  gAperture = 1.3e-4 * 0.3483 / tv;
   int kind = 0;            // what the last ray met: 0 sky, 1 land, 2 a building
   float th = 0.0, tl = 0.0;
   vec3 bn = vec3(0.0, 1.0, 0.0), ba = vec3(0.0);
