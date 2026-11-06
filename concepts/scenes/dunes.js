@@ -1,339 +1,407 @@
 /* concepts/scenes/dunes.js · Erg
-   A drone holding station a hundred and twenty metres over the Namib sand
-   sea at Sossusvlei, looking north along a corridor between the great red
-   dunes. The sand is a heightfield drawn deliberately rather than grown
-   from noise: long linear dunes whose crests wander and rise and fall
-   along their length, each a knife edge with a slip face at the angle of
-   repose on its lee and a long gentle back to windward; a second set of
-   ridges crossing them further out; small dunes riding obliquely on their
-   flanks; and, on the right, one great star dune, its arms sweeping down
-   from a single summit. Between them lies a white clay pan with dead
-   camelthorns standing in it, each a black trunk forking into a few bare
-   limbs, their shadows thrown across the clay.
-   The air is a small Rayleigh and dust model, marched for the sky and taken
-   in closed form along the low rays to the sand, so distance and the sun's
-   direction set the haze. The sand is lit by the sun through that air, by
-   the sky over it and the horizon the dunes leave open, and by light thrown
-   back from the sunlit sand. Shadows matter most here, so the long ones are
-   exact: the crests of each dune field are found where the light's path
-   crosses them, the star dune is sampled along it, and a short march finds
-   the small dunes. Wind ripples and a slow undulation run across the
-   windward sand and fade as they fall under a pixel; a skyline the ray
-   only just cleared is shaded as part sand, part sky. At noon the sand is
-   warm orange under a deep blue sky with the slip faces in crisp shadow; at
-   dusk the sun is three degrees up, half of every dune has gone violet and
-   the lit halves glow, with a pink belt in the west; at night the Milky Way
-   arches over the dunes with its core above the great dune, the moon at
-   tonight's phase lights the sand in cool tones, and the silhouettes stand
-   against the sky. The drone drifts a few metres and the sand streams off
-   the nearer crests in gusts; the stars twinkle a little, more near the
-   horizon. A tall frame turns toward the great dune so it stays in view.
+   Deadvlei, in the Namib at Sossusvlei: standing on the white clay pan at
+   eye height, looking north across it at Big Daddy, the great red dune
+   that walls it, with dead camelthorns standing in the clay between.
+   Each dune is built the way wind builds one: a broad convex windward
+   back, cut on its lee by a slip face, a plane at the angle of repose
+   hanging from the brink. Where the two meet the crest is a knife edge,
+   and because the back is curved the edge curves too, falling from the
+   summit toward the pan. The sun lights the back and only grazes the slip
+   face, so the dune splits into two tones along one line, as Big Daddy
+   and Dune 45 do in every photograph of them. Big Daddy's summit and its
+   long descending crest are one such unit; a lower one stands to the
+   east, humped dunes close the pan on either side, far dunes beyond.
+   The slip faces carry grainflow lobes running down from the brink, a
+   little proud of the face, so the grazing sun picks out their flanks;
+   the backs carry long low swells across the wind and tufts of grass at
+   their feet. The pan is near-white clay, warm, cracked into plates, with
+   red sand blown onto it at the dune feet. The trees are capsules: a
+   flared trunk with roots over the clay, three or four gnarled limbs, a
+   branch off each joint, a twig off each branch and a snag at each tip,
+   each tree found by a box test first and casting its own shadow.
+   Day is mid-afternoon, the sun high in the west-northwest; dusk the sun
+   six degrees up in the west-southwest where it sets in summer, the pan
+   and the dune's foot in the shadow of the western dunes and only the
+   sand that faces the sun still burning, a warm glow along the west, the
+   moon up in the east; night the Milky Way arches over the dune with its
+   core low behind the eastern shoulder, and the moon lights the sand
+   faintly. The air is very clear: no haze, no shimmer at the foot.
    WebGL2, no libraries, no build step. */
 
 window.CONCEPT = {
   id: 'dunes',
-  theme: { day: '#3c6597', dusk: '#4a6aab', night: '#202534' },
+  theme: { day: '#275fa0', dusk: '#24447e', night: '#0c0e14' },
   t0: 20,
   frag: `
-const float RE = 6360e3;
-const float ALT = 700.0;
-const vec3 BR = vec3(5.8e-6, 13.5e-6, 33.1e-6);
-const vec3 BO = vec3(2.0e-6, 5.6e-6, 0.26e-6);
-const float BMS = 7.0e-6;
-const float BME = 7.7e-6;
-const float HR = 8000.0;
-const float HM = 900.0;
-const float EYE = 120.0;
+const float EYE = 1.7;
 
 vec3 azel(float az, float el) {
   az = radians(az); el = radians(el);
-  return normalize(vec3(sin(az) * cos(el), sin(el), cos(az) * cos(el)));
+  return vec3(sin(az) * cos(el), sin(el), cos(az) * cos(el));
 }
-
 float smax(float a, float b, float k) {
   float h = sat(0.5 + 0.5 * (a - b) / k);
   return mix(b, a, h) + k * h * (1.0 - h);
 }
+float smin(float a, float b, float k) { return -smax(-a, -b, k); }
 
-/* ------------------------------------------------------------ the sand */
+/* ------------------------------------------------------------ the dunes */
 
-/* the footprint of the pixel being shaded on the sand, in metres: the
-   shadows soften to it, so far edges do not shimmer */
-float gFp = 0.0;
-
-const vec2 RD = vec2(-0.13917, 0.99027);
-const vec2 RN = vec2(0.99027, 0.13917);
-const vec2 CD = vec2(0.92718, 0.37461);
-const vec2 STAR1 = vec2(1050.0, 2600.0);
-const vec2 PAN = vec2(110.0, 1520.0);
-
-/* the cross ridges come and go, and leave the near ground open */
-float crossMask(vec2 p) {
-  return smoothstep(0.0, 0.6, sin(dot(p, RD) * 0.0011 + 1.3) + 0.5 * sin(dot(p, RN) * 0.0017)) * smoothstep(900.0, 1800.0, length(p));
-}
-
-/* the clay pan between the dunes: an ellipse with a ragged shore, 1 at
-   its edge, less inside */
-float panE(vec2 p) {
-  vec2 pq = vec2(dot(p - PAN, RN), dot(p - PAN, RD));
-  float e = length(pq / vec2(115.0, 250.0));
-  if (e < 2.6) e += 0.22 * (noise(p * 0.012) - 0.5) + 0.08 * (noise(p * 0.05) - 0.5);
-  return e;
-}
-
-/* a field of long sinuous ridges: d runs along them, the slip faces on
-   the side away from dn. Crest k wanders across the field as it goes and
-   rises and falls along its length */
-vec3 crestR(float k, float seed) {
-  return vec3(hash11(k * 1.37 + seed), hash11(k * 2.71 + seed + 3.1), hash11(k * 0.93 + seed + 7.7));
-}
-float crestU(float k, vec3 r, float v, float sp) {
-  return k * sp + 0.16 * sp * sin(v * 0.0019 + r.x * TAU) + 0.07 * sp * sin(v * 0.0053 + r.y * TAU) + 20.0 * sin(v * 0.016 + r.z * TAU);
-}
-float crestH(vec3 r, float v, float hb) {
-  return hb * (0.7 + 0.6 * r.z) * (0.74 + 0.2 * sin(v * 0.0014 + r.y * TAU) + 0.12 * sin(v * 0.0041 + r.x * TAU));
-}
-
-/* info: x lee side, y distance from the crest, z along the crest */
-float ridges(vec2 p, vec2 d, float sp, float hb, float off, float seed, out vec3 info) {
-  vec2 dn = vec2(d.y, -d.x);
-  float u = dot(p, dn) + off, v = dot(p, d);
-  float k0 = floor(u / sp + 0.5);
-  float h = -1e5;
-  info = vec3(0.0, 1e4, v);
-  for (int j = -1; j <= 1; j++) {
-    float k = k0 + float(j);
-    vec3 cr = crestR(k, seed);
-    float H = crestH(cr, v, hb);
-    float s = u - crestU(k, cr, v, sp);
-    float r;
-    if (s < 0.0) r = H + s * 0.65;
-    else {
-      float t = min(s / (H * 3.6), 1.0);
-      r = H * (1.0 - t) * (1.0 - t) * (1.0 + 0.5 * t);
-    }
-    if (r > h) {
-      h = r;
-      info = vec3(step(s, 0.0), abs(s), v + seed * 100.0);
-    }
-  }
-  return h;
-}
-
-/* how much of the sun clears the crests of one field on its way to p:
-   for each crest ahead, where the light's path crosses it (found by
-   bisection, the crest being somewhere in its wander band) and how high
-   it stands there. Exact for the long low-sun shadows, with no march */
-float crestLight(vec3 p, vec2 sh, float tanE, vec2 d, float sp, float hb, float off, float seed, float xm) {
-  vec2 dn = vec2(d.y, -d.x);
-  float su = dot(sh, dn), sv = dot(sh, d);
-  if (abs(su) < 0.25) return 1.0;
-  float u0 = dot(p.xz, dn) + off, v0 = dot(p.xz, d);
-  float dir = sign(su), A = 0.23 * sp + 20.0;
-  float k0 = floor(u0 / sp + 0.5);
-  float res = 1.0;
-  for (int j = -1; j < 4; j++) {
-    float k = k0 + dir * float(j);
-    float a = (k * sp - A - u0) / su, b = (k * sp + A - u0) / su;
-    float lo = min(a, b), hi = max(a, b);
-    if (hi < 1.0) continue;
-    lo = max(lo, 0.0);
-    vec3 cr = crestR(k, seed);
-    for (int i = 0; i < 6; i++) {
-      float m = 0.5 * (lo + hi);
-      float f = (u0 + su * m - crestU(k, cr, v0 + sv * m, sp)) * dir;
-      if (f < 0.0) lo = m; else hi = m;
-    }
-    float tau = 0.5 * (lo + hi);
-    if (tau < 2.0) continue;
-    vec2 q = p.xz + sh * tau;
-    float H = crestH(cr, v0 + sv * tau, hb);
-    if (xm > 0.5) H *= crossMask(q);
-    res = min(res, (p.y + tau * tanE - H) / (tau * 0.014 + gFp) + 0.5);
-  }
-  return res;
-}
-
-/* small dunes riding on the flanks of the great ones, oblique to them */
-const vec2 SD = vec2(0.70711, 0.70711);
-const vec2 SN = vec2(0.70711, -0.70711);
-float secondary(vec2 p, out float lee, out float dc) {
-  float u = dot(p, SN), v = dot(p, SD);
-  float k0 = floor(u / 210.0 + 0.5);
-  float h = 0.0;
-  lee = 0.0;
-  dc = 1e4;
-  for (int j = -1; j <= 1; j++) {
-    float k = k0 + float(j);
-    float r1 = hash11(k * 3.17 + 1.3), r2 = hash11(k * 1.91 + 5.1);
-    float c = k * 210.0 + 45.0 * sin(v * 0.009 + r1 * TAU) + 14.0 * sin(v * 0.031 + r2 * TAU);
-    float H = 13.0 * (0.6 + 0.8 * r2) * sat(0.6 + 0.6 * sin(v * 0.006 + r1 * 9.0));
-    float s = u - c;
-    float r = s < 0.0 ? H + s * 0.62 : H * (1.0 - sat(s / (H * 3.2))) * (1.0 - sat(s / (H * 3.2)));
-    if (r > h) {
-      h = r;
-      lee = step(s, 0.0);
-      dc = abs(s);
-    }
-  }
-  return h;
-}
-
-/* a star dune: arms falling away from one summit, each a knife edge with
-   its slip face on one side */
-float star(vec2 p, vec2 c, float H, float R, float a0, float seed, inout vec3 info) {
+/* a convex back: an elliptical cone rounded over its top, its four
+   quarters reaching different distances */
+float dome(vec2 p, vec2 c, float H, vec4 R, float a) {
   vec2 q = p - c;
+  q /= vec2(q.x < 0.0 ? R.x : R.y, q.y < 0.0 ? R.z : R.w);
   float r = length(q);
-  if (r > R) return -1e5;
-  float th = atan(q.x, q.y);
-  float best = -1e5;
-  for (int i = 0; i < 4; i++) {
-    float fi = float(i);
-    float ai = a0 + fi * 1.5708 + (hash11(seed + fi) - 0.5) * 0.8;
-    ai += 0.9 * (r / R) * (hash11(seed + fi * 3.7) - 0.5) + 0.12 * sin(r * 0.006 + fi);
-    float dp = mod(th - ai + PI, TAU) - PI;
-    float al = r * cos(dp), s = r * sin(dp);
-    float Ri = R * (0.55 + 0.45 * hash11(seed + fi * 5.3));
-    float x = min(max(al, 0.0) / Ri, 1.0);
-    float hc = H * (1.0 - x) * (1.0 - 0.45 * x);
-    float lee = hash11(seed + fi * 7.1) > 0.5 ? 1.0 : -1.0;
-    float ss = s * lee;
-    /* across the arm, or behind the summit straight away from it */
-    float lat = al > 0.0 ? abs(s) : r;
-    float h = hc - (ss < 0.0 ? 0.67 : 0.36) * lat;
-    if (h > best) info = vec3(step(ss, 0.0), abs(s), al + fi * 1000.0);
-    best = smax(best, h, 6.0);
-  }
-  return mix(best, -300.0, smoothstep(0.8 * R, R, r));
+  float s1 = sqrt(1.0 + a * a);
+  return H * (s1 - sqrt(r * r + a * a)) / (s1 - a);
+}
+/* a slip face: a plane at the angle of repose falling along d from a
+   brink through b at height h, the brink bowed and wandering */
+float slip(vec2 p, vec2 b, vec2 d, float h, float bow, float wob) {
+  vec2 q = p - b;
+  float along = dot(q, vec2(-d.y, d.x));
+  float s = dot(q, d) - bow * along * along + wob * sin(along * 0.011 + 1.7);
+  return h - 0.66 * s;
+}
+/* a dune: the back where it is lower, the slip face where that is */
+float unit(vec2 p, vec2 c, float H, vec4 R, float a, vec2 b, vec2 d, float h, float bow, float wob) {
+  return min(dome(p, c, H, R, a), slip(p, b, d, h, bow, wob));
 }
 
+const vec2 SUMMIT = vec2(-330.0, 1350.0);
+/* the slip faces of Big Daddy, its shoulder, and the two ring dunes */
+const vec2 D1 = vec2(0.917, -0.4);
+const vec2 D2 = vec2(0.5, -0.866);
+const vec2 D3 = vec2(0.995, -0.1);
+const vec2 D4 = vec2(0.95, 0.31);
 
-/* info: x lee side, y distance from the crest, z along the crest, w the pan */
-float field(vec2 p, float lod, out vec4 info) {
-  /* the long ridges, and the cross ridges over them where they rise */
-  vec3 i1, i3;
-  float h = 0.0;
-  float cm = crossMask(p);
-  for (int f = 0; f < 2; f++) {
-    bool c = f == 1;
-    if (c && cm <= 0.0) break;
-    float hr = ridges(p, c ? CD : RD, c ? 1500.0 : 860.0, c ? 70.0 : 100.0, c ? 400.0 : 230.0, c ? 5.7 : 0.31, i3);
-    if (!c) { h = hr; i1 = i3; }
-    else {
-      if (hr * cm > h) i1 = i3;
-      h = mix(h, smax(h, hr, 18.0), cm);
+float bigDaddy(vec2 p) {
+  float u1 = unit(p, SUMMIT, 325.0, vec4(820.0, 2000.0, 980.0, 900.0), 0.09,
+                  SUMMIT + vec2(10.0, -8.0), D1, 318.0, 0.00018, 10.0);
+  float u2 = unit(p, vec2(810.0, 1760.0), 240.0, vec4(820.0, 1900.0, 900.0, 900.0), 0.12,
+                  vec2(850.0, 1680.0), D2, 236.0, 0.00012, 14.0);
+  return smax(u1, u2, 30.0);
+}
+
+/* the dunes closing the pan on either side: the west one turns its slip
+   face to the pan, the east one its humped back */
+float ringDunes(vec2 p) {
+  float wh = 105.0 + 18.0 * sin(p.y * 0.006 + 1.0) + 14.0 * sin(p.y * 0.013 + 0.3) + 6.0 * sin(p.y * 0.031 + 2.0);
+  float w = unit(p, vec2(-610.0, 250.0), wh, vec4(650.0, 420.0, 1500.0, 1400.0), 0.12,
+                 vec2(-570.0, 250.0), D3, wh - 5.0, 0.0001, 12.0);
+  float e = unit(p, vec2(560.0, 700.0), 88.0, vec4(430.0, 320.0, 1100.0, 1200.0), 0.3,
+                 vec2(600.0, 700.0), D4, 86.0, 0.0002, 8.0);
+  return max(w, e);
+}
+
+/* far dunes beyond: big units on a loose grid, out past the vlei's ring */
+float farDunes(vec2 p) {
+  float r = length(p - vec2(0.0, 900.0));
+  if (r < 1900.0) return -300.0;
+  vec2 g = floor(p / 1500.0);
+  float h = -300.0;
+  for (int j = 0; j < 4; j++) {
+    vec2 c = g + vec2(float(j & 1), float(j >> 1));
+    vec3 k = hash33(vec3(c, 4.2));
+    vec2 cc = (c + 0.2 + 0.6 * k.xy) * 1500.0;
+    float H = 110.0 + 150.0 * k.z;
+    vec2 d = normalize(vec2(0.7, -0.4 + 0.6 * k.x));
+    h = max(h, unit(p, cc, H, vec4(900.0, 1300.0, 800.0, 900.0) * (0.8 + 0.4 * k.y), 0.12,
+                    cc + d * 20.0, d, H - 4.0, 0.00015, 10.0));
+  }
+  return h * smoothstep(1900.0, 2600.0, r) - 300.0 * (1.0 - smoothstep(1900.0, 2600.0, r));
+}
+
+/* a slow wander of the ground under all of it, so no edge is drawn
+   with a ruler */
+vec2 warp(vec2 p) {
+  return p + 22.0 * vec2(noise(p * 0.0021 + 3.1), noise(p * 0.0021 + 9.7)) - 11.0;
+}
+
+/* the height of the dunes over the floor; below zero the floor shows */
+float dunes(vec2 p) {
+  vec2 q = warp(p);
+  return max(max(bigDaddy(q), ringDunes(q)), farDunes(q));
+}
+
+/* --------------------------------------------------------------- trees */
+
+/* the dead camelthorns: x, z, height (negative for a fallen one), seed */
+const int NT = 23;
+const vec4 TREES[NT] = vec4[NT](
+  vec4(-10.5, 25.0, 6.6, 1.0),
+  vec4(9.5, 41.0, 5.4, 2.0),
+  vec4(-31.0, 92.0, 5.8, 3.0),
+  vec4(26.0, 128.0, 6.4, 4.0),
+  vec4(-58.0, 170.0, 4.6, 5.0),
+  vec4(52.0, 215.0, 7.0, 6.0),
+  vec4(-17.0, 265.0, 5.2, 7.0),
+  vec4(96.0, 300.0, 6.0, 8.0),
+  vec4(-104.0, 335.0, 5.6, 9.0),
+  vec4(4.0, 390.0, 6.4, 10.0),
+  vec4(61.0, 432.0, 4.4, 11.0),
+  vec4(-150.0, 300.0, 6.2, 12.0),
+  vec4(40.0, 520.0, 5.0, 13.0),
+  vec4(-30.0, 470.0, 7.2, 14.0),
+  vec4(30.0, 600.0, 5.4, 15.0),
+  vec4(-75.0, 300.0, 5.0, 16.0),
+  vec4(-120.0, 320.0, 5.4, 19.0),
+  vec4(110.0, 250.0, 5.8, 20.0),
+  vec4(75.0, 350.0, 4.8, 21.0),
+  vec4(-40.0, 335.0, 6.0, 22.0),
+  vec4(-6.0, 105.0, 5.0, 23.0),
+  vec4(16.0, 33.0, -5.2, 17.0),
+  vec4(-46.0, 140.0, -6.0, 18.0)
+);
+
+/* a tree as capsules: a trunk with two roots splayed over the clay, and
+   three or four limbs of three gnarled segments, each with a branch off
+   its two joints and a snag forking at its tip, and a twig off each
+   branch. A fallen one is the same pieces laid on the ground */
+const int NC = 43;
+vec4 cA[NC], cB[NC];
+vec4 limbB[4];
+int nLimb;
+
+float capD(vec3 p, vec4 a, vec4 b) {
+  vec3 pa = p - a.xyz, ba = b.xyz - a.xyz;
+  float h = sat(dot(pa, ba) / dot(ba, ba));
+  return length(pa - ba * h) - mix(a.w, b.w, h);
+}
+
+/* one limb from p along dir: segments, branches and twigs into slot j */
+void buildLimb(int i, vec3 p, vec3 dir, float len, float r, float s, float up) {
+  vec3 lo = p, hi = p;
+  int j = 3 + i * 10;
+  for (int k = 0; k < 3; k++) {
+    vec3 g = hash33(vec3(s + float(i) * 3.1, float(k), 8.7)) - 0.5;
+    dir = normalize(dir + g * 1.05 + vec3(0.0, up, 0.0));
+    float sl = len * (k == 0 ? 0.4 : (k == 1 ? 0.33 : 0.27));
+    vec3 q = p + dir * sl;
+    float r1 = k == 2 ? 0.025 : r * 0.72;
+    cA[j + k] = vec4(p, r);
+    cB[j + k] = vec4(q, r1);
+    lo = min(lo, q);
+    hi = max(hi, q);
+    vec3 side = normalize(cross(dir, vec3(g.z + 0.3, 1.0, g.x - 0.2)));
+    float sd = g.y > 0.0 ? 1.0 : -1.0;
+    vec3 td = normalize(dir * (k == 2 ? 0.9 : 0.4) + side * sd * (k == 2 ? 0.6 : 1.0) + vec3(0.0, up * 1.3, 0.0));
+    vec3 o = k == 2 ? mix(p, q, 0.5) : q;
+    float bl = sl * (k == 2 ? 0.6 : 0.6 + 0.7 * abs(g.x));
+    vec3 tq = o + td * bl;
+    float rb = (k == 2 ? r * 0.6 : r1) * 0.55;
+    cA[j + 3 + k] = vec4(o, rb);
+    cB[j + 3 + k] = vec4(tq, 0.016);
+    lo = min(lo, tq);
+    hi = max(hi, tq);
+    {
+      vec3 m = mix(o, tq, 0.45);
+      vec3 sd2 = normalize(td + cross(td, side) * (g.z > 0.0 ? 1.1 : -1.1) + vec3(0.0, 0.25, 0.0));
+      vec3 sq = m + sd2 * bl * (0.35 + 0.3 * abs(g.z));
+      cA[j + 6 + k] = vec4(m, rb * 0.5);
+      cB[j + 6 + k] = vec4(sq, 0.012);
+      lo = min(lo, sq);
+      hi = max(hi, sq);
+    }
+    if (k == 1) {
+      /* a twig off the middle of the limb, to the other side */
+      vec3 m = mix(p, q, 0.5);
+      vec3 td2 = normalize(dir * 0.5 - side * (g.y > 0.0 ? 1.0 : -1.0) + vec3(0.0, 0.35, 0.0));
+      vec3 eq = m + td2 * sl * (0.45 + 0.4 * abs(g.z));
+      cA[j + 9] = vec4(m, mix(r, r1, 0.5) * 0.45);
+      cB[j + 9] = vec4(eq, 0.014);
+      lo = min(lo, eq);
+      hi = max(hi, eq);
+    }
+    p = q;
+    r = r1;
+  }
+  limbB[i] = vec4(0.5 * (lo + hi), 0.5 * length(hi - lo) + r * 2.0 + 0.15);
+}
+
+void buildTree(vec4 T) {
+  float H = abs(T.z), s = T.w;
+  vec3 r0 = hash33(vec3(s * 7.13, s * 1.71 + 3.0, 5.3));
+  float a0 = r0.x * TAU;
+  if (T.z < 0.0) {
+    /* fallen: the trunk lies along d in three bent lengths, its root end
+       resting on stubs of root, broken branches standing off it */
+    float al = 0.3 + (r0.x - 0.5) * 0.7;
+    vec3 d = vec3(cos(al), 0.0, sin(al)) * (r0.y > 0.5 ? 1.0 : -1.0), dz = vec3(-d.z, 0.0, d.x);
+    float rb = 0.2 + 0.06 * r0.y;
+    cA[0] = vec4(vec3(0.0, rb * 1.3, 0.0), rb * 1.35);
+    vec3 p = d * H * 0.3 + dz * (r0.z - 0.5) * 0.8 + vec3(0.0, rb * 0.95, 0.0);
+    cB[0] = vec4(p, rb);
+    cA[1] = vec4(cA[0].xyz, rb * 0.8);
+    cB[1] = vec4(-d * 0.7 + dz * 0.8 + vec3(0.0, 0.05, 0.0), 0.05);
+    cA[2] = vec4(cA[0].xyz, rb * 0.8);
+    cB[2] = vec4(-d * 0.6 - dz * 0.7 + vec3(0.0, 0.7, 0.0), 0.05);
+    nLimb = 1;
+    float r = rb;
+    vec3 lo = vec3(-1.0), hi = p;
+    for (int k = 0; k < 3; k++) {
+      vec3 g = hash33(vec3(s, float(k), 1.9)) - 0.5;
+      vec3 q = p + d * H * (k == 0 ? 0.3 : 0.2) + dz * g.x * 0.9;
+      float r1 = k == 2 ? 0.03 : r * 0.7;
+      q.y = r1 * 0.9 + max(g.y, 0.0) * 0.2;
+      cA[3 + k] = vec4(p, r);
+      cB[3 + k] = vec4(q, r1);
+      /* a broken branch standing off the joint */
+      vec3 bd = normalize(vec3(0.0, 0.35 + g.z, 0.0) + dz * (g.y > 0.0 ? 1.0 : -1.0) * 0.5 + d * 0.8);
+      vec3 bq = q + bd * (0.4 + 0.9 * abs(g.z));
+      cA[6 + k] = vec4(q, r1 * 0.55);
+      cB[6 + k] = vec4(bq, 0.02);
+      vec3 sq = mix(q, bq, 0.5) + normalize(bd + d) * 0.4;
+      cA[9 + k] = vec4(mix(q, bq, 0.5), r1 * 0.3);
+      cB[9 + k] = vec4(sq, 0.012);
+      lo = min(lo, min(q, bq));
+      hi = max(hi, max(q, bq));
+      p = q;
+      r = r1;
+    }
+    cA[12] = vec4(cB[4].xyz, 0.05);
+    cB[12] = cB[4] + vec4(dz * 0.5 + vec3(0.0, 0.3, 0.0), -0.03);
+    limbB[0] = vec4(0.5 * (lo + hi), 0.5 * length(hi - lo) + 0.6);
+    return;
+  }
+  nLimb = s < 1.5 ? 4 : 3 + int(r0.y * 1.99);
+  float hf = H * (0.1 + 0.18 * r0.z);
+  vec3 fk = vec3((r0.x - 0.5) * 0.7, hf, (hash11(s * 9.1) - 0.5) * 0.7);
+  float rb = 0.03 * H + 0.1;
+  cA[0] = vec4(0.0, -0.4, 0.0, rb * 1.5);
+  cB[0] = vec4(fk, rb * 0.88);
+  /* two roots running over the clay from the foot */
+  for (int k = 0; k < 2; k++) {
+    float ra = a0 + 1.3 + float(k) * 2.6 + r0.z;
+    cA[1 + k] = vec4(0.0, 0.15, 0.0, rb * 0.5);
+    cB[1 + k] = vec4(cos(ra) * H * 0.14, 0.02, sin(ra) * H * 0.14, 0.035);
+  }
+  for (int i = 0; i < 4; i++) {
+    if (i >= nLimb) break;
+    vec3 h = hash33(vec3(s, float(i) + 0.5, 2.9));
+    float az = a0 + (float(i) + 0.5 * (h.x - 0.5)) * TAU / float(nLimb);
+    float tilt = 0.3 + 0.55 * h.y;
+    vec3 dir = vec3(sin(tilt) * cos(az), cos(tilt), sin(tilt) * sin(az));
+    float len = (H - hf) * (0.85 + 0.3 * h.z) / cos(tilt * 0.5);
+    buildLimb(i, fk, dir, len, rb * (0.6 + 0.2 * h.x), s, 0.22);
+  }
+}
+
+float treeD(vec3 p) {
+  float d = capD(p, cA[0], cB[0]);
+  d = smin(d, min(capD(p, cA[1], cB[1]), capD(p, cA[2], cB[2])), 0.12);
+  for (int i = 0; i < 4; i++) {
+    if (i >= nLimb) break;
+    if (length(p - limbB[i].xyz) - limbB[i].w > d) continue;
+    int j = 3 + i * 10;
+    float l = capD(p, cA[j], cB[j]);
+    for (int k = 1; k < 10; k++) l = min(l, capD(p, cA[j + k], cB[j + k]));
+    d = smin(d, l, 0.08);
+  }
+  return d;
+}
+
+/* the span of a ray inside a tree's box */
+vec2 treeBox(vec3 ro, vec3 rd, vec4 T) {
+  float H = abs(T.z);
+  float R = T.z < 0.0 ? H * 0.9 : H * 0.85;
+  vec3 lo = vec3(T.x - R, -0.5, T.y - R), hi = vec3(T.x + R, T.z < 0.0 ? 2.0 : H * 1.12, T.y + R);
+  vec3 inv = 1.0 / rd;
+  vec3 t0 = (lo - ro) * inv, t1 = (hi - ro) * inv;
+  vec3 tn = min(t0, t1), tf = max(t0, t1);
+  return vec2(max(max(tn.x, tn.y), tn.z), min(min(tf.x, tf.y), tf.z));
+}
+
+/* the nearest tree along a ray, before tmax: x its distance, y how much
+   of the pixel it covers, z which tree */
+vec3 traceTrees(vec3 ro, vec3 rd, float tmax, float pix) {
+  vec3 best = vec3(1e9, 0.0, -1.0);
+  for (int i = 0; i < NT; i++) {
+    vec4 T = TREES[i];
+    vec2 span = treeBox(ro, rd, T);
+    span.x = max(span.x, 0.05);
+    span.y = min(span.y, tmax);
+    if (span.x >= span.y || span.x > best.x) continue;
+    buildTree(T);
+    vec3 base = vec3(T.x, 0.0, T.y);
+    float t = span.x, mm = 1e9, tm = 0.0;
+    bool hit = false;
+    for (int k = 0; k < 64; k++) {
+      float d = treeD(ro + rd * t - base);
+      float m = d / (t * pix);
+      if (m < mm) { mm = m; tm = t; }
+      if (m < 0.2) { hit = true; break; }
+      t += max(d * 0.85, t * pix * 0.3);
+      if (t > span.y) break;
+    }
+    float cov = hit ? 1.0 : sat(0.6 - mm) / 0.6;
+    if (cov > 0.0 && (hit ? t : tm) < best.x && cov >= best.y * 0.5) best = vec3(hit ? t : tm, cov, float(i));
+  }
+  return best;
+}
+
+/* how much light gets past the trees from p toward L */
+float treeShadow(vec3 p, vec3 L) {
+  float res = 1.0;
+  for (int i = 0; i < NT; i++) {
+    vec4 T = TREES[i];
+    vec2 span = treeBox(p, L, T);
+    span.x = max(span.x, 0.02);
+    if (span.x >= span.y) continue;
+    buildTree(T);
+    vec3 base = vec3(T.x, 0.0, T.y);
+    float t = span.x;
+    for (int k = 0; k < 64; k++) {
+      float d = treeD(p + L * t - base);
+      res = min(res, d / (0.012 * t + 0.004));
+      if (res < 0.0) return 0.0;
+      t += max(d * 0.9, 0.004 + 0.002 * t);
+      if (t > span.y) break;
     }
   }
-  vec3 i2 = i1;
-  float hs = star(p, STAR1, 290.0, 1500.0, 0.4, 11.0, i2);
-  if (hs > h) i1 = i2;
-  h = smax(h, hs, 12.0);
-  /* the small dunes, left out where they would be under a pixel */
-  float m = smoothstep(8.0, 45.0, h) * (1.0 - smoothstep(0.6, 0.85, 1.0 - i1.y / 320.0)) * smoothstep(5000.0, 2500.0, lod);
-  if (m > 0.0) {
-    float sl, sc;
-    float h2 = secondary(p, sl, sc);
-    h += h2 * m;
-    if (h2 * m > 3.0 && sc < i1.y) i1.x = sl;
-  }
-  float fl = 3.0 * noise(p * 0.004) + 1.5 * noise(p * 0.017);
-  h = smax(h, fl, 14.0);
-  float e = panE(p);
-  float pan = 1.0 - smoothstep(0.75, 1.1, e);
-  float lev = 1.0 - smoothstep(0.9, 2.0, e);
-  h = mix(h, -1.0 + 0.2 * noise(p * 0.03), max(pan, lev * 0.85));
-  info = vec4(i1, 1.0 - smoothstep(0.9, 1.0, e));
-  return h;
+  return smoothstep(0.0, 1.0, res);
 }
 
-float terrain(vec2 p, float lod) {
-  vec4 i;
-  return field(p, lod, i);
+/* -------------------------------------------------------------- lights */
+
+vec3 gL, gLd, gSunE, gSkyE, gGndE, gM, gMoonE;
+float gWS, gWM, gFu;
+
+/* the sky: deep and dry, paler toward the horizon, brighter toward the
+   sun; at dusk a warm glow along the west and the belt of Venus in the
+   east; at night airglow near the horizon */
+vec3 skyDay(vec3 rd) {
+  float e = max(rd.y, 0.0);
+  float c = dot(rd, gL);
+  vec3 col = mix(vec3(0.006, 0.08, 0.29), vec3(0.19, 0.38, 0.72), exp(-e * 5.0));
+  col *= 0.86 + 0.14 * c * c;
+  col += vec3(0.30, 0.27, 0.22) * pow(sat(c), 24.0) + vec3(0.012, 0.012, 0.011) * pow(sat(c), 3.0);
+  return col;
 }
-
-/* ------------------------------------------------------------- the air */
-
-float phaseR(float c) { return 0.0596831 * (1.0 + c * c); }
-/* dust: a sharp forward lobe and a broad one, so the low sky toward the
-   sun warms over a wide arc */
-float phaseM(float c) {
-  float g = 0.8, g2 = g * g, b = 0.35, b2 = b * b;
-  float sharp = 0.1193662 * (1.0 - g2) * (1.0 + c * c) / ((2.0 + g2) * pow(1.0 + g2 - 2.0 * g * c, 1.5));
-  float broad = 0.0795775 * (1.0 - b2) / pow(1.0 + b2 - 2.0 * b * c, 1.5);
-  return 0.7 * sharp + 0.3 * broad;
+vec3 skyDusk(vec3 rd) {
+  float e = max(rd.y, 0.0);
+  vec2 ah = normalize(rd.xz + 1e-5), sh = normalize(gL.xz + 1e-5);
+  float ang = acos(clamp(dot(ah, sh), -1.0, 1.0));
+  float glow = exp(-ang * ang / 2.6);
+  float c = dot(rd, gL);
+  vec3 hor = glow < 0.4 ? mix(vec3(0.17, 0.25, 0.40), vec3(0.58, 0.44, 0.34), glow / 0.4) : mix(vec3(0.58, 0.44, 0.34), vec3(1.1, 0.6, 0.25), (glow - 0.4) / 0.6);
+  vec3 col = mix(vec3(0.012, 0.050, 0.165), hor, exp(-e * mix(11.0, 4.5, glow * glow)));
+  col += vec3(0.05, 0.03, 0.035) * (1.0 - glow) * exp(-pow((e - 0.06) / 0.05, 2.0));
+  col += vec3(1.5, 0.75, 0.3) * pow(sat(c), 16.0) + vec3(0.2, 0.1, 0.04) * pow(sat(c), 3.0);
+  return col;
 }
-
-vec2 sunDepth(float h, float mu) {
-  float dip = sqrt(max(2.0 * h / RE, 0.0));
-  float m = max(mu + 0.5 * dip, 0.0);
-  float vis = smoothstep(-dip - 0.006, -dip + 0.002, mu);
-  return vec2(HR * exp(-h / HR) / (m + 0.0283), HM * exp(-(h - ALT) / HM) / (m + 0.0095)) + (1.0 - vis) * 1e7;
+vec3 skyNight(vec3 rd) {
+  float e = max(rd.y, 0.0);
+  return mix(vec3(0.0011, 0.0018, 0.0042), vec3(0.0034, 0.0038, 0.0058), exp(-e * 6.0));
 }
-
-void atmoN(vec3 rd, vec3 L, float tEnd, int ns, out vec3 ins, out vec3 tr) {
-  float r0 = RE + ALT + EYE;
-  float mu = rd.y;
-  float RT = RE + 60e3;
-  float b = r0 * mu;
-  float tTop = -b + sqrt(b * b - r0 * r0 + RT * RT);
-  float tm = min(tTop, tEnd);
-  float c = dot(rd, L);
-  vec3 sR = vec3(0.0), sM = vec3(0.0);
-  float odR = 0.0, odM = 0.0;
-  float fn = float(ns);
-  for (int i = 0; i < 8; i++) {
-    if (i >= ns) break;
-    float f0 = float(i) / fn, f1 = float(i + 1) / fn;
-    float t0 = tm * f0 * f0, t1 = tm * f1 * f1;
-    float t = 0.5 * (t0 + t1), dt = t1 - t0;
-    vec3 pos = vec3(0.0, r0, 0.0) + rd * t;
-    float rr = length(pos);
-    float h = rr - RE;
-    float dR = exp(-h / HR), dM = exp(-(h - ALT) / HM);
-    float hR = odR + dR * dt * 0.5, hM = odM + dM * dt * 0.5;
-    vec2 sd = sunDepth(h, dot(pos, L) / rr);
-    vec3 T = exp(-(BR + BO) * (hR + sd.x) - BME * (hM + sd.y));
-    sR += T * dR * dt;
-    sM += T * dM * dt;
-    odR += dR * dt;
-    odM += dM * dt;
-  }
-  float pol = 1.0 - 0.55 * (1.0 - c * c) / (1.0 + c * c);
-  ins = sR * BR * phaseR(c) * pol + sM * BMS * phaseM(c);
-  ins += (sR * BR + sM * BMS) * 0.03;
-  tr = exp(-(BR + BO) * odR - BME * odM);
-}
-
-void atmo(vec3 rd, vec3 L, float tEnd, out vec3 ins, out vec3 tr) {
-  atmoN(rd, L, tEnd, 8, ins, tr);
-}
-
-/* the air between the eye and the sand, in closed form: a ray to the
-   sand stays within a few hundred metres of the ground, so the air along
-   it is taken at its mean height, lit through the sun's own path there */
-void airNear(vec3 rd, vec3 L, float t, out vec3 ins, out vec3 tr) {
-  float hm = max(EYE + 0.5 * rd.y * t + t * t / (6.0 * RE), 0.0);
-  float rR = exp(-(ALT + hm) / HR), rM = exp(-hm / HM);
-  vec3 sig = (BR + BO) * rR + BME * rM;
-  tr = exp(-sig * t);
-  vec2 sd = sunDepth(ALT + hm, L.y);
-  vec3 Ts = exp(-(BR + BO) * sd.x - BME * sd.y);
-  float c = dot(rd, L);
-  float pol = 1.0 - 0.55 * (1.0 - c * c) / (1.0 + c * c);
-  vec3 sc = BR * rR * (phaseR(c) * pol + 0.03) + BMS * rM * (phaseM(c) + 0.03);
-  ins = sc * Ts * (1.0 - tr) / sig;
-}
-
-vec3 sunAt(vec3 L, float h) {
-  vec2 sd = sunDepth(ALT + h, L.y);
-  return exp(-(BR + BO) * sd.x - BME * sd.y);
+vec3 skyBase(vec3 rd) {
+  vec3 s = mix(skyDay(rd), skyDusk(rd), gFu) * gWS;
+  return s + skyNight(rd) * gWM;
 }
 
 /* ---------------------------------------------------------- night sky */
 
-/* stars in three magnitudes on cells of the sphere, the faint ones
-   gathering in the Milky Way; each twinkles a little, more near the
-   horizon where the air is thicker */
 vec3 starsAt(vec3 rd, float pix, float mw) {
   vec3 col = vec3(0.0);
   float sig = max(pix, 6e-4) * 0.75;
@@ -342,63 +410,58 @@ vec3 starsAt(vec3 rd, float pix, float mw) {
     float sc = fl == 0.0 ? 70.0 : (fl == 1.0 ? 160.0 : (fl == 2.0 ? 360.0 : 820.0));
     vec3 cell = floor(rd * sc);
     vec3 h = hash33(cell + fl * 17.31);
-    float occ = fl == 0.0 ? 0.16 : (fl == 1.0 ? 0.35 : (fl == 2.0 ? 0.2 + 0.8 * mw : 0.95 * mw));
+    float occ = fl == 0.0 ? 0.1 : (fl == 1.0 ? 0.28 : (fl == 2.0 ? 0.18 + 0.7 * mw : 0.03 + 0.6 * mw));
     if (h.x > occ) continue;
     vec3 sp = normalize(cell + 0.25 + 0.5 * hash33(cell * 1.7 + fl * 5.0));
     float d = length(rd - sp) / sig;
     float m = hash13(cell * 2.31 + 4.0 + fl);
-    float flux = fl == 0.0 ? 1.5 * pow(m, 6.0) + 0.05 : (fl == 1.0 ? 0.09 * pow(m, 3.0) + 0.012 : (fl == 2.0 ? 0.022 * m : 0.012 * m));
-    float tw = 1.0 + (0.18 + 0.5 * sat(1.0 - rd.y * 5.0)) * sin(mod(uTime, 600.0) * (1.7 + 4.0 * h.y) + h.z * TAU) * step(fl, 1.5);
+    float flux = fl == 0.0 ? 1.2 * pow(m, 6.0) + 0.04 : (fl == 1.0 ? 0.07 * pow(m, 3.0) + 0.01 : (fl == 2.0 ? 0.018 * m : 0.01 * m));
+    float tw = 1.0 + (0.15 + 0.4 * sat(1.0 - rd.y * 5.0)) * sin(mod(uTime, 600.0) * (1.7 + 4.0 * h.y) + h.z * TAU) * step(fl, 1.5);
     vec3 tint = mix(vec3(1.0, 0.78, 0.55), vec3(0.72, 0.84, 1.0), smoothstep(0.2, 0.8, h.y));
     col += tint * flux * tw * exp(-0.5 * d * d);
   }
   return col;
 }
 
-/* the Milky Way: a band along the galactic plane of unresolved stars,
-   grain on grain, gathered into clouds; the core, warm and bright, low
-   over the great dune; and the dark lanes of dust along the plane with
-   fairly sharp edges, dimming the clouds and the grain alike. Away from
-   the core the band is a cooler blue-white */
-vec3 milky(vec3 rd, float pix, out float band) {
-  vec3 GCORE = azel(27.0, 16.0);
-  vec3 GAL = normalize(cross(GCORE, azel(-2.0, 19.0)));
-  float b = dot(rd, GAL);
-  vec3 cp = normalize(GCORE - GAL * dot(GCORE, GAL));
-  vec3 ip = normalize(rd - GAL * b);
-  float l = acos(clamp(dot(ip, cp), -1.0, 1.0));
-  float wid = 0.07 + 0.05 * exp(-l * l * 5.0);
+/* the Milky Way: a band of unresolved stars, gathered into clouds, the
+   warm bulge of the core low over the dune's shoulder; the Great Rift
+   running along it, splitting it in two for a stretch, and finer lanes of
+   dust breaking the clouds. The resolved stars thicken in the band */
+vec3 milky(vec3 rd, out float band) {
+  vec3 GCORE = azel(12.0, 12.0);
+  vec3 GAL = normalize(cross(GCORE, azel(-48.0, 42.0)));
+  vec3 GY = cross(GAL, GCORE);
+  /* galactic longitude from the core and latitude, in radians */
+  float b = asin(clamp(dot(rd, GAL), -1.0, 1.0));
+  float l = atan(dot(rd, GY), dot(rd, GCORE));
+  vec2 g = vec2(l, b);
+  float wid = 0.065 + 0.07 * exp(-l * l * 5.0);
   band = exp(-b * b / (wid * wid));
-  float halo = exp(-b * b / 0.04);
-  float core = exp(-(l * l + b * b * 3.0) / 0.006);
-  float bulge = exp(-(l * l + b * b * 2.0) / 0.04);
-  /* star clouds, and the grain of stars too faint to resolve; the finest
-     grain gives way to its mean as it falls under a pixel */
-  float clouds = smoothstep(0.3, 0.78, fbm3(rd * 16.0, 3)) * (0.55 + 0.9 * noise3(rd * 48.0));
-  float g1 = noise3(rd * 380.0);
-  float g2 = noise3(rd * 950.0 + 3.0);
-  float grain = g1 * g1 * g1 * 1.4 + mix(0.2, g2 * g2 * g2 * g2, smoothstep(2.2, 0.9, 950.0 * pix)) * 1.6;
-  /* the dust: a main rift along the plane, wandering, and broken lanes */
-  float lane = fbm3(rd * 6.5 + vec3(3.0, 1.0, 7.0), 4) + 0.18 * noise3(rd * 36.0);
-  float zone = exp(-pow((b - 0.012 - 0.012 * sin(l * 5.0 + 1.0)) / (0.016 + 0.02 * exp(-l * l * 5.0)), 2.0));
-  float rift = smoothstep(0.47, 0.52, lane) * zone * smoothstep(0.03, 0.12, l);
-  float lanes = smoothstep(0.6, 0.64, fbm3(rd * 13.0 + 11.0, 3) + 0.1 * noise3(rd * 60.0)) * band;
-  float dust = max(rift * 0.9, lanes * 0.55);
-  float m = band * (0.25 + 0.75 * clouds) * (0.35 + grain) + halo * 0.05;
-  vec3 cool = vec3(0.64, 0.76, 1.0), warm = vec3(1.0, 0.87, 0.68);
-  vec3 c = mix(cool, warm, sat(bulge * 1.2)) * m * (1.0 + 1.2 * bulge);
-  c += warm * core * (1.2 + 1.5 * clouds) * (0.5 + grain);
-  return c * (1.0 - dust);
+  float bulge = exp(-(l * l + b * b * 3.5) / 0.02);
+  /* star clouds, drawn out along the band */
+  float cl = fbm(g * vec2(7.0, 16.0) + 3.1, 5);
+  float clouds = (0.3 + 0.7 * smoothstep(0.32, 0.7, cl)) * (0.7 + 0.35 * noise(g * vec2(30.0, 60.0)) + 0.3 * noise(g * vec2(90.0, 160.0)));
+  /* the rift: a dark lane wandering along the plane, broken here and
+     there, and finer lanes of dust along the band */
+  float off = 0.018 * sin(l * 4.0 + 0.7) + 0.022 * (fbm(vec2(l * 6.0, 1.7), 3) - 0.5);
+  float rw = 0.014 + 0.012 * noise(vec2(l * 9.0, 4.0)) + 0.01 * exp(-l * l * 8.0);
+  float rift = smoothstep(1.0, 0.45, abs(b - off) / rw) * smoothstep(0.05, 0.18, abs(l)) * smoothstep(0.32, 0.55, fbm(vec2(l * 5.0, 8.0), 3));
+  float fil = 1.0 - abs(2.0 * fbm(g * vec2(9.0, 26.0) + 5.0, 4) - 1.0);
+  float lanes = smoothstep(0.88, 0.97, fil) * band;
+  float dust = sat(rift * 0.9 + lanes * 0.35);
+  float m = band * 0.95 * clouds + exp(-b * b / 0.06) * 0.06 + bulge * (1.3 + 1.2 * clouds);
+  vec3 col = mix(vec3(0.66, 0.76, 1.0), vec3(1.0, 0.84, 0.62), sat(bulge * 1.3 + 0.25 * band)) * m;
+  return col * (1.0 - dust);
 }
 
-/* the moon at tonight's phase, lit from the side the sun has gone down */
+/* the moon at tonight's phase, lit from the side the sun is on */
 vec3 moonDisc(vec3 rd, vec3 M, vec3 S, float pix) {
-  float R = 0.0047;
+  float R = 0.0046;
   vec3 mx = normalize(cross(vec3(0.0, 1.0, 0.0), M));
   vec3 my = cross(M, mx);
   vec2 q = vec2(dot(rd, mx), dot(rd, my)) / R;
   float r = length(q);
-  if (r > 1.5) return vec3(0.0);
+  if (r > 1.6) return vec3(0.0);
   float cover = 1.0 - smoothstep(1.0 - pix / R, 1.0 + pix / R, r);
   vec3 nrm = vec3(q, sqrt(max(1.0 - r * r, 0.0)));
   vec2 sd = normalize(vec2(dot(S, mx), dot(S, my)) + 1e-4);
@@ -407,467 +470,327 @@ vec3 moonDisc(vec3 rd, vec3 M, vec3 S, float pix) {
   float lit = smoothstep(-0.04, 0.08, dot(nrm, sdir));
   float maria = smoothstep(0.45, 0.62, fbm(q * 1.6 + 3.7, 4));
   float alb = 0.9 - 0.32 * maria + 0.08 * noise(q * 9.0);
-  return vec3(1.0, 0.97, 0.92) * cover * (alb * lit * 3.2 + 0.03);
+  return vec3(1.0, 0.97, 0.92) * cover * (alb * lit + 0.02);
 }
 
-/* ---------------------------------------------------------- the camera */
+/* ----------------------------------------------------------- the camera */
 
-/* time folded into a period, so the clock can run forever */
-float loopT(float period) { return mod(uTime, period) / period * TAU; }
-
-/* a drone holding station over the sand: a slow drift of a few tens of
-   metres, a breath of sway, the pointer turning it half a degree. A wide
-   frame holds its width of view; a tall one holds its height and turns
-   toward the great dune so it stays in the picture */
+/* eye height on the pan. A wide frame holds its width of view and puts the
+   horizon a little below the middle; a tall one narrows, and turns left
+   so the summit and its crest stay in the picture. The pointer turns the
+   head a little and steps it sideways, so the trees slide over the dune */
 vec3 camRay(vec2 fc, out vec3 ro, out float pix) {
   float asp = uRes.x / uRes.y;
   float wide = smoothstep(0.7, 1.5, asp);
-  float tanH = 0.62;
-  float tanV = min(tanH / asp, 0.42);
-  float hY = mix(0.62, 0.57, wide);
+  float tanV = mix(0.41, max(0.62 / asp, 0.30), wide);
+  float hor = mix(0.61, 0.625, wide);
+  float yaw = radians(mix(-6.5, 0.0, wide)) + uPoint.x * 0.012;
   vec2 q = (fc - 0.5 * uRes) / (0.5 * uRes.y);
-  float yaw = radians(mix(14.0, 0.0, wide)) + uPoint.x * 0.012 + 0.0025 * sin(loopT(310.0));
-  float pitch = radians(-2.5) + uPoint.y * 0.006 + 0.0012 * sin(loopT(230.0));
-  float sh = -tan(pitch) / tanV - (1.0 - 2.0 * hY);
-  vec3 r = normalize(vec3(q.x * tanV, (q.y + sh) * tanV, 1.0));
-  r.yz = rot(pitch) * r.yz;
+  vec3 r = normalize(vec3(q.x * tanV, (q.y - 1.0 + 2.0 * hor) * tanV + uPoint.y * 0.006, 1.0));
   r.xz = rot(yaw) * r.xz;
-  ro = vec3(14.0 * sin(loopT(260.0)) + uPoint.x * 3.0, EYE + 3.0 * sin(loopT(170.0)), 20.0 * sin(loopT(410.0)));
+  ro = vec3(uPoint.x * 0.8, EYE, 0.0);
   pix = 2.0 * tanV / uRes.y;
   return r;
 }
 
-/* the ray into the heightfield: steps by the height above the sand over
-   the steepest the sand can rise (a slip face, 34 degrees), never finer
-   than a fraction of a pixel's reach, refined by bisection. It
-   keeps its closest pass over the sand too, in pixels (for the edge of a
-   skyline) and in metres (for sand blowing off a crest) */
-float hAt(vec3 ro, vec3 rd, float t) {
-  vec3 p = ro + rd * t;
-  return p.y + t * t / (2.0 * RE) - terrain(p.xz, t);
-}
-
-float march(vec3 ro, vec3 rd, float pix, out float rmin, out float tr, out float hmin, out float th) {
-  float tmax = 45000.0;
-  if (rd.y > 0.0) tmax = min(tmax, (310.0 - ro.y) / rd.y);
-  float t = 1.0, lt = 1.0, t0 = 1.0, h0 = 1e9, h1 = 1e9;
-  float bestR = 2.0, bA = 0.0, bB = 0.0;
-  float lip = 0.9 / (abs(rd.y) + 0.7 * length(rd.xz));
-  float hitT = -1.0, a = 0.0, b = 0.0;
-  rmin = 1e9; tr = 0.0; hmin = 1e9; th = 0.0;
-  for (int i = 0; i < 180; i++) {
-    float h = hAt(ro, rd, t);
-    if (h < 0.0) { a = lt; b = t; hitT = t; break; }
-    /* the closest pass over a crest between samples, kept to look at
-       once the march is done */
-    if (h1 < h0 && h1 < h && h1 < bestR * lt * pix) { bestR = h1 / (lt * pix); bA = t0; bB = t; }
-    float r = h / (t * pix);
-    if (r < rmin) { rmin = r; tr = t; }
-    if (h < hmin) { hmin = h; th = t; }
-    t0 = lt; h0 = h1; h1 = h;
+/* the ray over the dunes: steps by its height over the sand over the
+   steepest the sand rises, refined by bisection; it keeps its closest
+   pass over a crest, in pixels, for the edge of the skyline */
+float march(vec3 ro, vec3 rd, float pix, out float rmin, out float tr) {
+  float tmax = 9000.0;
+  if (rd.y > 0.0) tmax = min(tmax, (340.0 - ro.y) / rd.y);
+  float lip = 0.92 / (abs(rd.y) + 0.78 * length(rd.xz));
+  float t = 1.0, lt = 1.0, g = 1e9;
+  rmin = 1e9; tr = 0.0;
+  for (int i = 0; i < 160; i++) {
+    vec3 p = ro + rd * t;
+    g = p.y - dunes(p.xz);
+    if (g < 0.0) {
+      float a = lt, b = t;
+      for (int j = 0; j < 7; j++) {
+        float m = 0.5 * (a + b);
+        vec3 q = ro + rd * m;
+        if (q.y - dunes(q.xz) < 0.0) b = m; else a = m;
+      }
+      return 0.5 * (a + b);
+    }
+    float r = g / (t * pix);
+    if (r < rmin && t > 50.0) { rmin = r; tr = t; }
     lt = t;
-    t += max(h * lip, t * (0.003 + t * 1.2e-6));
-    if (t > tmax) break;
+    t += max(g * lip, 0.3 + t * 0.004);
+    if (t > tmax) return -1.0;
   }
-  /* the closest pass may touch the crest the steps stepped over: look
-   between its samples for the lowest point */
-  if (bB > 0.0) {
-    float bh = 1e9, bt = 0.0, pt = bA;
-    for (int k = 1; k < 8; k++) {
-      float tm = mix(bA, bB, float(k) / 8.0);
-      float hm = hAt(ro, rd, tm);
-      if (hm < 0.0) { a = pt; b = tm; hitT = tm; bh = 1e9; break; }
-      if (hm < bh) { bh = hm; bt = tm; }
-      pt = tm;
-    }
-    if (bh < 1e8 && bh / (bt * pix) < rmin) { rmin = bh / (bt * pix); tr = bt; }
-  }
-  if (hitT > 0.0) {
-    for (int j = 0; j < 6; j++) {
-      float m = 0.5 * (a + b);
-      if (hAt(ro, rd, m) < 0.0) b = m; else a = m;
-    }
-    return 0.5 * (a + b);
-  }
-  return rd.y < 0.0 && t < tmax ? t : -1.0;
+  /* out of steps only while skimming a crest: call it met */
+  return g < 8.0 + t * pix * 8.0 ? t : -1.0;
 }
 
-/* the light reaching p: the great crests analytically, the star dune by
-   a few samples along the light's path past it, and the near sand by a
-   short march for the small dunes and the curve of the ground itself */
-float shadow(vec3 p, vec3 L, float lod) {
-  vec2 sh = normalize(L.xz + 1e-6);
-  float tanE = L.y / max(length(L.xz), 1e-4);
+/* the sun or moon reaching p past the dunes: a short march along the
+   light, soft by the pixel's footprint */
+float duneShadow(vec3 p, vec3 L, float fp) {
+  float lip = 0.9 / (L.y + 0.78 * length(L.xz));
   float res = 1.0;
-  for (int f = 0; f < 2; f++) {
-    bool c = f == 1;
-    res = min(res, crestLight(p, sh, tanE, c ? CD : RD, c ? 1500.0 : 860.0, c ? 70.0 : 100.0, c ? 400.0 : 230.0, c ? 5.7 : 0.31, c ? 1.0 : 0.0));
-  }
-  vec2 sc = STAR1 - p.xz;
-  float tc = dot(sc, sh), lat = abs(sc.x * sh.y - sc.y * sh.x);
-  if (lat < 1500.0 && tc > -1500.0) {
-    float t0 = max(tc - 1500.0, 2.0), t1 = tc + 1500.0;
-    vec3 inf;
-    for (int i = 0; i < 10; i++) {
-      float t = mix(t0, t1, (float(i) + 0.5) / 10.0);
-      if (t < 2.0) continue;
-      float H = star(p.xz + sh * t, STAR1, 290.0, 1500.0, 0.4, 11.0, inf);
-      res = min(res, (p.y + t * tanE - H) / (t * 0.014 + gFp) + 0.5);
-    }
-  }
-  float t = max(1.5, gFp);
-  for (int i = 0; i < 24; i++) {
+  float t = 1.0 + fp;
+  for (int i = 0; i < 40; i++) {
     vec3 q = p + L * t;
-    float h = q.y - terrain(q.xz, lod);
-    res = min(res, h / (t * 0.011) + 0.0);
-    if (res < 0.0 || q.y > 330.0) break;
-    t += max(h * 0.7, 1.5 + t * 0.12);
+    float g = q.y - dunes(q.xz);
+    res = min(res, g / (t * 0.01 + fp));
+    if (res < 0.0 || q.y > 340.0) break;
+    t += clamp(g * lip, 0.5 + t * 0.02, 400.0);
   }
   return smoothstep(0.0, 1.0, res);
 }
 
-/* central differences across the pixel's footprint, so a crest that is
-   narrower than a pixel shades as the mix of its two sides */
-vec3 normalAt(vec2 p, float h, float e, float lod) {
-  vec4 d = vec4(0.0);
-  for (int i = 0; i < 4; i++) {
-    vec2 o = (i < 2 ? vec2(e, 0.0) : vec2(0.0, e)) * (i == 0 || i == 2 ? 1.0 : -1.0);
-    d[i] = terrain(p + o, lod);
-  }
-  return normalize(vec3(d.y - d.x, 2.0 * e, d.w - d.z));
+vec3 duneNormal(vec2 p, float e) {
+  float a = max(dunes(p + vec2(e, 0.0)), 0.0), b = max(dunes(p - vec2(e, 0.0)), 0.0);
+  float c = max(dunes(p + vec2(0.0, e)), 0.0), d = max(dunes(p - vec2(0.0, e)), 0.0);
+  return normalize(vec3(b - a, 2.0 * e, d - c));
 }
 
-/* the sky's light on a surface facing n, for one light: the zenith and
-   the horizon toward and away from the light, the horizon only as far as
-   the dunes around leave it open (hv) */
-vec3 skyLight(vec3 L, vec3 n, float hv) {
-  vec3 zi, zt, hi, ht, si, st;
-  vec2 lh = normalize(L.xz + 1e-5);
-  atmoN(vec3(0.0, 1.0, 0.0), L, 1e9, 4, zi, zt);
-  atmoN(normalize(vec3(-lh.x, 0.1, -lh.y)), L, 1e9, 4, hi, ht);
-  vec2 ls = rot(1.1) * lh;
-  atmoN(normalize(vec3(ls.x, 0.25, ls.y)), L, 1e9, 4, si, st);
-  vec3 hor = mix(hi, si, 0.5 + 0.5 * dot(n.xz, lh));
-  float up = 0.5 + 0.5 * n.y;
-  return PI * (zi * up * 0.75 + hor * (0.35 + 0.25 * (1.0 - n.y)) * hv);
+/* ------------------------------------------------------------ shading */
+
+/* the light falling on a surface facing n at p, from the sun, the sky,
+   the ground, and the moon */
+vec3 lightAt(vec3 p, vec3 n, float sh, float shM, float occ) {
+  float dif = max(dot(n, gL), 0.0);
+  float difM = max(dot(n, gM), 0.0);
+  vec3 sky = gSkyE * (0.55 + 0.45 * n.y) * occ;
+  vec3 gnd = gGndE * (0.5 - 0.5 * n.y);
+  return gSunE * dif * sh + sky + gnd + gMoonE * difM * shM;
 }
 
-/* ----------------------------------------------------------- the vlei */
-
-/* the clay pan, and the dead camelthorns standing in it, one at most to
-   a cell, each a black trunk and a flat spread of bare branches */
-const float TC = 40.0;
-float panMask(vec2 p) {
-  return 1.0 - smoothstep(0.75, 1.1, panE(p));
-}
-vec3 treeIn(vec2 c) {
-  vec3 h = hash33(vec3(c, 3.7));
-  vec2 pos = (c + 0.25 + 0.5 * h.xy) * TC;
-  float ok = step(h.z, 0.6) * step(0.6, panMask(pos));
-  return vec3(pos, ok * (4.5 + 3.0 * hash12(c * 1.3 + 2.0)));
-}
-/* how much of a tree covers a line of sight passing sd metres to one
-   side of its foot, hy metres up: a leaning trunk forking into a few
-   bare limbs that spread wide and flat, seen as a silhouette */
-float seg(vec2 p, vec2 a, vec2 b) {
-  vec2 pa = p - a, ba = b - a;
-  return length(pa - ba * sat(dot(pa, ba) / dot(ba, ba)));
-}
-float treeCover(vec3 tr, float hy, float sd, float fp, vec2 seed) {
-  float H = tr.z;
-  if (H <= 0.0 || hy < -0.5 || hy > 1.15 * H) return 0.0;
-  vec3 r = hash33(vec3(seed, 1.9));
-  float fx = (r.x < 0.5 ? -1.0 : 1.0) * (0.8 + 0.5 * r.y) * H;
-  vec2 q = vec2(sd / fx, hy / H);
-  vec2 f = vec2(0.08 * (r.z - 0.5), 0.42 + 0.1 * r.y);
-  float w = fp / H;
-  float c = sat((0.075 - seg(q, vec2(0.0), f) * abs(fx) / H) / w + 0.5);
-  float d = min(min(seg(q, f, vec2(-0.55, 0.95)), seg(q, f, vec2(0.62, 0.88))), seg(q, f, vec2(0.12, 1.02)));
-  d = min(d, min(seg(q, vec2(-0.3, 0.72), vec2(-0.78, 0.8)), seg(q, vec2(0.36, 0.68), vec2(0.82, 0.74))));
-  c = max(c, sat((0.04 - d * abs(fx) / H) / w + 0.5));
-  return c;
-}
-/* the trees' own shadows across the clay, toward the light */
-float treeShade(vec3 p, vec2 sh, float tanE, float fp) {
-  float res = 1.0;
-  float reach = min(8.0 / max(tanE, 0.05), 160.0);
-  vec2 lc = vec2(-1e5);
-  for (int i = 0; i < 6; i++) {
-    vec2 c = floor((p.xz + sh * reach * float(i) / 5.0) / TC);
-    if (c == lc) continue;
-    lc = c;
-    vec3 tr = treeIn(c);
-    vec2 dv = tr.xy - p.xz;
-    float along = dot(dv, sh);
-    if (along <= 0.0) continue;
-    float d = dv.x * sh.y - dv.y * sh.x;
-    res = min(res, 1.0 - treeCover(tr, p.y + 1.0 + along * tanE, d, max(fp, along * 0.01), c));
-  }
-  return res;
-}
-/* the trees standing between the eye and the clay it sees */
-vec4 treesOnRay(vec3 ro, vec3 rd, float t, float pix) {
-  float ty = max((ro.y + 1.0 - 8.0) / max(-rd.y, 1e-3), 0.0);
-  vec2 rh = rd.xz / max(length(rd.xz), 1e-5);
-  float kxz = length(rd.xz);
-  vec2 lc = vec2(-1e5);
-  for (int i = 0; i < 6; i++) {
-    float tt = mix(ty, t, float(i) / 5.0);
-    vec2 c = floor((ro.xz + rd.xz * tt) / TC);
-    if (c == lc) continue;
-    lc = c;
-    vec3 tr = treeIn(c);
-    if (tr.z <= 0.0) continue;
-    vec2 dv = tr.xy - ro.xz;
-    float along = dot(dv, rh);
-    float tc = along / kxz;
-    float d = dv.x * rh.y - dv.y * rh.x;
-    float cov = treeCover(tr, ro.y + rd.y * tc + 1.0, d, tc * pix * 1.3, c);
-    if (cov > 0.0) return vec4(tc, cov, 0.0, 0.0);
-  }
-  return vec4(0.0);
-}
-
-/* ----------------------------------------------------------- the light */
-
-vec3 gSun, gMoon;
-float gWS, gWM, gEs, gEm, gGain;
-
-/* the sky light, sunlight and moonlight at a point, for both lights */
-void lightsAt(vec3 p, vec3 n, out vec3 sunC, out vec3 skyC) {
-  sunC = vec3(0.0);
-  skyC = vec3(0.0);
-  float hv = sat(0.3 + p.y / 110.0);
-  if (gWS > 0.001) {
-    sunC += sunAt(gSun, p.y) * gEs * gWS;
-    skyC += skyLight(gSun, n, hv * look3(1.0, 0.4, 1.0)) * gEs * gWS;
-  }
-  if (gWM > 0.001) {
-    sunC += sunAt(gMoon, p.y) * gEm * gWM * 3.2;
-    skyC += skyLight(gMoon, n, hv) * gEm * gWM;
-  }
-  skyC *= mix(1.0, gGain, look3(0.5, 0.0, 0.5));
-}
-
-vec3 keyDir() { return normalize(gSun * gWS * gEs * 0.2 + gMoon * gWM * gEm); }
-
-/* the air between the eye and t: inscattered light of both lights and
-   what is left of the light behind */
-vec3 airTo(vec3 rd, float t, out vec3 trans) {
-  vec3 ins = vec3(0.0), tr = vec3(1.0), ins2 = vec3(0.0), tr2 = vec3(1.0);
-  if (t > 1e8) {
-    if (gWS > 0.001) atmo(rd, gSun, t, ins, tr);
-    if (gWM > 0.001) atmo(rd, gMoon, t, ins2, tr2);
-  } else {
-    if (gWS > 0.001) airNear(rd, gSun, t, ins, tr);
-    if (gWM > 0.001) airNear(rd, gMoon, t, ins2, tr2);
-  }
-  trans = gWS > 0.001 ? tr : tr2;
-  vec3 air = (ins * gEs * gWS + ins2 * gEm * gWM) * gGain;
-  /* the belt of Venus: the low sky away from the sun flushed pink with
-     reddened light scattered back */
-  vec2 ah = normalize(rd.xz + 1e-5), sh0 = normalize(gSun.xz + 1e-5);
-  float anti = pow(sat(0.5 - 0.5 * dot(ah, sh0)), 3.0);
-  vec3 belt = vec3(1.0, 0.42, 0.5) * anti * exp(-pow((max(rd.y, 0.0) - 0.07) / 0.075, 2.0)) * 0.11 * uLook.y;
-  return air + belt * (t > 1e8 ? 1.0 : 1.0 - trans.g);
-}
-
-/* sand lifted off a crest by the wind and streaming down over the slip
-   face: thin streamers a few metres long, running with the wind, coming
-   and going in gusts. along runs the crest, down away from it, above is
-   the height over the sand. Two drifting copies cross-fade so the loop
-   in time never shows */
-float spindrift(float along, float down, float above) {
-  float ph = fract(uTime / 24.0);
-  vec2 q = vec2(along * 0.14, down * 0.05 + max(above, 0.0) * 0.1);
-  float n1 = noise(q - vec2(0.0, ph * 24.0 * 0.35));
-  float n2 = noise(q + vec2(17.3, 5.1) - vec2(0.0, (ph - 1.0) * 24.0 * 0.35));
-  float n = mix(n1, n2, smoothstep(0.0, 1.0, ph));
-  float gust = sat(0.35 + 0.65 * sin(along * 0.011 + loopT(29.0)) + 0.3 * sin(along * 0.037 - loopT(11.0)));
-  return smoothstep(0.5, 0.85, n) * gust * exp(-down / 7.0) * exp(-max(above, 0.0) / 2.2);
-}
-
-/* ----------------------------------------------------------- the sand */
-
-vec3 shade(vec3 ro, vec3 rd, float t, float pix) {
-  vec3 p = ro + rd * t;
-  vec4 info;
-  p.y = field(p.xz, t, info);
-  float fpm = t * pix;
-  /* the normal over the pixel's footprint, which a grazing view
-     stretches along the line of sight */
-  vec3 n = vec3(0.0, 1.0, 0.0);
-  float ne = max(0.25, fpm);
-  for (int i = 0; i < 2; i++) {
-    n = normalAt(p.xz, p.y, ne, t);
-    float gz = abs(dot(rd, n));
-    if (gz > 0.3) break;
-    ne = max(0.25, fpm) * min(0.3 / max(gz, 0.01), 5.0);
-  }
-  /* the sand's own slow undulation, finer than the heightfield carries */
-  float dA = smoothstep(1.6, 0.5, fpm);
-  if (dA > 0.0) {
-    vec2 w = vec2(dot(p.xz, RN), dot(p.xz, RD));
-    vec3 n1 = noised(w * vec2(0.03, 0.006) + 3.1);
-    vec3 n2 = noised(w * vec2(0.1, 0.02) + 7.7);
-    vec2 gw = n1.yz * vec2(0.03, 0.006) * 0.6 + n2.yz * vec2(0.1, 0.02) * 0.14 * smoothstep(1.6, 0.5, fpm);
-    vec2 gr = RN * gw.x + RD * gw.y;
-    n = normalize(n - vec3(gr.x, 0.0, gr.y) * dA * (1.0 - info.w) * (1.0 - 0.8 * info.x));
-  }
-
-  /* red on the dunes, a little darker down the slip faces where the
-     avalanches run; paler and duller on the corridor floor; the clay of
-     the pan almost white */
-  float lee = info.x, pan = info.w;
-  float flo = (1.0 - smoothstep(3.0, 14.0, p.y)) * (1.0 - pan);
-  float mott = noise(p.xz * 0.011) * 0.6 + noise(p.xz * 0.05) * 0.4;
-  vec3 alb = vec3(0.43, 0.165, 0.085) * (0.9 + 0.2 * mott);
-  alb = mix(alb, vec3(0.4, 0.148, 0.075), lee);
-  /* grain flows down the slip faces: short lobes, faint, here and there */
-  float streak = noise(vec2(info.z * 0.05, info.y * 0.03)) * noise(p.xz * 0.013 + 5.0);
-  alb *= 1.0 - lee * 0.07 * smoothstep(0.25, 0.6, streak);
-  alb = mix(alb, vec3(0.44, 0.22, 0.12) * (0.85 + 0.3 * mott), flo * 0.8);
-  /* tufts of grass dotted over the corridor floor */
-  vec2 gc = floor(p.xz / 16.0);
+/* the red sand: the grainflow tongues on the slip faces, the smooth
+   backs, grass at the feet */
+vec3 sandAlbedo(vec3 p, vec3 n, float fp) {
+  vec3 alb = vec3(0.62, 0.155, 0.072);
+  float mott = noise(p.xz * 0.006) * 0.6 + noise(p.xz * 0.023) * 0.4;
+  alb *= 0.88 + 0.24 * mott;
+  float steep = smoothstep(0.88, 0.82, n.y);
+  /* along the contour and down the fall line */
+  vec2 fl = normalize(n.xz + 1e-5);
+  float u = dot(p.xz, vec2(-fl.y, fl.x));
+  float v = p.y;
+  float lod = smoothstep(4.0, 0.6, fp);
+  float tongue = noise(vec2(u * 0.15, v * 0.03 + noise(vec2(u * 0.03, 3.0)) * 3.0));
+  float fine = noise(vec2(u * 0.6, v * 0.08));
+  float scar = noise(vec2(u * 0.02, v * 0.008) + 5.0);
+  float gf = 0.22 * (smoothstep(0.5, 0.8, tongue) - 0.2) + 0.1 * (fine - 0.5) * lod + 0.12 * (scar - 0.5);
+  alb *= 1.0 + gf * steep;
+  /* the backs: broad soft mottling, faint streaks along the wind */
+  float back = noise(vec2(u * 0.008, v * 0.02) + 9.0) * 0.6 + noise(p.xz * vec2(0.05, 0.012)) * 0.4;
+  alb *= 1.0 + 0.12 * (back - 0.5) * (1.0 - steep);
+  /* the backs a touch paler and duller */
+  alb = mix(alb, alb * vec3(1.04, 1.12, 1.15), (1.0 - steep) * 0.6);
+  /* grass on the lower slopes and the foot */
+  float low = smoothstep(60.0, 5.0, p.y);
+  vec2 gc = floor(p.xz / 11.0);
   vec3 gh = hash33(vec3(gc, 9.1));
-  float tuft = step(gh.z, 0.1) * sat((0.9 * gh.x + 0.4 - length(p.xz - (gc + 0.2 + 0.6 * gh.xy) * 16.0)) / fpm + 0.5);
-  alb *= 1.0 - 0.55 * tuft * flo;
-  float rim = smoothstep(0.0, 0.5, pan) * (1.0 - smoothstep(0.5, 1.0, pan));
-  alb = mix(alb, vec3(0.45, 0.4, 0.33) * look3(1.0, 1.0, 0.8) * (0.9 + 0.15 * noise(p.xz * 0.09)) * (1.0 - 0.3 * rim), pan);
-
-  /* wind ripples across the windward sand and the floor, and the larger
-     coarse-grained ripples between them, their crests darker with the
-     heavier grains; each fades as it falls under a pixel */
-  float g = fpm / max(abs(dot(rd, n)), 0.2);
-  float open = (1.0 - lee) * (1.0 - pan);
-  float mrip = open * smoothstep(2.4, 0.9, g);
-  if (mrip > 0.0) {
-    vec2 w = rot(0.12) * p.xz;
-    float ph = dot(w, RN) * (TAU / 7.5) + 7.0 * noise(p.xz * 0.018) + 2.0 * noise(p.xz * 0.07);
-    float cr = sin(ph);
-    float sl = (cr + 0.4 * sin(2.0 * ph + 0.6)) * 0.16 * mrip * (0.5 + noise(p.xz * 0.025));
-    n = normalize(n + vec3(RN.x, 0.0, RN.y) * sl);
-    alb *= 1.0 - 0.09 * mrip * smoothstep(0.55, 0.95, cr) * (1.0 - flo * 0.5);
-  }
-  float rip = open * smoothstep(0.42, 0.16, g);
-  if (rip > 0.0) {
-    float ph = dot(p.xz, RN) * (TAU / 1.7) + 9.0 * noise(p.xz * 0.04) + 2.5 * noise(p.xz * 0.23);
-    float sl = (sin(ph) + 0.35 * sin(2.0 * ph)) * 0.22 * rip;
-    n = normalize(n + vec3(RN.x, 0.0, RN.y) * sl);
-  }
-
-  vec3 L = keyDir();
-  float dif = max(dot(n, L), 0.0);
-  gFp = fpm * 1.5;
-  float sh = dif > 0.0 ? shadow(p + n * 0.6, L, t) : 0.0;
-  vec2 lh = normalize(L.xz + 1e-5);
-  float tanE = L.y / max(length(L.xz), 1e-4);
-  if (pan > 0.01 && sh > 0.0) sh *= treeShade(p, lh, tanE, fpm);
-  vec3 sunC, skyC;
-  lightsAt(p, n, sunC, skyC);
-  /* the pan lies deep among the dunes: they hide most of the blue sky
-     from it and light it with their own warm sand instead */
-  skyC = mix(skyC, vec3(luma(skyC)) * vec3(1.05, 0.95, 0.85), 0.65 * pan) * (1.0 - 0.35 * pan);
-  /* the hollows see less of the sky */
-  float ao = 1.0;
-  if (fpm < 6.0) {
-    float av = 0.0;
-    for (int i = 0; i < 4; i++) {
-      vec2 o = 35.0 * vec2(i == 0 ? 1.0 : (i == 1 ? -1.0 : 0.0), i == 2 ? 1.0 : (i == 3 ? -1.0 : 0.0));
-      av += 0.25 * terrain(p.xz + o, t);
-    }
-    ao = mix(sat(1.0 + (p.y - av) / 30.0), 1.0, smoothstep(2.0, 6.0, fpm));
-    ao = 0.55 + 0.45 * ao;
-  }
-  /* light thrown back by the sunlit sand around */
-  vec3 bounce = sunC * max(L.y, 0.0) * vec3(0.42, 0.18, 0.08) * (0.55 + 0.45 * (1.0 - n.y)) * 0.6;
-  vec3 col = alb * (sunC * dif * sh + (skyC + bounce) * ao) / PI;
-
-  /* sand streaming off the crest above a slip face */
-  float sd = lee * spindrift(info.z, info.y, 0.0) * smoothstep(1.0, 0.3, fpm);
-  float fwd = 0.35 + 2.5 * pow(sat(dot(rd, L)), 6.0);
-  col += sd * 0.45 * vec3(0.5, 0.3, 0.2) * (sunC * fwd + skyC * 0.25) / PI;
-
-  /* a dead tree standing in front */
-  if (pan > 0.0 || info.w > 0.0) {
-    vec4 tr = treesOnRay(ro, rd, t, pix);
-    if (tr.y > 0.0) {
-      vec3 tc = vec3(0.035, 0.026, 0.02) * (sunC * 0.3 * max(L.y, 0.2) + skyC * 0.5) / PI;
-      col = mix(col, tc, tr.y);
-    }
-  }
-
-  vec3 trans;
-  vec3 air = airTo(rd, t, trans);
-  return col * trans + air;
+  float tuft = step(gh.z, 0.22 * low) * sat((0.3 + 0.6 * gh.x - length(p.xz - (gc + 0.2 + 0.6 * gh.xy) * 11.0)) / max(fp, 0.05) + 0.5);
+  float mean = 0.22 * low * 0.012;
+  float tf = mix(mean, tuft, smoothstep(2.5, 0.8, fp));
+  alb = mix(alb, vec3(0.07, 0.068, 0.05), sat(tf) * 0.9);
+  return alb;
 }
 
-/* the sky; the stars, the Milky Way and the moon go to lights, added
-   after the night's grade so they keep their colour */
-vec3 skyCol(vec3 rd, float pix, out vec3 lights) {
-  vec3 trans;
-  vec3 col = airTo(rd, 1e9, trans);
-  float sd = length(rd - gSun);
-  col += smoothstep(0.0052, 0.0044, sd) * sunAt(gSun, 0.0) * gEs * 400.0 * gWS;
-  lights = vec3(0.0);
-  if (gWM > 0.001) {
-    float band;
-    vec3 mw = milky(rd, pix, band);
-    vec3 night = starsAt(rd, pix, band) + mw * 0.095;
-    lights = night * trans * gWM * smoothstep(0.0, 0.04, rd.y);
-    lights += moonDisc(rd, gMoon, gSun, pix) * gWM;
+/* the edges of the cells of a jittered grid: x how far from the nearest
+   edge, y the cell's own number */
+vec2 cells(vec2 x) {
+  vec2 i = floor(x), f = fract(x);
+  float d1 = 8.0, d2 = 8.0;
+  vec2 id = vec2(0.0);
+  for (int k = 0; k < 9; k++) {
+    vec2 o = vec2(float(k % 3) - 1.0, float(k / 3) - 1.0);
+    vec2 c = o + hash22(i + o) * 0.85 - f;
+    float d = dot(c, c);
+    if (d < d1) { d2 = d1; d1 = d; id = i + o; }
+    else if (d < d2) d2 = d;
   }
+  return vec2((sqrt(d2) - sqrt(d1)) * 0.5, hash12(id));
+}
+
+/* the clay: near white and a little warm, whiter in some places and
+   dustier in others; broken into plates a few metres across with sand
+   in the gaps, and those into small plates by fine cracks; red sand
+   blown onto it at the dune feet and in drifts */
+vec3 panAlbedo(vec3 p, float fp, float near) {
+  vec3 alb = vec3(0.84, 0.665, 0.48);
+  float big = fbm(p.xz * 0.009 + 7.0, 3);
+  float mid = noise(p.xz * 0.07) * 0.6 + noise(p.xz * 0.27) * 0.4;
+  alb *= (0.74 + 0.42 * big) * (0.94 + 0.12 * mid);
+  alb = mix(alb, alb * vec3(1.0, 0.93, 0.86), smoothstep(0.55, 0.3, big));
+  vec3 sandC = vec3(0.6, 0.25, 0.12);
+  /* the big plates: their gaps hold sand */
+  float lb = smoothstep(0.25, 0.06, fp);
+  if (lb > 0.0) {
+    vec2 c = cells(p.xz / 2.2 + 0.3 * vec2(noise(p.xz * 0.4), noise(p.xz * 0.4 + 5.0)));
+    float gap = (1.0 - smoothstep(0.004, 0.022 + fp * 0.4, c.x)) * smoothstep(0.35, 0.65, noise(p.xz * 0.5 + 3.0));
+    alb *= mix(1.0, 0.97 + 0.05 * c.y, lb);
+    alb = mix(alb, alb * vec3(0.88, 0.83, 0.79), gap * lb * smoothstep(0.004, 0.03, fp));
+    /* the plates curl up a little at their edges, catching the light */
+    alb *= 1.0 + 0.05 * lb * smoothstep(0.1, 0.03, c.x) * (1.0 - gap);
+  }
+  alb *= mix(1.0, 0.96, (1.0 - lb) * smoothstep(0.1, 0.4, fp));
+  /* the fine cracks */
+  float lf = smoothstep(0.035, 0.008, fp);
+  if (lf > 0.0) {
+    vec2 c = cells(p.xz / 0.32 + 0.15 * vec2(noise(p.xz * 3.0), noise(p.xz * 3.0 + 4.0)));
+    float crack = 1.0 - smoothstep(0.0, 0.012 + fp * 0.6, c.x - 0.003);
+    alb *= mix(1.0, (0.97 + 0.05 * c.y) * (1.0 - 0.28 * crack), lf);
+  }
+  /* red sand blown onto the clay */
+  float drift = smoothstep(0.58, 0.82, noise(p.xz * 0.016 + 2.0) * 0.65 + noise(p.xz * vec2(0.09, 0.05)) * 0.35);
+  float sand = max(near, drift * 0.55);
+  alb = mix(alb, sandC * (0.9 + 0.2 * mid), sat(sand) * 0.8);
+  /* tufts of grass where the sand has gathered */
+  vec2 gc = floor(p.xz / 7.0);
+  vec3 gh = hash33(vec3(gc, 5.7));
+  float tuft = step(gh.z, 0.35 * near) * sat((0.25 + 0.5 * gh.x - length(p.xz - (gc + 0.2 + 0.6 * gh.xy) * 7.0)) / max(fp, 0.03) + 0.5);
+  float tf = mix(0.35 * near * 0.02, tuft, smoothstep(2.0, 0.6, fp));
+  alb = mix(alb, mix(vec3(0.09, 0.1, 0.05), vec3(0.2, 0.19, 0.1), gh.y), sat(tf));
+  return alb;
+}
+
+/* the clay or the sand the eye ray met at t */
+vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune) {
+  vec3 p = ro + rd * t;
+  float fp = t * pix;
+  vec3 n = vec3(0.0, 1.0, 0.0);
+  float f = dunes(p.xz);
+  vec3 alb;
+  float occ = 1.0;
+  if (onDune) {
+    float e = max(0.6, fp * 0.8);
+    n = duneNormal(p.xz, e);
+    /* the backs are not turned on a lathe: broad low swells over them */
+    float back = 1.0 - smoothstep(0.88, 0.82, n.y);
+    vec2 wq = rot(0.6) * p.xz;
+    vec3 w1 = noised(wq * vec2(0.004, 0.016) + 4.0), w2 = noised(wq * vec2(0.012, 0.06) + 1.0);
+    vec2 gw = w1.yz * vec2(0.004, 0.016) * 3.0 + w2.yz * vec2(0.012, 0.06) * 0.5 * smoothstep(3.0, 0.8, fp);
+    gw = gw * rot(0.6);
+    n = normalize(n - vec3(gw.x, 0.0, gw.y) * back);
+    /* the slip faces: grainflow lobes running down from the brink, a
+       little proud of the face, so a grazing sun picks out their flanks */
+    float lob = (1.0 - back) * smoothstep(4.0, 1.2, fp);
+    if (lob > 0.0) {
+      vec2 cd = normalize(vec2(-n.z, n.x) + 1e-5);
+      float u = dot(p.xz, cd), v = p.y + 8.0 * noise(vec2(u * 0.02, 1.0));
+      u += 9.0 * noise(vec2(v * 0.03, u * 0.01 + 4.0));
+      vec3 l1 = noised(vec2(u * 0.075, v * 0.016) + 2.0);
+      vec3 l2 = noised(vec2(u * 0.22, v * 0.045) + 7.0);
+      /* the tongues come and go down the face */
+      float m = smoothstep(0.25, 0.7, noise(vec2(u * 0.03, v * 0.012) + 5.0));
+      float tilt = (l1.y * 0.075 * 2.8 * (0.35 + 0.65 * m) + l2.y * 0.22 * 0.3) * lob;
+      n = normalize(n + vec3(cd.x, 0.0, cd.y) * tilt);
+    }
+    alb = sandAlbedo(p, n, fp);
+    /* the foot of a slope sees less of the sky */
+    occ = 0.75 + 0.25 * smoothstep(0.0, 40.0, p.y);
+  } else {
+    p.y = 0.0;
+    float near = smoothstep(-30.0, -2.0, f) * (0.55 + 0.45 * noise(p.xz * 0.05)) + 0.35 * smoothstep(-8.0, -1.0, f);
+    alb = panAlbedo(p, fp, near);
+    occ = 0.85 + 0.15 * smoothstep(-80.0, -10.0, -f);
+  }
+  float sh = 1.0, shM = 1.0;
+  if (dot(n, gL) > 0.0 && gWS > 0.001) {
+    sh = duneShadow(p + n * 0.3, gL, fp);
+    if (!onDune && sh > 0.0) sh *= treeShadow(p + vec3(0.0, 0.02, 0.0), gL);
+  }
+  if (gWM > 0.001 && dot(n, gM) > 0.0) shM = duneShadow(p + n * 0.3, gM, fp);
+  vec3 col = alb * lightAt(p, n, sh, shM, occ) / PI;
+  /* a breath of air over the far sand */
+  vec3 air = skyBase(normalize(vec3(rd.x, 0.02, rd.z)));
+  col = mix(col, air, sat(t / 60000.0));
   return col;
 }
+
+/* the dead wood: grey-brown, sun-baked, darker in the cracks */
+vec3 shadeTree(vec3 ro, vec3 rd, float t, float pix, int i) {
+  vec4 T = TREES[i];
+  buildTree(T);
+  vec3 base = vec3(T.x, 0.0, T.y);
+  vec3 p = ro + rd * t;
+  vec3 lp = p - base;
+  float e = max(0.004, t * pix * 0.5);
+  vec2 k = vec2(1.0, -1.0);
+  vec3 n = normalize(k.xyy * treeD(lp + k.xyy * e) + k.yyx * treeD(lp + k.yyx * e) + k.yxy * treeD(lp + k.yxy * e) + k.xxx * treeD(lp + k.xxx * e));
+  float grain = noise(vec2(atan(n.x, n.z) * 9.0, lp.y * 1.5)) * 0.6 + noise(lp.xz * 9.0 + lp.y * 2.0) * 0.4;
+  float groove = smoothstep(0.55, 0.8, noise(vec2(atan(n.x, n.z) * 14.0 + lp.y * 0.8, lp.y * 0.6)));
+  vec3 alb = vec3(0.2, 0.17, 0.145) * (0.75 + 0.5 * grain) * (1.0 - 0.45 * groove * smoothstep(0.08, 0.004, t * pix));
+  alb *= mix(0.55, 1.0, smoothstep(0.0, 0.4, lp.y));
+  float sh = 1.0;
+  if (dot(n, gL) > 0.0 && gWS > 0.001) sh = duneShadow(p, gL, t * pix);
+  vec3 L = lightAt(p, n, sh, 1.0, 0.8);
+  /* the bright clay lights the wood from below */
+  vec3 ePan = gSunE * max(gL.y, 0.0) * sh + gSkyE + gMoonE * max(gM.y, 0.0);
+  L += vec3(0.78, 0.64, 0.5) * ePan * (0.5 - 0.5 * n.y) * 0.8;
+  return alb * L / PI;
+}
+
+/* ------------------------------------------------------------ the frame */
 
 vec3 scene(vec2 fc) {
   vec3 ro;
   float pix;
   vec3 rd = camRay(fc, ro, pix);
 
-  gSun = normalize(look3(azel(105.0, 30.0), azel(108.0, 3.0), azel(108.0, -8.0)));
-  gMoon = azel(-29.0, 10.0);
-  /* the exposure follows the sun down, so a turn between day and dusk
-     passes through an afternoon rather than a glare; and while the sun
-     hands over to the moon both fade, so a turn to night is dim twilight
-     all the way */
-  float se = sat((30.0 - degrees(asin(gSun.y))) / 27.0);
-  gEs = 6.5 * pow(40.0 / 6.5, se * se);
-  gWS = (uLook.x + uLook.y) * max(0.0, 1.0 - 3.8 * (uLook.x + uLook.y) * uLook.z);
+  /* the sun from the west-northwest in the afternoon, low in the west at
+     dusk; while it hands over to the moon both fade, so a turn to night
+     passes through dim twilight */
+  float ws = uLook.x + uLook.y;
+  gFu = uLook.y / max(ws, 1e-4);
+  gL = normalize(mix(azel(-68.0, 37.0), azel(-110.0, 6.0), gFu));
+  gWS = ws * max(0.0, 1.0 - 3.8 * ws * uLook.z);
   gWM = uLook.z;
-  gEm = 1.7;
-  gGain = look3(1.45, 0.42, 0.75);
+  gSunE = mix(vec3(4.7, 4.0, 3.2), vec3(7.4, 3.4, 1.25), gFu) * gWS;
+  gSkyE = mix(vec3(0.42, 0.62, 1.05), vec3(0.21, 0.27, 0.56), gFu) * gWS + vec3(0.010, 0.014, 0.026) * gWM;
+  gGndE = mix(vec3(0.55, 0.38, 0.26), vec3(0.20, 0.13, 0.10), gFu) * gWS + vec3(0.004, 0.004, 0.005) * gWM;
+  gM = azel(26.0, 17.0);
+  gLd = azel(-110.0, -12.0);
+  gMoonE = vec3(0.5, 0.54, 0.6) * gWM;
 
-  float rmin, tr, hmin, th;
-  float t = march(ro, rd, pix, rmin, tr, hmin, th);
-  vec3 col = vec3(0.0), lights = vec3(0.0);
-  /* the sky, and a skyline the ray only just cleared, where part of the
-     pixel is sand: one call to the sand either way */
-  float cov = 1.0;
-  if (t < 0.0) {
-    col = skyCol(rd, pix, lights);
-    cov = sat(0.5 - rmin);
+  float rmin, tr;
+  float t = march(ro, rd, pix, rmin, tr);
+  float tg = rd.y < 0.0 ? ro.y / -rd.y : 1e9;
+  vec3 col;
+  vec3 lights = vec3(0.0);
+  float tEnd;
+  if (t > 0.0 && t < tg) {
+    col = shadeGround(ro, rd, t, pix, true);
+    tEnd = t;
+  } else if (tg < 1e8) {
+    col = shadeGround(ro, rd, tg, pix, false);
+    tEnd = tg;
+  } else {
+    col = skyBase(rd);
+    if (gWM > 0.001) {
+      float band;
+      vec3 mw = milky(rd, band);
+      lights = (starsAt(rd, pix, band) + mw * 0.045) * gWM * smoothstep(0.0, 0.03, rd.y);
+    }
+    /* the moon, pale by day, bright by night */
+    vec3 md = moonDisc(rd, gM, gLd, pix);
+    col += md * (gWS * 0.38 * (1.0 - gFu * 0.3) + gWM * 2.4);
+    float ma = acos(clamp(dot(rd, gM), -1.0, 1.0));
+    col += vec3(0.6, 0.65, 0.75) * 0.004 * exp(-ma / 0.03) * gWM;
+    /* a skyline the ray only just cleared is part sand */
+    float cov = sat(0.5 - rmin);
+    if (cov > 0.0) {
+      col = mix(col, shadeGround(ro, rd, tr, pix, true), cov);
+      lights *= 1.0 - cov;
+    }
+    tEnd = 1e9;
   }
-  if (cov > 0.0) {
-    float ts = t > 0.0 ? t : max(tr - max(3.0, tr * pix * 4.0), 1.0);
-    col = mix(col, shade(ro, rd, ts, pix), cov);
-    lights *= 1.0 - cov;
+
+  /* the trees standing between the eye and what it met */
+  vec3 tt = traceTrees(ro, rd, min(tEnd, 700.0), pix);
+  if (tt.y > 0.0) {
+    col = mix(col, shadeTree(ro, rd, tt.x, pix, int(tt.z)), tt.y);
+    lights *= 1.0 - tt.y;
   }
-  /* sand blowing off a crest, seen against the sky */
-  if (t < 0.0 && hmin < 20.0) {
-    vec4 info;
-    vec3 q = ro + rd * th;
-    field(q.xz, th, info);
-    float sd = spindrift(info.z, info.y, hmin) * smoothstep(1.0, 0.3, th * pix);
-    vec3 sunC = sunAt(gSun, q.y) * gEs * gWS + sunAt(gMoon, q.y) * gEm * gWM * 3.2;
-    float fwd = 0.35 + 2.5 * pow(sat(dot(rd, keyDir())), 6.0);
-    col += sd * 0.45 * vec3(0.5, 0.3, 0.2) * sunC * fwd / PI + sd * 0.1 * col;
-  }
-  col *= look3(vec3(1.0), vec3(0.8, 0.9, 1.42), vec3(0.8, 0.95, 1.3));
-  col = max(mix(vec3(luma(col)), col, 1.0 + 0.15 * uLook.x + 0.12 * uLook.y), 0.0);
-  vec3 grey = vec3(luma(col));
-  col = mix(col, grey * vec3(0.5, 0.72, 1.35), 0.85 * gWM);
-  return col + lights * vec3(0.9, 0.95, 1.08);
+
+  /* night: moonlight drains the colour and turns it blue */
+  col = mix(col, vec3(luma(col)) * vec3(0.55, 0.75, 1.3), 0.75 * gWM);
+  return col + lights;
 }
 `
 };
