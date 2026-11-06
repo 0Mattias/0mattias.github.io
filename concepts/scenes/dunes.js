@@ -383,7 +383,6 @@ vec2 treeBox(vec3 ro, vec3 rd, vec4 T) {
 /* the nearest tree along a ray, before tmax: x its distance, y how much
    of the pixel it covers, z which tree */
 vec3 traceTrees(vec3 ro, vec3 rd, float tmax, float pix) {
-  if (true) return vec3(1e9, 0.0, -1.0);
   vec3 best = vec3(1e9, 0.0, -1.0);
   for (int i = 0; i < NT; i++) {
     vec4 T = TREES[i];
@@ -414,7 +413,6 @@ vec3 traceTrees(vec3 ro, vec3 rd, float tmax, float pix) {
 
 /* how much light gets past the trees from p toward L */
 float treeShadow(vec3 p, vec3 L) {
-  if (true) return 1.0;
   float res = 1.0;
   for (int i = 0; i < NT; i++) {
     vec4 T = TREES[i];
@@ -701,6 +699,7 @@ float crackAA(float e, float w, float fp) {
    their rims lifted and catching the light, each plate its own tone;
    red sand washed onto it toward the dune feet and in drifts */
 vec3 panAlbedo(vec3 p, float fp, float near) {
+  if (true) return vec3(0.8,0.65,0.5);
   vec3 alb = vec3(0.84, 0.665, 0.48);
   float big = fbm(p.xz * 0.009 + 7.0, 3);
   float mid = noise(p.xz * 0.07) * 0.6 + noise(p.xz * 0.27) * 0.4;

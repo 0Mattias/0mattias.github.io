@@ -393,7 +393,7 @@ float cloudH(vec2 x, float fp, out float ao) {
   /* far out the deck flattens into a smooth bright band */
   float far = mix(1.0, 0.25, smoothstep(22000.0, 52000.0, length(x)));
   /* big lobes of three to six hundred metres on the banks and towers */
-  vec2 L1 = lobes(w, 380.0, vec2(150.0, 400.0), vec2(0.0, 170.0), 3.0);
+  vec2 L1 = lobes(w, 400.0, vec2(170.0, 320.0), vec2(20.0, 150.0), 3.0);
   float h = B.x + B.y * far * L1.x;
   ao = L1.y;
   /* and small ones of sixty to a hundred and fifty on those */
