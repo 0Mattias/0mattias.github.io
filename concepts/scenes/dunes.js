@@ -354,7 +354,7 @@ vec2 treeSpan(vec3 ro, vec3 rd) {
   for (int i = 0; i < 4; i++) {
     if (i >= nLimb) break;
     vec2 b = ballSpan(ro, rd, limbB[i].xyz, limbB[i].w);
-    gMask |= 1 << i;
+    if (b.y > max(b.x, 0.0)) gMask |= 1 << i;
     sp = vec2(min(sp.x, b.x), max(sp.y, b.y));
   }
   return sp;
@@ -400,6 +400,8 @@ vec3 traceTrees(vec3 ro, vec3 rd, float tmax, float pix) {
     buildTree(T);
     vec3 base = vec3(T.x, 0.0, T.y);
     vec2 bs = treeSpan(ro - base, rd);
+    span = vec2(max(span.x, bs.x), min(span.y, bs.y));
+    if (span.x >= span.y) continue;
     float t = span.x, mm = 1e9, tm = 0.0;
     bool hit = false;
     for (int k = 0; k < 48; k++) {
@@ -409,11 +411,6 @@ vec3 traceTrees(vec3 ro, vec3 rd, float tmax, float pix) {
       if (m < 0.2) { hit = true; break; }
       t += max(d * 0.85, t * pix * 0.4);
       if (t > span.y) break;
-    }
-    if (hit && !(max(span.x, bs.x) < min(span.y, bs.y))) {
-      vec3 lp = ro + rd * t - base;
-      float inT = length(lp - 0.5 * (cA[0].xyz + cB[0].xyz)) - (0.5 * length(cB[0].xyz - cA[0].xyz) + gTrunkR);
-      return vec3(t, 1.0, -2.0 - (inT < 0.0 ? 1.0 : 0.0) - 2.0 * (bs.x > 1e8 ? 1.0 : 0.0) - 4.0 * (span.x > bs.y ? 1.0 : 0.0) - 8.0 * (span.y < bs.x ? 1.0 : 0.0));
     }
     float cov = hit ? 1.0 : sat(0.6 - mm) / 0.6;
     if (cov > 0.0 && (hit ? t : tm) < best.x && cov >= best.y * 0.5) best = vec3(hit ? t : tm, cov, float(i));
@@ -920,7 +917,6 @@ vec3 scene(vec2 fc) {
 
   /* the trees standing between the eye and what it met */
   vec3 tt = traceTrees(ro, rd, min(tEnd, 700.0), pix);
-  if (tt.z < -1.5) { int c = int(-tt.z - 2.0 + 0.5); return vec3((c & 1) != 0 ? 4.0 : 0.0, (c & 2) != 0 ? 4.0 : 0.0, (c & 4) != 0 ? 4.0 : ((c & 8) != 0 ? 1.0 : 0.0)); }
   if (tt.y > 0.0) {
     col = mix(col, shadeTree(ro, rd, tt.x, pix, int(tt.z)), tt.y);
     lights *= 1.0 - tt.y;
