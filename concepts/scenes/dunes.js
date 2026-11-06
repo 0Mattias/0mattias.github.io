@@ -352,7 +352,7 @@ vec2 treeSpan(vec3 ro, vec3 rd) {
   for (int i = 0; i < 4; i++) {
     if (i >= nLimb) break;
     vec2 b = ballSpan(ro, rd, limbB[i].xyz, limbB[i].w);
-    if (b.y > max(b.x, 0.0)) gMask |= 1 << i;
+    gMask |= 1 << i;
     sp = vec2(min(sp.x, b.x), max(sp.y, b.y));
   }
   return sp;

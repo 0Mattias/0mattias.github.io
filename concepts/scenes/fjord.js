@@ -145,9 +145,9 @@ float densInt(float y0, float mu, float d, float H) {
    walls' shadow the haze takes only the sky's light */
 void air(vec3 ro, vec3 rd, float d, out vec3 T, out vec3 S) {
   vec3 tR = BR * densInt(ro.y, rd.y, d, 8000.0);
-  float tM = MIE * densInt(ro.y, rd.y, d, 1200.0) + HAZE * densInt(ro.y, rd.y, d, 700.0);
+  float tM = MIE * densInt(ro.y, rd.y, d, 1200.0) + HAZE * densInt(ro.y, rd.y, d, 900.0);
   T = exp(-(tR + tM * 1.11));
-  vec3 veil = (skyMS(0.0) * 0.35 + (SKYH * 0.6 + SKYZ * 0.4) * look3(0.4, 0.45, 0.5)) * vec3(1.0, 0.97, 0.85) + twilight(0.0);
+  vec3 veil = (skyMS(0.0) * 0.35 + (SKYH * 0.6 + SKYZ * 0.4) * look3(0.72, 0.62, 0.5)) * vec3(1.0, 0.98, 0.9) + twilight(0.0);
   S = scatter1(tR, tM, dot(rd, KEY), KEYG * AIRLIT) + veil * (1.0 - T);
 }
 
@@ -222,7 +222,7 @@ vec2 gullies(float u, float s, float sd) {
 /* the falls, each its own channel down one wall: u along the fjord, side,
    and its path wandering as it comes down */
 float fallOff(float u, float s, float sd) {
-  float a = sd > 0.0 ? u - 2050.0 - 14.0 * sin(s * 0.007) - 6.0 * sin(s * 0.023 + 1.0) : 1e4;
+  float a = sd > 0.0 ? u - 2350.0 - 14.0 * sin(s * 0.007) - 6.0 * sin(s * 0.023 + 1.0) : 1e4;
   float b = sd > 0.0 && s > 150.0 ? u - 4850.0 - 18.0 * sin(s * 0.006 + 2.0) : 1e4;
   return min(abs(a), abs(b));
 }
@@ -270,14 +270,14 @@ float ground(vec2 p, vec3 pl, int det) {
   s += (90.0 * bt - 50.0) * (1.0 - 0.6 * kf);
   if (det > 0) {
     float cn = noise(f * vec2(0.012, 0.006) + 1.3);
-    s += 30.0 * mix(cn, 1.0 - abs(2.0 * cn - 1.0), 0.4) - 15.0;
+    s += 30.0 * mix(cn, 1.0 - abs(2.0 * cn - 1.0), 0.15) - 15.0;
   }
   if (det > 1) s += 14.0 * noise(f * 0.03 + 4.1) - 7.0;
   if (det > 2) s += 5.0 * noise(f * 0.09 + 2.7) - 2.5;
   float band = smoothstep(250.0, 500.0, h0) * (1.0 - smoothstep(1000.0, 1200.0, h0));
   if (det > 1) {
     float k = h0 / 46.0 + 2.5 * noise(f * vec2(0.004, 0.008));
-    s += band * 9.0 * smoothstep(0.35, 0.7, noise(f * 0.008 + 6.0)) * (smoothstep(0.3, 0.7, fract(k)) - fract(k));
+    s += band * 5.0 * smoothstep(0.35, 0.7, noise(f * 0.008 + 6.0)) * (smoothstep(0.3, 0.7, fract(k)) - fract(k));
   }
   float h = wallProfile(s, T, cb);
   // the uplands behind the rim, rounded humps and knolls
@@ -430,6 +430,12 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   alb = mix(alb, alb * vec3(1.06, 1.04, 0.94), noise3(p * 0.007 + 1.0));
   float ws = noise3(vec3(p.x * 0.03, y * 0.002, p.z * 0.03) + 11.0);
   alb = mix(alb, vec3(0.03, 0.031, 0.03), smoothstep(0.7, 0.85, ws) * (1.0 - slope) * 0.75);
+  // water stains running down the steep faces, and paler, drier rock
+  // between them, in the face's own coordinates
+  float stx = u * 0.08 + 3.0 * noise(vec2(u * 0.012, y * 0.002 + sd));
+  float steep = smoothstep(0.72, 0.45, slope);
+  alb *= 1.0 - 0.6 * smoothstep(0.56, 0.8, noise(vec2(stx, y * 0.004 + sd * 5.0))) * steep;
+  alb *= 1.0 + 0.35 * smoothstep(0.6, 0.85, noise(vec2(stx * 1.7 + 9.0, y * 0.006))) * steep;
 
   // ledges: grass and heath catch on every step of the rock
   float led = smoothstep(0.35, 0.6, noise(vec2(y * 0.045 + 3.0 * noise(p.xz * 0.004), u * 0.004 + sd)));
@@ -442,18 +448,20 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   float tl = 720.0 + 260.0 * noise(p.xz * 0.0011) - 130.0;
   float steepOk = smoothstep(0.36, 0.48, slope + 0.14 * (m2 - 0.5) + 0.08 * (m3 - 0.5));
   float aval = smoothstep(0.3, 0.7, gg.x) * smoothstep(30.0, 160.0, y);
-  float forest = steepOk * (1.0 - smoothstep(tl - 160.0, tl + 30.0, y + 120.0 * (m3 - 0.5))) * (1.0 - 0.9 * aval) * smoothstep(0.8, 2.5, y);
+  float fo = fallOff(u, s, sd);
+  float forest = steepOk * (1.0 - smoothstep(tl - 160.0, tl + 30.0, y + 120.0 * (m3 - 0.5))) * (1.0 - 0.9 * aval) * smoothstep(0.8, 2.5, y)
+               * smoothstep(5.0, 14.0, fo);
   // birch in patches, low down and along the gullies, yellow-green among
   // the darker spruce and pine that hold the ribs and the higher slopes
   vec2 fq = vec2(u, y * 1.25);
   float bp = noise(fq * 0.007 + 11.0) * 0.6 + noise(fq * 0.019 + 4.0) * 0.4;
   float bf = sat(smoothstep(0.42, 0.64, bp) * 0.85 + 0.3 * (1.0 - smoothstep(60.0, 400.0, y)) + 0.35 * gg.y - 0.3 * smoothstep(350.0, 650.0, y));
-  vec3 pine = vec3(0.012, 0.019, 0.011), birch = vec3(0.037, 0.049, 0.022);
+  vec3 pine = vec3(0.0095, 0.018, 0.0095), birch = vec3(0.031, 0.048, 0.019);
   vec3 trees = mix(pine, birch, bf);
   // clumps a few tens of metres across, and the runnels between them in
   // shade
   float cl = noise(fq * 0.05 + 7.0) * 0.65 + noise(fq * 0.12 + 2.0) * 0.35;
-  trees *= (0.7 + 0.6 * cl) * (1.0 - 0.3 * smoothstep(0.15, 0.6, gg.y));
+  trees *= (0.5 + 1.0 * cl * cl) * (1.0 - 0.35 * smoothstep(0.15, 0.6, gg.y));
   // single crowns only on the nearest slopes; a fine grain where they
   // shrink under a few pixels; beyond that the velvet they make
   float cw = 3.4;
@@ -465,8 +473,9 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
     vec3 one = mix(pine, birch, step(1.0 - bf, c.y)) * (0.85 + 0.3 * fract(c.y * 17.0));
     trees = mix(trees, mix(trees, one * (0.7 + 0.6 * cl), 0.85) * mix(1.0, c.x, 0.75), ca);
   }
-  float grain = sat(1.0 - fp / 1.6) * (1.0 - ca);
-  trees *= 1.0 + grain * (noise(fq / cw * 1.1) - 0.5) * 0.45;
+  float grain = sat(1.0 - fp / 3.0) * (1.0 - ca);
+  float gn = noise(fq / cw * 1.1) * 0.6 + noise(fq / cw * 0.45 + 3.0) * 0.4;
+  trees *= 1.0 + grain * (gn - 0.5) * 1.1;
   // the gullies: grass and scrub, scree low down and snow high up
   vec3 grass = mix(vec3(0.055, 0.09, 0.025), vec3(0.08, 0.1, 0.04), m2);
   alb = mix(alb, grass, aval * smoothstep(0.3, 0.45, slope) * 0.8);
@@ -483,18 +492,18 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   // longest on the ground turned from the sun, north and east
   float shade = dot(normalize(ng.xz + vec2(1e-4, 0.0)), vec2(0.6, 0.8)) * (1.0 - slope);
   float sn = smoothstep(sl - 50.0, sl + 50.0, y + 260.0 * gg.x + 220.0 * shade) * smoothstep(0.42, 0.7, slope + 0.5 * gg.x)
-           * smoothstep(0.5, 0.66, 0.55 * noise(p.xz * 0.006 + 4.0) + 0.3 * noise(p.xz * 0.025) + 0.15 * noise(vec2(u * 0.03, y * 0.02)) + 0.2 * gg.x);
+           * smoothstep(0.54, 0.64, 0.45 * noise(fq * 0.006 + 4.0) + 0.3 * noise(fq * 0.025) + 0.25 * noise(fq * 0.08 + 1.0) + 0.3 * gg.x);
   alb = mix(alb, vec3(0.86, 0.88, 0.9), sn);
 
   // the falls: white over the rock, lost under the trees
-  float fo = fallOff(u, s, sd);
-  float fw0 = 3.0 + 3.0 * (1.0 - slope);
-  float fw = max(fw0, 2.2 * fp);
-  float fl = smoothstep(fw, fw * 0.3, fo) * smoothstep(5.0, 30.0, y) * smoothstep(1060.0, 960.0, y);
-  fl *= min(1.0, 1.3 * fw0 / fw) * (0.6 + 0.4 * noise(vec2(fo * 0.5, y * 0.05 + TT * 1.4)));
-  fl *= smoothstep(0.35, 0.6, noise(vec2(y * 0.012, sd * 3.0 + 1.0)) + 0.4 * (1.0 - slope));
-  fl *= 1.0 - 0.85 * forest * smoothstep(0.42, 0.6, slope);
-  alb = mix(alb, vec3(0.78, 0.8, 0.82), sat(fl));
+  // the falls: a white ribbon, brightest where it leaves a ledge and falls
+  // free, fainter where it runs in its bed between, and quiet by night
+  float fw0 = 3.5 + 3.5 * (1.0 - slope);
+  float fw = max(fw0, 2.0 * fp);
+  float fl = smoothstep(fw, fw * 0.3, fo) * smoothstep(3.0, 20.0, y) * smoothstep(1060.0, 980.0, y);
+  float pitch = smoothstep(0.4, 0.62, noise(vec2(y * 0.018, sd * 3.0 + 1.0)) + 0.5 * (0.7 - slope));
+  fl *= min(1.0, 1.3 * fw0 / fw) * (0.75 + 0.25 * noise(vec2(fo * 0.5, y * 0.05 + TT * 1.4))) * mix(0.4, 1.0, pitch);
+  alb = mix(alb, vec3(0.8, 0.82, 0.84), sat(fl) * look3(1.0, 0.85, 0.4));
 
   // the shore: a band of bare, pale rock where the tide and the waves keep
   // the trees off
@@ -548,6 +557,13 @@ vec3 rockBump(vec3 p, vec3 n, float t) {
     if (w.x > 0.05) { vec3 a = noised(p.zy * f + o.xy); g += w.x * vec3(0.0, a.z, a.y) * A * f; }
     if (w.z > 0.05) { vec3 a = noised(p.xy * f + o.yz); g += w.z * vec3(a.y, a.z, 0.0) * A * f; }
     if (w.y > 0.05) { vec3 a = noised(p.xz * f + o.xz); g += w.y * vec3(a.y, 0.0, a.z) * A * f; }
+  }
+  // runnels down the steep faces
+  float A2 = 0.5 * sat(1.0 - fp * 0.25) * (1.0 - smoothstep(0.4, 0.7, n.y));
+  if (A2 > 0.0) {
+    vec3 a = noised(vec2((p.x + p.z) * 0.15, p.y * 0.012));
+    vec3 hz = normalize(vec3(-n.z, 0.0, n.x) + 1e-4);
+    g += hz * a.y * 0.15 * A2;
   }
   return normalize(n - g);
 }
@@ -691,18 +707,26 @@ float cloudD(vec2 q) {
 vec4 clouds(vec3 rd) {
   if (rd.y < 0.012) return vec4(0.0);
   float t0 = 2100.0 / (rd.y + 0.015);
-  vec2 q = (rd.xz * t0 + vec2(TT * 4.0, TT * 1.5)) * 0.0006;
-  float cov = look3(0.55, 0.6, 0.95) + 0.12 * (1.0 - smoothstep(0.08, 0.35, rd.y));
+  vec2 q = (rd.xz * t0 + vec2(TT * 4.0, TT * 1.5)) * 0.00085;
+  float cov = look3(0.6, 0.6, 0.95) + 0.1 * (1.0 - smoothstep(0.08, 0.35, rd.y));
   float f = cloudD(q);
-  float a = smoothstep(cov, cov + 0.05, f) * (0.75 + 0.25 * smoothstep(cov, cov + 0.12, f));
+  float a = smoothstep(cov - 0.015, cov + 0.09, f);
   if (a <= 0.0) return vec4(0.0);
+  // further along the sight line is higher up the cloud: where it thins
+  // beyond, the sight line meets its rounded, sunlit top; where it thickens
+  // beyond, its flatter, greyer base
+  vec2 vd = normalize(rd.xz + vec2(1e-4, 0.0));
   vec2 lk = normalize(KEY.xz + vec2(1e-4, 0.0));
-  float f2 = cloudD(q + lk * 0.05);
-  float thick = smoothstep(cov + 0.02, cov + 0.22, f);
-  float lit = sat(0.4 + 4.0 * (f - f2)) * (0.6 + 0.8 * noise(q * 5.0 + 2.0));
+  float fv = cloudD(q + vd * 0.05);
+  float fs = cloudD(q + lk * 0.05);
+  float thick = smoothstep(cov, cov + 0.22, f);
+  float top = sat(0.5 + 7.0 * (f - fv));
+  float sun = sat(0.5 + 6.0 * (f - fs));
+  float base = sat(6.0 * (fv - f)) * thick;
+  float lit = sat(0.15 + 0.5 * sun + 0.55 * top - 0.45 * base) * (0.75 + 0.5 * noise(q * 9.0 + 2.0));
   float c = dot(rd, KEY);
-  vec3 sunc = KEYC * (0.04 + 0.24 * lit * (1.0 - 0.5 * thick) + 0.9 * phaseM(c, 0.6) * (1.0 - 0.8 * thick)) * look3(0.85, 0.5, 0.5);
-  vec3 amb = (SKYZ * 0.7 + SKYH * 0.3) * PI * mix(0.42, 0.2, thick) * look3(1.0, 0.5, 1.0);
+  vec3 sunc = KEYC * (0.03 + 0.3 * lit + 0.8 * phaseM(c, 0.6) * (1.0 - 0.8 * thick)) * look3(0.85, 0.55, 0.5);
+  vec3 amb = (SKYZ * 0.7 + SKYH * 0.3) * PI * mix(0.42, 0.2, max(thick * 0.7, base)) * look3(1.0, 0.65, 1.0);
   float fade = smoothstep(0.015, 0.1, rd.y) * exp(-t0 * 0.00003);
   return vec4((sunc + amb) * a * fade, a * fade);
 }
@@ -968,7 +992,7 @@ vec3 scene(vec2 fc) {
   KEY = normalize(mix(sunD, MOOND, KEYS));
   E0 = look3(vec3(9.0), vec3(24.0), vec3(0.5, 0.75, 1.5) * 1.5) * dip;
   MIE = look3(3.5e-6, 1.2e-5, 5e-6);
-  HAZE = look3(2.3e-5, 2.8e-5, 1.6e-5);
+  HAZE = look3(4.2e-5, 4.6e-5, 1.8e-5);
   AIRLIT = look3(0.4, 0.2, 0.6);
   KEYG = keyLight(KEY.y, 1.0);
   MSL = keyLight(max(KEY.y, 0.0) + 0.2, 0.35) * look3(0.7, 0.4, 0.85);
@@ -995,6 +1019,7 @@ vec3 scene(vec2 fc) {
      added (acc) and light let through (thr) */
   vec3 acc = vec3(0.0), thr = vec3(1.0);
   vec3 o = ro, d = rd;
+  float tend0 = 1e9;
   int kind = 0;            // what the last ray met: 0 sky, 1 land, 2 a building
   float th = 0.0, tl = 0.0;
   vec3 bn = vec3(0.0, 1.0, 0.0), ba = vec3(0.0);
@@ -1008,6 +1033,7 @@ vec3 scene(vec2 fc) {
     kind = tbl > 0.0 ? 2 : t > 0.0 ? 1 : 0;
     if (kind == 2) { tend = tbl; bn = nb; ba = ab; }
     th = tend;
+    if (!refl) tend0 = tend;
     bool water = kind == 0 && tw < 1e8;
     // the air, the low cloud and the mist along the way; the sky holds
     // its own air
@@ -1073,7 +1099,17 @@ vec3 scene(vec2 fc) {
       c = mix(c, cl, w);
     }
   }
-  return acc + thr * c;
+  vec3 col = acc + thr * c;
+  // spray hanging where the near fall meets the fjord
+  vec3 B = vec3(300.0, 10.0, 2352.0);
+  float tb = dot(B - ro, rd);
+  if (tb > 0.0 && tb < tend0 + 60.0) {
+    vec3 e = (ro + rd * tb - B) / vec3(38.0, 26.0, 38.0);
+    float sp = exp(-dot(e, e)) * look3(0.3, 0.22, 0.1);
+    vec3 spc = (SKYH * 0.6 + SKYZ * 0.4) * PI * 0.28 + KEYG * look3(0.05, 0.02, 0.01);
+    col = mix(col, spc, sp);
+  }
+  return col;
 }
 `
 };
