@@ -341,10 +341,12 @@ float treeD(vec3 p) {
    hold its trunk and limbs: most rays through the box miss them all */
 vec2 ballSpan(vec3 ro, vec3 rd, vec3 c, float r) {
   vec3 oc = ro - c;
-  float b = dot(oc, rd), h = b * b - dot(oc, oc) + r * r;
+  float tc = -dot(oc, rd);
+  vec3 q = oc + rd * tc;
+  float h = r * r - dot(q, q);
   if (h < 0.0) return vec2(1e9, -1e9);
   h = sqrt(h);
-  return vec2(-b - h, -b + h);
+  return vec2(tc - h, tc + h);
 }
 vec2 treeSpan(vec3 ro, vec3 rd) {
   vec2 sp = ballSpan(ro, rd, 0.5 * (cA[0].xyz + cB[0].xyz), 0.5 * length(cB[0].xyz - cA[0].xyz) + gTrunkR);
@@ -408,7 +410,11 @@ vec3 traceTrees(vec3 ro, vec3 rd, float tmax, float pix) {
       t += max(d * 0.85, t * pix * 0.4);
       if (t > span.y) break;
     }
-    if (hit && !(max(span.x, bs.x) < min(span.y, bs.y))) return vec3(t, 1.0, -2.0 - float(i));
+    if (hit && !(max(span.x, bs.x) < min(span.y, bs.y))) {
+      vec3 lp = ro + rd * t - base;
+      float inT = length(lp - 0.5 * (cA[0].xyz + cB[0].xyz)) - (0.5 * length(cB[0].xyz - cA[0].xyz) + gTrunkR);
+      return vec3(t, 1.0, -2.0 - (inT < 0.0 ? 1.0 : 0.0) - 2.0 * (bs.x > 1e8 ? 1.0 : 0.0) - 4.0 * (span.x > bs.y ? 1.0 : 0.0) - 8.0 * (span.y < bs.x ? 1.0 : 0.0));
+    }
     float cov = hit ? 1.0 : sat(0.6 - mm) / 0.6;
     if (cov > 0.0 && (hit ? t : tm) < best.x && cov >= best.y * 0.5) best = vec3(hit ? t : tm, cov, float(i));
   }
@@ -914,7 +920,7 @@ vec3 scene(vec2 fc) {
 
   /* the trees standing between the eye and what it met */
   vec3 tt = traceTrees(ro, rd, min(tEnd, 700.0), pix);
-  if (tt.z < -1.5) return vec3(4.0, 0.0, 4.0);
+  if (tt.z < -1.5) { int c = int(-tt.z - 2.0 + 0.5); return vec3((c & 1) != 0 ? 4.0 : 0.0, (c & 2) != 0 ? 4.0 : 0.0, (c & 4) != 0 ? 4.0 : ((c & 8) != 0 ? 1.0 : 0.0)); }
   if (tt.y > 0.0) {
     col = mix(col, shadeTree(ro, rd, tt.x, pix, int(tt.z)), tt.y);
     lights *= 1.0 - tt.y;

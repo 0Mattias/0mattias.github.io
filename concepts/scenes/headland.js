@@ -930,6 +930,9 @@ vec3 scene(vec2 fc) {
   float s0;
   float de = mainD(eq, s0);
   ro.y = mainTop(eq, -de) - 3.0 * exp(de / 5.0) + 1.7 + uPoint.y * 0.8;
+  /* a tall frame looks steeply down: the eye stands a little higher, on
+     the rocks at the lip, so its own ground stays out of the picture */
+  ro.y += (1.0 - wide) * 7.0;
 
   float tSea = rd.y < 0.0 ? ro.y / -rd.y : 1e9;
   float tMax = min(tSea, 4000.0);
