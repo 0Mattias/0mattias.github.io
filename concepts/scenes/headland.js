@@ -67,7 +67,7 @@ vec3 dirBE(float b, float e) {
 /* everything a look decides, blended once per pixel. The sun's looks are
    weighed down by DIP while the night comes in or goes, so a turn between
    them passes through a dim twilight */
-vec3 SUN, SUNC, SUND, MOON, W3;
+vec3 SUN, SUNC, SUND, MOON, W3, SUNS, SUNSC, MOONC;
 vec3 ZEN, HOR, HORA, GLOW;
 vec3 AMBU, AMBH, BNC, WATER, CLC, DISC, SKYI, GNDI;
 float HAZE, LAMP, NIGHT, DIP;
@@ -82,6 +82,11 @@ void setup() {
   SUN = normalize(dSun * uLook.x + uSun * uLook.y + MOON * uLook.z);
   SUND = normalize(dSun * uLook.x + uSun * (uLook.y + uLook.z));
   SUNC = L3(vec3(3.2, 3.0, 2.75), vec3(3.0, 1.45, 0.5), vec3(0.17, 0.2, 0.27));
+  /* the sea's glitter takes the sun and the moon each from its own place,
+     so a turn between them never lays a path where neither stands */
+  SUNS = normalize(dSun * uLook.x + uSun * uLook.y + vec3(0.0, 1e-4, 0.0));
+  SUNSC = L3(vec3(3.2, 3.0, 2.75), vec3(3.0, 1.45, 0.5), vec3(0.0));
+  MOONC = vec3(0.17, 0.2, 0.27) * uLook.z;
   ZEN = L3(vec3(0.10, 0.20, 0.46), vec3(0.11, 0.1, 0.17), vec3(0.004, 0.0075, 0.02));
   HOR = L3(vec3(0.50, 0.58, 0.70), vec3(1.35, 0.72, 0.32), vec3(0.02, 0.03, 0.055));
   HORA = L3(vec3(0.42, 0.53, 0.70), vec3(0.42, 0.26, 0.27), vec3(0.015, 0.023, 0.045));
@@ -93,7 +98,7 @@ void setup() {
   BNC = L3(vec3(0.05, 0.06, 0.05), vec3(0.03, 0.02, 0.015), vec3(0.002, 0.003, 0.004));
   CLC = L3(vec3(2.9, 2.85, 2.75), vec3(3.0, 1.35, 0.6), vec3(0.15, 0.18, 0.24));
   DISC = L3(vec3(60.0, 56.0, 50.0), vec3(60.0, 34.0, 12.0), vec3(0.0));
-  WATER = look3(vec3(0.006, 0.030, 0.042), vec3(0.008, 0.016, 0.028), vec3(0.008, 0.024, 0.038));
+  WATER = look3(vec3(0.02, 0.026, 0.032), vec3(0.008, 0.016, 0.028), vec3(0.008, 0.024, 0.038));
   HAZE = look3(1.0 / 16000.0, 1.0 / 14000.0, 1.0 / 12000.0);
   LAMP = uLook.z + 0.12 * uLook.y;
   NIGHT = uLook.z;
@@ -117,7 +122,7 @@ float hg(float mu, float g) { float g2 = g * g; return (1.0 - g2) / (12.566 * po
    prow, the face of An t-Aigeach east of it; and its south edge */
 float edgeN(float u) {
   float pl = 33.0 + 9.0 * sin(u * 0.052 + 0.9) + 3.0 * sin(u * 0.13 + 2.0) - 8.0 * exp(-pow((u - 300.0) / 22.0, 2.0));
-  float rg = 58.0 + 0.03 * (u - 360.0) + 14.0 * exp(-pow((u - 392.0) / 40.0, 2.0)) - 9.0 * exp(-pow((u - 515.0) / 55.0, 2.0)) + 3.0 * sin(u * 0.043 + 1.3) + 1.5 * sin(u * 0.11);
+  float rg = 56.0 + 0.03 * (u - 360.0) + 12.0 * exp(-pow((u - 390.0) / 30.0, 2.0)) + 17.0 * exp(-pow((u - 468.0) / 28.0, 2.0)) + 26.0 * exp(-pow((u - 565.0) / 42.0, 2.0)) + 2.0 * sin(u * 0.11);
   return mix(pl, rg, smoothstep(325.0, 360.0, u));
 }
 float edgeS(float u) {
@@ -149,13 +154,13 @@ float mainD(vec2 q, out float s) {
    gently from the tip. Every top rounds over at its edge. The mainland
    rises inland from the viewpoint */
 float ridgeTop(vec2 q) {
-  float crest = 75.0 - 13.0 * (1.0 - exp(-max(q.x - 372.0, 0.0) / 50.0)) - 14.0 * smoothstep(470.0, 980.0, q.x) + 1.0 * sin(q.x * 0.04);
-  float vc = edgeN(q.x) - 6.0 - 55.0 * smoothstep(380.0, 540.0, q.x);
+  float crest = 79.0 - 21.0 * (1.0 - exp(-max(q.x - 366.0, 0.0) / 45.0)) - 12.0 * smoothstep(480.0, 980.0, q.x) + 1.0 * sin(q.x * 0.04);
+  float vc = edgeN(q.x) - 5.0 - 55.0 * smoothstep(372.0, 520.0, q.x);
   float dv = q.y - vc;
   float hn = 0.36 * dv + 0.0012 * dv * dv;
-  float hs = mix(0.5, 0.3, smoothstep(370.0, 480.0, q.x)) * (sqrt(dv * dv + 25.0) - 5.0);
-  /* the summit rounds over to the prow's west face */
-  float w = 0.004 * max(380.0 - q.x, 0.0) * max(380.0 - q.x, 0.0);
+  float hs = mix(0.6, 0.3, smoothstep(370.0, 480.0, q.x)) * (sqrt(dv * dv + 25.0) - 5.0);
+  /* the summit is a point over the arete, falling to the prow's west face */
+  float w = 0.4 * max(366.0 - q.x, 0.0);
   return crest - (dv > 0.0 ? hn : hs) - w + 1.2 * noise(q / 18.0);
 }
 float platTop(vec2 q) {
@@ -200,7 +205,7 @@ float faceOff(float y, float s, float amt, float col) {
 /* the edge of a top: the turf rounds over and the highest beds break
    back raggedly under it */
 float lip(float y, float top, float s) {
-  return 0.9 * smoothstep(top - 8.0, top - 1.5, y) * (0.3 + noise(vec2(s / 7.0, 2.0)));
+  return 0.8 * smoothstep(top - 8.0, top - 1.5, y) * noise(vec2(s / 6.0, 2.0));
 }
 
 float map(vec3 p) {
@@ -226,8 +231,11 @@ float map(vec3 p) {
       if (max(dp, dw) < -22.0) ridge = p.y - rt;
       else {
         float amt = 0.15 + 0.6 * smoothstep(480.0, 760.0, q.x) * noise(vec2(q.x / 110.0, 2.0));
-        float fo = faceOff(p.y, sp, amt, 0.3) + lip(p.y, rt, sp) + lump;
-        float rim = 2.0 * exp(min(dp + fo, 0.0) / 3.5);
+        float g2 = 1.0 - abs(2.0 * noise(vec2(sp / 19.0, p.y / 160.0 + 5.0)) - 1.0);
+        float fo = faceOff(p.y, sp, amt, 0.3) + lip(p.y, rt, sp) + lump + 8.0 * pow(g2, 8.0) - 2.5 * (1.0 - g2 * g2);
+        /* the edge breaks raggedly: notches and knobs where the turf gives
+           way to the rock */
+        float rim = (0.6 + 4.5 * smoothstep(0.4, 0.8, noise(vec2(sp / 7.0, 1.3)) + 0.3 * noise(vec2(sp / 2.2, 4.0)))) * exp(min(dp + fo, 0.0) / 4.0);
         ridge = smax(p.y - rt + rim, smax(dp + fo, dw + 0.5 * fo, 3.0), 1.0);
       }
       r = ridge;
@@ -263,7 +271,7 @@ float map(vec3 p) {
      boulders, widest in the bay east of the prow */
   if (p.y < 10.0) {
     float sh = 2.0 + 6.0 * noise(vec2((sp + sm) / 45.0, 1.3));
-    float bay = 10.0 * smoothstep(420.0, 480.0, q.x) * (1.0 - smoothstep(620.0, 700.0, q.x)) * step(0.0, q.y);
+    float bay = 10.0 * smoothstep(350.0, 395.0, q.x) * (1.0 - smoothstep(620.0, 700.0, q.x)) * step(0.0, q.y);
     float ap = df + 6.0 - (1.6 + bay * 0.25) * max(sh - p.y, 0.0) + 2.6 * noise(p.xz * 0.3 + p.y * 0.2) - 1.3 - bay * 0.5;
     r = min(r, max(ap, p.y - sh - 1.0));
   }
@@ -351,7 +359,7 @@ vec4 clouds(vec3 ro, vec3 rd) {
   float t = (CLH - ro.y) / rd.y;
   vec2 p = ro.xz + rd.xz * t;
   float cv = clCov();
-  float n = clN(p, 5);
+  float n = clN(p, 4);
   float d = smoothstep(cv, cv + 0.2, n);
   if (d <= 0.0) return vec4(0.0);
   float a = 1.0 - exp(-d * 5.0 / max(rd.y * 8.0, 0.25));
@@ -371,7 +379,7 @@ float cloudShade(vec3 p) {
   float t = (CLH - p.y) / max(SUN.y, 0.06);
   vec2 q = p.xz + SUN.xz * t;
   float cv = clCov();
-  return 1.0 - 0.65 * smoothstep(cv, cv + 0.2, clN(q, 3)) * (1.0 - NIGHT);
+  return 1.0 - 0.65 * smoothstep(cv, cv + 0.2, clN(q, 2)) * (1.0 - NIGHT);
 }
 
 vec3 stars(vec3 rd, float pa) {
@@ -446,25 +454,27 @@ vec2 seaSlope(vec2 p, float fp, out float var) {
     float an = 0.35 + 0.5 * sin(fi * 2.4 + 0.3);
     vec2 dir = vec2(cos(an), sin(an));
     float k = TAU / lam;
-    float st = 0.008 * (0.4 + 1.2 * noise(p / (lam * 2.5) + fi * 3.1));
+    float st = 0.012 * (0.4 + 1.2 * noise(p / (lam * 2.5) + fi * 3.1));
     float ph = k * dot(dir, p) - sqrt(9.81 * k) * uTime + fi * 1.7;
     float fade = sat(1.5 - fp * 5.0 / lam);
     g += dir * (st * cos(ph) * fade);
     var += st * st * 0.5 * (1.0 - fade * fade);
   }
   mat2 W = rot(0.5);
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 3; i++) {
     float fi = float(i);
     float lam = 14.0 * pow(0.5, fi);
     float fade = sat(1.5 - fp * 4.0 / lam);
-    if (fade <= 0.0) { var += 0.003; continue; }
+    if (fade <= 0.0) { var += 0.0045; continue; }
     vec2 q = W * p / lam;
     vec3 a = noised(q * vec2(0.55, 1.0) + vec2(-uTime * 1.1 / sqrt(lam), fi * 7.3));
     vec3 b = noised(rot(0.9) * q * vec2(0.6, 1.0) + vec2(uTime * 0.6 / sqrt(lam), fi * 3.1 + 5.0));
-    vec2 gg = (a.yz * vec2(0.4, 1.0) + rot(-0.9) * (b.yz * vec2(0.45, 1.0))) * (0.009 + 0.006 * fi);
+    vec2 gg = (a.yz * vec2(0.4, 1.0) + rot(-0.9) * (b.yz * vec2(0.45, 1.0))) * (0.013 + 0.008 * fi);
     g += (gg * W) * fade;
-    var += 0.003 * (1.0 - fade * fade);
+    var += 0.0045 * (1.0 - fade * fade);
   }
+  /* and the finest chop, never drawn */
+  var += 0.0045;
   return g;
 }
 
@@ -491,6 +501,17 @@ vec3 landQuick(vec3 p, vec3 rd) {
   return alb * (SUNC * lit * 0.8 + ambient(vec3(face.x, 0.0, face.y) * (1.0 - g) + vec3(0.0, g, 0.0))) * (1.0 + 2.0 * NIGHT);
 }
 
+/* one light off the sea: its glitter, and the sparkle of single facets */
+vec3 seaGlint(vec3 n, vec3 v, vec3 L, vec3 C, float m2, float nv, float fl, vec2 sl, float spot) {
+  if (L.y <= 0.0 || dot(C, C) < 1e-8) return vec3(0.0);
+  vec3 h = normalize(v + L);
+  float nh = max(dot(n, h), 1e-3);
+  float spec = beckmann(nh, m2) * smithG(nv, sqrt(m2)) * smithG(max(dot(n, L), 0.0), sqrt(m2)) / (4.0 * nv);
+  float Fh = 0.02 + 0.98 * pow(1.0 - max(dot(v, h), 0.0), 5.0);
+  float al = dot(normalize(vec3(-sl.x, 1.0, -sl.y)), h);
+  return C * Fh * (spec * fl + smoothstep(0.9975, 1.0, al) * spot);
+}
+
 vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
   vec3 p = ro + rd * t;
   vec2 q = toPen(p.xz);
@@ -512,6 +533,7 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
   r.y = abs(r.y) + 0.004 + 0.7 * sig;
   r = normalize(r);
   vec3 refl = sky(r);
+  refl = mix(refl, vec3(luma(refl)), 0.4 * uLook.x);
   /* the faces about the bay stand in its reflection: a short ray finds
      them */
   if (d < 320.0) {
@@ -521,7 +543,8 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
       if (rp.y > 98.0) break;
       float h = map(rp);
       if (h < 0.02 * rt + 0.3) {
-        refl = mix(refl, landQuick(rp, r), 1.0 / (1.0 + var * 40.0));
+        float brk = smoothstep(0.2, 0.8, noise(p.xz * vec2(0.12, 0.6) + g * 40.0));
+        refl = mix(refl, landQuick(rp, r) * 0.8, 0.55 * brk / (1.0 + var * 40.0));
         break;
       }
       rt += max(h * 1.2, 1.5);
@@ -541,29 +564,23 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
     csh *= lt;
   }
   float m2 = 0.003 + 2.0 * var;
-  vec3 h = normalize(v + SUN);
-  float nh = max(dot(n, h), 1e-3);
-  float spec = beckmann(nh, m2) * smithG(nv, sqrt(m2)) * smithG(max(dot(n, SUN), 0.0), sqrt(m2)) / (4.0 * nv);
-  float Fh = 0.02 + 0.98 * pow(1.0 - max(dot(v, h), 0.0), 5.0);
   /* the glitter is granular: facets too small to draw catch the light in
-     flecks, drawn out across the line of sight by perspective */
+     flecks, drawn out across the line of sight by perspective; and near at
+     hand single facets sparkle as they tilt to the light */
   vec2 gq = rot(atan(rd.x, rd.z)) * p.xz;
   float fl = noise(gq * vec2(0.9, 0.18) / (0.6 + 0.4 * t * pa) + vec2(uTime * 1.3, 0.0));
   fl = 0.15 + 2.6 * fl * fl * fl;
-  vec3 col = refl * F + SUNC * spec * Fh * csh * step(0.0, SUN.y) * fl;
-  /* sparkle: facets of the wind sea too small to draw, each catching the
-     light for a moment as it tilts to it */
-  float pw = t * pa;
+  float pw = t * pa, spot = 0.0;
+  vec2 sl = vec2(0.0);
   if (pw < 0.7) {
-    vec2 gq = p.xz / 1.1;
-    vec2 gi = floor(gq), gf = fract(gq) - 0.5;
+    vec2 fq = p.xz / 1.1;
+    vec2 gi = floor(fq), gf = fract(fq) - 0.5;
     vec3 hh = hash33(vec3(gi, 7.0));
     float ph = hh.z * TAU + uTime * (1.5 + 2.5 * hh.x);
-    vec2 sl = (hh.xy - 0.5) * 0.5 + 0.06 * vec2(sin(ph), cos(ph * 1.3)) + g;
-    float al = dot(normalize(vec3(-sl.x, 1.0, -sl.y)), h);
-    float spot = exp(-dot(gf, gf) * 1.21 / (pw * pw + 0.004));
-    col += SUNC * Fh * smoothstep(0.9975, 1.0, al) * spot * 18.0 * (1.0 - pw / 0.7) * csh * step(0.0, SUN.y);
+    sl = (hh.xy - 0.5) * 0.5 + 0.06 * vec2(sin(ph), cos(ph * 1.3)) + g;
+    spot = exp(-dot(gf, gf) * 1.21 / (pw * pw + 0.004)) * 18.0 * (1.0 - pw / 0.7);
   }
+  vec3 col = refl * F + (seaGlint(n, v, SUNS, SUNSC, m2, nv, fl, sl, spot) + seaGlint(n, v, MOON, MOONC, m2, nv, fl, sl, spot)) * csh;
   /* light from under the surface: blue-green, lighter over the shelf of
      fallen rock near the cliffs */
   vec3 body = WATER * (SUNC * max(SUN.y, 0.0) * csh * 0.6 + AMBU * 1.2);
@@ -576,11 +593,11 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
     float fd = map(vec3(p.x, 0.0, p.z));
     float ph = dot(vec2(0.94, 0.34), p.xz) * TAU / 140.0 - sqrt(9.81 * TAU / 140.0) * uTime;
     float surge = 0.5 + 0.5 * sin(ph + (sp + sm) * 0.004);
-    float band = exp(-max(fd, 0.0) / (1.0 + 3.0 * surge)) * (0.35 + 0.9 * noise(vec2((sp + sm) / 9.0, uTime * 0.2)));
+    float band = exp(-max(fd, 0.0) / (0.7 + 1.8 * surge)) * smoothstep(0.45, 0.8, noise(p.xz / 3.0 + vec2(uTime * 0.25, -uTime * 0.1)) + 0.35 * surge - 0.15);
     vec2 lq = vec2((sp + sm) / 11.0, fd / 5.0 - uTime * 0.05 + surge * 0.3);
     float r1 = 1.0 - abs(2.0 * noise(lq + noise(lq * 0.5) * 0.8) - 1.0);
     float lw = smoothstep(0.9, 0.98, r1) * exp(-max(fd, 0.0) / 6.0) * 0.3;
-    float foam = sat(band * (0.3 + 0.4 * surge) + lw * 0.7);
+    float foam = sat(band * 0.65 + lw * 0.5);
     foam *= sat(1.2 - fp * 0.06);
     vec3 fc = vec3(0.75) * (SUNC * max(SUN.y, 0.0) * csh + SKYI * 0.8);
     col = mix(col, fc, foam);
@@ -649,12 +666,13 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa) {
   if (gw > 0.001) {
     /* grass on the tops and the ledges: bright where it is grazed short,
        olive and browner where it is long or steep, broken by outcrops */
-    grass = vec3(0.068, 0.1, 0.03);
-    float gn = noise(p.xz / 25.0) * 0.45 + noise(p.xz / 6.0) * 0.35 + noise(p.xz / 1.7) * 0.2;
-    grass *= 0.72 + 0.56 * gn;
-    grass = mix(grass, vec3(0.105, 0.105, 0.05), 0.65 * smoothstep(0.38, 0.75, noise(p.xz / 45.0 + 3.0)));
-    grass = mix(grass, vec3(0.055, 0.08, 0.03), 0.3 * smoothstep(0.55, 0.85, noise(p.xz / 14.0 + 8.0)));
-    grass = mix(grass, vec3(0.11, 0.105, 0.05), smoothstep(0.92, 0.6, n.y) * 0.7);
+    grass = vec3(0.072, 0.086, 0.034);
+    float gn = noise(p.xz / 25.0) * 0.35 + noise(p.xz / 5.0) * 0.4 + noise(p.xz / 1.6) * 0.25;
+    grass *= 0.55 + 0.9 * gn;
+    grass = mix(grass, vec3(0.1, 0.092, 0.048), 0.55 * smoothstep(0.38, 0.75, noise(p.xz / 45.0 + 3.0)));
+    /* rush and long grass in darker patches */
+    grass = mix(grass, vec3(0.036, 0.044, 0.022), 0.55 * smoothstep(0.55, 0.8, noise(p.xz / 11.0 + 8.0)));
+    grass = mix(grass, vec3(0.1, 0.09, 0.05), smoothstep(0.92, 0.6, n.y) * 0.7);
     /* sheep tracks across the slopes */
     grass *= 1.0 - 0.25 * smoothstep(0.55, 0.75, noise(vec2(p.y * 1.3, s / 30.0))) * smoothstep(0.95, 0.75, n.y);
   }
@@ -885,7 +903,7 @@ vec3 scene(vec2 fc) {
   float wide = smoothstep(0.75, 1.5, asp);
   float k = mix(2.0 * tan(radians(26.0)), max(2.0 * tan(radians(18.0)) / asp, 0.37), wide);
   float yaw = radians(mix(227.5, 226.3, wide) + uPoint.x * 0.6);
-  float hz = mix(0.27, 0.22, wide);
+  float hz = mix(0.22, 0.17, wide);
   float pitch = -atan((0.5 - hz) * k) + radians(uPoint.y * 0.4);
   vec3 fw = vec3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch));
   vec3 rt = normalize(vec3(fw.z, 0.0, -fw.x));

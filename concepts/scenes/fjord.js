@@ -500,7 +500,7 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
     ao = mix(1.0, clamp(1.0 - lap * 0.0055, 0.35, 1.25), smoothstep(9000.0, 5000.0, t));
   }
   float open = mix(0.28, 0.9, smoothstep(0.0, 1200.0, y)) * ao;
-  E += mix(SKYH, SKYZ, 0.5 + 0.5 * n.y) * PI * (0.5 + 0.5 * n.y) * open * look3(1.0, 2.3, 1.8);
+  E += mix(SKYH, SKYZ, 0.5 + 0.5 * n.y) * PI * (0.5 + 0.5 * n.y) * open * look3(vec3(1.0), vec3(1.7, 2.1, 2.9), vec3(1.8));
   vec2 kh = normalize(KEY.xz + vec2(1e-4, 0.0));
   float away = sat(0.35 - 0.65 * dot(n.xz, kh));
   float litw = look3(1.0, 0.12, 0.6);
@@ -866,14 +866,15 @@ vec3 waterBody() {
    up, thickest close to the slopes; and a thin mist on the water at dusk
    and by night */
 vec4 lowCloud(vec3 ro, vec3 rd, float tmax, float jit, int n) {
-  float y0 = 330.0, y1 = 900.0;
+  float y0 = 480.0, y1 = 980.0;
   float ta = 0.0, tb = tmax;
   if (abs(rd.y) > 1e-4) {
     float t0 = (y0 - ro.y) / rd.y, t1 = (y1 - ro.y) / rd.y;
     ta = max(min(t0, t1), 0.0);
     tb = min(max(t0, t1), tmax);
   }
-  tb = min(tb, ta + 9000.0);
+  // it lies close along the slopes: the last stretch before the land
+  ta = max(ta, tb - 700.0);
   if (tb <= ta) return vec4(0.0, 0.0, 0.0, 1.0);
   float amt = look3(1.0, 0.8, 0.45);
   float T = 1.0;
@@ -888,10 +889,11 @@ vec4 lowCloud(vec3 ro, vec3 rd, float tmax, float jit, int n) {
     float hw = wallProfile(pl.x, 1100.0, 0.5);
     float near = exp(-sq((q.y - hw - 40.0) / 160.0)) * smoothstep(-60.0, 120.0, pl.x);
     float band = smoothstep(y0, y0 + 140.0, q.y) * smoothstep(y1, y1 - 260.0, q.y);
-    vec2 w = q.xz * vec2(0.0016, 0.0009) + vec2(TT * 0.004, TT * 0.0015);
+    vec2 w = vec2(pl.y * 0.0035, q.y * 0.006 + pl.x * 0.002) + vec2(TT * 0.01, TT * 0.002);
     float nz = noise(w) * 0.65 + noise(w * 2.7 + 3.0) * 0.35;
-    float pat = smoothstep(0.5, 0.75, noise(vec2(pl.y * 0.0006 + 1.3, pl.z * 3.0))) * (1.0 - smoothstep(2600.0, 4200.0, pl.y));
-    float rho = near * band * pat * smoothstep(0.45, 0.75, nz) * 0.0016 * amt;
+    float pat = pl.z < 0.0 ? smoothstep(200.0, 700.0, pl.y) * (1.0 - smoothstep(1900.0, 2600.0, pl.y))
+                           : 0.6 * (1.0 - smoothstep(900.0, 1500.0, pl.y));
+    float rho = near * band * pat * smoothstep(0.42, 0.68, nz) * 0.004 * amt;
     float a = 1.0 - exp(-rho * dt);
     float top = smoothstep(y0, y1, q.y);
     L += T * a * lc * (0.7 + 0.5 * top);
@@ -937,7 +939,7 @@ vec3 scene(vec2 fc) {
      of its own. Where one hands over to the other the light dips nearly
      to dark, as the sun sets before the moon takes the sky, and swings
      across while it is dim; twilight holds the sky meanwhile */
-  vec3 sunD = normalize(dirAE(-84.0, 34.0) * uLook.x + dirAE(-56.0, 2.6) * uLook.y + vec3(0.0, 1e-6, 0.0));
+  vec3 sunD = normalize(dirAE(-84.0, 34.0) * uLook.x + dirAE(-48.0, 2.2) * uLook.y + vec3(0.0, 1e-6, 0.0));
   float dip = max(0.0, 1.0 - 3.8 * (uLook.x + uLook.y) * uLook.z);
   TWI = 1.0 - dip;
   KEYS = smoothstep(0.3, 0.7, uLook.z);
