@@ -78,7 +78,7 @@ void setup() {
   DIP = max(0.0, 1.0 - 3.8 * (uLook.x + uLook.y) * uLook.z);
   W3 = vec3(uLook.xy * DIP, uLook.z);
   vec3 dSun = dirBE(196.0, 36.0), uSun = dirBE(238.5, 1.7);
-  MOON = dirBE(238.0, 3.8);
+  MOON = dirBE(238.0, 2.3);
   SUN = normalize(dSun * uLook.x + uSun * uLook.y + MOON * uLook.z);
   SUND = normalize(dSun * uLook.x + uSun * (uLook.y + uLook.z));
   SUNC = L3(vec3(3.2, 3.0, 2.75), vec3(3.0, 1.45, 0.5), vec3(0.17, 0.2, 0.27));
@@ -153,14 +153,17 @@ float mainD(vec2 q, out float s) {
    the ridge drops to a shoulder and then to the platform, which rises
    gently from the tip. Every top rounds over at its edge. The mainland
    rises inland from the viewpoint */
+float RSC = 1.0;
 float ridgeTop(vec2 q) {
-  float crest = 79.0 - 21.0 * (1.0 - exp(-max(q.x - 366.0, 0.0) / 45.0)) - 12.0 * smoothstep(480.0, 980.0, q.x) + 1.0 * sin(q.x * 0.04);
+  float crest = 78.0 - 22.0 * (1.0 - exp(-pow(max(q.x - 362.0, 0.0) / 62.0, 1.5))) - 12.0 * smoothstep(480.0, 980.0, q.x) + 1.0 * sin(q.x * 0.04);
   float vc = edgeN(q.x) - 5.0 - 55.0 * smoothstep(372.0, 520.0, q.x);
   float dv = q.y - vc;
-  float hn = 0.36 * dv + 0.0012 * dv * dv;
-  float hs = mix(0.6, 0.3, smoothstep(370.0, 480.0, q.x)) * (sqrt(dv * dv + 25.0) - 5.0);
+  /* under the crest a band of broken rock, then the slope of grass */
+  float hn = 7.0 * smoothstep(1.0, 9.0, dv) * smoothstep(372.0, 420.0, q.x) + 0.26 * dv + 0.0012 * dv * dv;
+  float hs = mix(0.42, 0.3, smoothstep(370.0, 480.0, q.x)) * (sqrt(dv * dv + 25.0) - 5.0);
   /* the summit is a point over the arete, falling to the prow's west face */
-  float w = 0.4 * max(366.0 - q.x, 0.0);
+  float w = 0.006 * max(366.0 - q.x, 0.0) * max(366.0 - q.x, 0.0);
+  RSC = 1.0 - 0.25 * smoothstep(14.0, 4.0, abs(dv - 5.0));
   return crest - (dv > 0.0 ? hn : hs) - w + 1.2 * noise(q / 18.0);
 }
 float platTop(vec2 q) {
@@ -219,7 +222,7 @@ float map(vec3 p) {
   dm += 3.0 * (noise(q / 9.0 + 4.0) - 0.5);
   df = min(dp, dm);
   /* the rock of the faces is lumpy at every scale; the tops are not */
-  float lump = df < 16.0 ? 1.6 * (noise3(p * 0.2) - 0.5) + 0.6 * (noise(p.xz * 0.55 + p.y * 0.4) - 0.5) : 0.0;
+  float lump = df < 16.0 ? 1.8 * (noise3(p * 0.2) - 0.5) : 0.0;
   float r = 1e4;
   if (dp < 45.0) {
     /* An t-Aigeach: one great face, its flows hardly stepped. Well back
@@ -228,7 +231,7 @@ float map(vec3 p) {
       float rt = ridgeTop(q);
       float dw = 358.0 + 4.0 * sin(q.y * 0.05) - q.x;
       float ridge;
-      if (max(dp, dw) < -22.0) ridge = p.y - rt;
+      if (max(dp, dw) < -22.0) ridge = (p.y - rt) * RSC;
       else {
         float amt = 0.15 + 0.6 * smoothstep(480.0, 760.0, q.x) * noise(vec2(q.x / 110.0, 2.0));
         float g2 = 1.0 - abs(2.0 * noise(vec2(sp / 19.0, p.y / 160.0 + 5.0)) - 1.0);
@@ -236,7 +239,7 @@ float map(vec3 p) {
         /* the edge breaks raggedly: notches and knobs where the turf gives
            way to the rock */
         float rim = (0.6 + 4.5 * smoothstep(0.4, 0.8, noise(vec2(sp / 7.0, 1.3)) + 0.3 * noise(vec2(sp / 2.2, 4.0)))) * exp(min(dp + fo, 0.0) / 4.0);
-        ridge = smax(p.y - rt + rim, smax(dp + fo, dw + 0.5 * fo, 3.0), 1.0);
+        ridge = smax((p.y - rt + rim) * RSC, smax(dp + fo, dw + 0.5 * fo, 3.0), 1.0);
       }
       r = ridge;
     } else r = 352.0 - q.x;
@@ -273,6 +276,7 @@ float map(vec3 p) {
     float sh = 2.0 + 6.0 * noise(vec2((sp + sm) / 45.0, 1.3));
     float bay = 10.0 * smoothstep(350.0, 395.0, q.x) * (1.0 - smoothstep(620.0, 700.0, q.x)) * step(0.0, q.y);
     float ap = df + 6.0 - (1.6 + bay * 0.25) * max(sh - p.y, 0.0) + 2.6 * noise(p.xz * 0.3 + p.y * 0.2) - 1.3 - bay * 0.5;
+    if (ap < 3.0) ap += 1.6 * noise(p.xz * 0.9 + p.y * 0.7) - 0.8;
     r = min(r, max(ap, p.y - sh - 1.0));
   }
   return r;
@@ -288,7 +292,7 @@ vec3 normalAt(vec3 p, float t) {
 float march(vec3 ro, vec3 rd, float tmax, float pa, out bool hit) {
   float t = 0.5, d = 1e4;
   hit = false;
-  for (int i = 0; i < 170; i++) {
+  for (int i = 0; i < 130; i++) {
     d = map(ro + rd * t);
     if (d < 0.35 * pa * t + 0.01) { hit = true; break; }
     t += d * 0.7;
@@ -301,13 +305,13 @@ float march(vec3 ro, vec3 rd, float tmax, float pa, out bool hit) {
 
 float softShadow(vec3 p, vec3 l) {
   float res = 1.0, t = 1.0;
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < 12; i++) {
     vec3 q = p + l * t;
     if (q.y > 100.0) break;
     float h = map(q);
     res = min(res, 8.0 * h / t);
     if (res < 0.01) break;
-    t += clamp(h * 1.2, 2.0, 90.0);
+    t += clamp(h * 1.3, 2.5, 110.0);
     if (t > 1600.0) break;
   }
   return smoothstep(0.0, 1.0, res);
@@ -461,7 +465,7 @@ vec2 seaSlope(vec2 p, float fp, out float var) {
     var += st * st * 0.5 * (1.0 - fade * fade);
   }
   mat2 W = rot(0.5);
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 2; i++) {
     float fi = float(i);
     float lam = 14.0 * pow(0.5, fi);
     float fade = sat(1.5 - fp * 4.0 / lam);
@@ -474,7 +478,7 @@ vec2 seaSlope(vec2 p, float fp, out float var) {
     var += 0.0045 * (1.0 - fade * fade);
   }
   /* and the finest chop, never drawn */
-  var += 0.0045;
+  var += 0.009;
   return g;
 }
 
@@ -538,7 +542,7 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
      them */
   if (d < 320.0) {
     float rt = 1.0;
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < 8; i++) {
       vec3 rp = p + r * rt;
       if (rp.y > 98.0) break;
       float h = map(rp);
@@ -547,7 +551,7 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
         refl = mix(refl, landQuick(rp, r) * 0.8, 0.55 * brk / (1.0 + var * 40.0));
         break;
       }
-      rt += max(h * 1.2, 1.5);
+      rt += max(h * 1.3, 3.0);
       if (rt > 500.0) break;
     }
   }
@@ -618,13 +622,13 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa) {
   float fp = t * pa;
 
   /* where the turf holds, and where the rock shows */
-  float gw = smoothstep(0.66, 0.82, n.y) * smoothstep(9.0, 14.0, p.y) * smoothstep(0.35, 0.6, noise(vec2(s / 12.0, p.y / 6.0)) + 0.4 * smoothstep(-8.0, -2.0, p.y - top));
-  gw = max(gw, smoothstep(-3.0, -0.6, p.y - top) * smoothstep(0.25, 0.55, n.y));
+  float rg = smoothstep(345.0, 375.0, q.x) * step(dp, dm);
+  float gw = smoothstep(0.66 + 0.1 * rg, 0.82 + 0.08 * rg, n.y) * smoothstep(9.0, 14.0, p.y) * smoothstep(0.35, 0.6, noise(vec2(s / 12.0, p.y / 6.0)) + 0.4 * smoothstep(-8.0, -2.0, p.y - top));
+  gw = max(gw, smoothstep(-3.0, -0.6, p.y - top) * smoothstep(0.25 + 0.5 * rg, 0.55 + 0.3 * rg, n.y));
   /* outcrops break through the turf on the steeper ground */
   gw *= 1.0 - 0.85 * smoothstep(0.6, 0.78, noise(p.xz / 6.0 + 1.0) + 0.25 * (1.0 - n.y)) * smoothstep(-0.5, -5.0, p.y - top);
   float l = (p.y + 6.0 * noise(vec2(s / 70.0, 1.7)) + 2.5 * sin(s * 0.012 + 0.5)) / 11.0;
   float fi = floor(l), ff = l - fi;
-  float rg = smoothstep(345.0, 375.0, q.x) * step(dp, dm);
   float colA = mix(1.0, 0.3, rg);
   vec3 rock = vec3(0.0), grass = vec3(0.0);
   if (gw < 0.999) {
@@ -640,6 +644,10 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa) {
     /* fine grit: lichen spots and broken faces too small to draw */
     rock *= 0.75 + 0.5 * hash12(floor(vec2(s, p.y) / max(0.6, fp * 1.5)));
     rock *= 1.0 - 0.2 * colA * smoothstep(0.9, 1.0, ff) * hash11(fi * 7.13 + floor(s / 55.0) * 1.7);
+    /* the buttresses' noses catch more of the sky, the gullies between
+       them hold shadow and seep */
+    float g2 = 1.0 - abs(2.0 * noise(vec2(s / 19.0, p.y / 160.0 + 5.0)) - 1.0);
+    rock *= mix(1.0, (1.25 - 0.3 * g2 * g2) * (1.0 - 0.55 * pow(g2, 6.0)), rg);
     /* broad tones down the face: dark where it seeps, lighter where dry */
     float zone = noise(vec2(s / 30.0, p.y / 120.0) + 2.0);
     rock *= 0.55 + 0.9 * zone;
@@ -647,21 +655,21 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa) {
        that stay wet, in long streaks down them */
     float mz = smoothstep(0.3, 0.7, noise(vec2(s / 38.0, p.y / 45.0) + 7.0)) * (1.0 - smoothstep(top - 25.0, top - 5.0, p.y) * 0.6);
     float moss = mz * smoothstep(0.3, 0.65, noise(vec2(s / 3.5, p.y / 22.0) + 3.0));
-    rock = mix(rock, mix(vec3(0.07, 0.078, 0.03), vec3(0.11, 0.11, 0.035), noise(vec2(s / 9.0, p.y / 9.0))), moss * 0.9);
-    rock *= 1.0 + 0.3 * smoothstep(0.3, 0.75, noise(vec2(s / 20.0, p.y / 50.0) + 9.0)) * (1.0 - moss);
+    rock = mix(rock, mix(vec3(0.07, 0.078, 0.03), vec3(0.11, 0.11, 0.035), vs), moss * 0.9);
+    rock *= 1.0 + 0.3 * smoothstep(0.45, 0.8, zone) * (1.0 - moss);
     /* where the birds nest, pale streaks run down from the ledges */
     float colony = smoothstep(0.55, 0.8, noise(vec2(s / 50.0, p.y / 30.0) + 5.0)) * smoothstep(10.0, 22.0, p.y) * (1.0 - smoothstep(top - 12.0, top - 4.0, p.y));
-    float streak = smoothstep(0.65, 0.9, noise(vec2(s / 1.1, p.y / 35.0 + 9.0))) * smoothstep(0.3, 0.7, noise(vec2(s / 1.1 + 5.0, p.y / 8.0)));
+    float streak = smoothstep(0.65, 0.9, noise(vec2(s / 1.1, p.y / 35.0 + 9.0)));
     rock = mix(rock, vec3(0.3, 0.29, 0.27), colony * streak * 0.6);
     /* yellow and grey lichen in the splash zone, a dark wet band below it
        and black weed at the foot */
     float splash = smoothstep(3.0, 6.0, p.y) * (1.0 - smoothstep(9.0, 16.0, p.y));
-    rock = mix(rock, vec3(0.2, 0.15, 0.06), splash * 0.5 * smoothstep(0.5, 0.8, noise(vec2(s / 3.0, p.y / 2.0))));
+    rock = mix(rock, vec3(0.2, 0.15, 0.06), splash * 0.5 * smoothstep(0.55, 0.8, vs));
     float wet = 1.0 - smoothstep(1.5, 4.5 + 2.0 * noise(vec2(s / 18.0, 3.0)), p.y);
     rock *= 1.0 - 0.6 * wet;
     /* the fallen blocks are paler, dried and lichened */
     float blk = smoothstep(10.0, 5.0, p.y) * smoothstep(-6.0, 2.0, min(dp, dm));
-    rock = mix(rock, vec3(0.15, 0.14, 0.125) * (0.6 + 0.7 * noise(p.xz * 0.5)), blk * 0.85);
+    rock = mix(rock, vec3(0.13, 0.12, 0.105) * (0.45 + 0.9 * noise(p.xz * 0.9)), blk * 0.85);
   }
   if (gw > 0.001) {
     /* grass on the tops and the ledges: bright where it is grazed short,
@@ -674,7 +682,7 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa) {
     grass = mix(grass, vec3(0.036, 0.044, 0.022), 0.55 * smoothstep(0.55, 0.8, noise(p.xz / 11.0 + 8.0)));
     grass = mix(grass, vec3(0.1, 0.09, 0.05), smoothstep(0.92, 0.6, n.y) * 0.7);
     /* sheep tracks across the slopes */
-    grass *= 1.0 - 0.25 * smoothstep(0.55, 0.75, noise(vec2(p.y * 1.3, s / 30.0))) * smoothstep(0.95, 0.75, n.y);
+    grass *= 1.0 - 0.12 * smoothstep(0.55, 0.75, noise(vec2(p.y * 1.3, s / 30.0))) * smoothstep(0.95, 0.75, n.y);
   }
   vec3 alb = mix(rock, grass, gw);
   /* the platform's turf is broken everywhere by low outcrops of the flow
@@ -695,14 +703,14 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa) {
   float cav = 1.0;
   if (bfade > 0.0) {
     vec2 bq = vec2(s, p.y);
-    vec3 b1 = noised(bq / vec2(4.0, 9.0) + 1.0), b2 = noised(bq / vec2(1.4, 3.0) + 7.0), b3 = noised(bq / vec2(0.6, 1.1) + 3.0);
-    vec2 gg = b1.yz / vec2(4.0, 9.0) * 0.7 + b2.yz / vec2(1.4, 3.0) * 0.28 + b3.yz / vec2(0.6, 1.1) * 0.1;
+    vec3 b1 = noised(bq / vec2(4.0, 9.0) + 1.0), b2 = noised(bq / vec2(1.2, 2.6) + 7.0);
+    vec2 gg = b1.yz / vec2(4.0, 9.0) * 0.7 + b2.yz / vec2(1.2, 2.6) * 0.32;
     vec3 tq = normalize(vec3(n.z, 0.0, -n.x) + 1e-5);
     vec3 yq = normalize(vec3(0.0, 1.0, 0.0) - n * n.y);
     n = normalize(n - bfade * (gg.x * tq + gg.y * yq));
     /* the hollows of the rough rock hold shadow, and the joints between
        the columns run down the face as dark seams */
-    float hgt = b1.x * 0.6 + b2.x * 0.3 + b3.x * 0.15;
+    float hgt = b1.x * 0.6 + b2.x * 0.4;
     float jx = fract((s + 5.0 * noise(vec2(s / 23.0, fi * colA))) / 2.1);
     float jt = (1.0 - smoothstep(0.0, 0.07 + fp * 0.1, min(jx, 1.0 - jx))) * colA * (1.0 - smoothstep(0.35, 0.5, ff) * 0.7);
     cav = mix(1.0, (0.35 + 0.65 * smoothstep(-0.7, 0.6, hgt)) * (1.0 - 0.55 * jt), bfade * (1.0 - gw));
@@ -903,7 +911,7 @@ vec3 scene(vec2 fc) {
   float wide = smoothstep(0.75, 1.5, asp);
   float k = mix(2.0 * tan(radians(26.0)), max(2.0 * tan(radians(18.0)) / asp, 0.37), wide);
   float yaw = radians(mix(227.5, 226.3, wide) + uPoint.x * 0.6);
-  float hz = mix(0.22, 0.17, wide);
+  float hz = mix(0.22, 0.14, wide);
   float pitch = -atan((0.5 - hz) * k) + radians(uPoint.y * 0.4);
   vec3 fw = vec3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch));
   vec3 rt = normalize(vec3(fw.z, 0.0, -fw.x));

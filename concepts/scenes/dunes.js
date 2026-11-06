@@ -130,7 +130,7 @@ float dunes(vec2 p) {
 /* the dead camelthorns: x, z, height (negative for a fallen one), seed */
 const int NT = 23;
 const vec4 TREES[NT] = vec4[NT](
-  vec4(-10.5, 25.0, 6.6, 1.0),
+  vec4(-12.0, 25.0, 6.6, 1.0),
   vec4(9.5, 41.0, 5.4, 2.0),
   vec4(-31.0, 92.0, 5.8, 3.0),
   vec4(26.0, 128.0, 6.4, 4.0),
@@ -307,7 +307,7 @@ void buildTree(vec4 T) {
     if (i >= nLimb) break;
     vec3 h = hash33(vec3(s, float(i) + 0.5, 2.9));
     float az = a0 + (float(i) + 0.6 * (h.x - 0.5)) * TAU / float(nLimb);
-    float tilt = hab == 0 ? 0.32 + 0.3 * h.y : (hab == 1 ? 0.45 + 0.35 * h.y : (hab == 2 ? (i == 0 ? 0.1 + 0.15 * h.y : 0.6 + 0.35 * h.y) : 0.75 + 0.35 * h.y));
+    float tilt = s < 1.5 ? 0.28 + 0.28 * h.y : hab == 0 ? 0.32 + 0.3 * h.y : (hab == 1 ? 0.45 + 0.35 * h.y : (hab == 2 ? (i == 0 ? 0.1 + 0.15 * h.y : 0.6 + 0.35 * h.y) : 0.75 + 0.35 * h.y));
     vec3 dir = normalize(vec3(sin(tilt) * cos(az), cos(tilt), sin(tilt) * sin(az)) + ld - vec3(0.0, 1.0, 0.0));
     float reach = hab == 3 ? 0.75 : 1.0;
     float len = (H - hf) * reach * (0.85 + 0.3 * h.z) / max(cos(tilt * 0.7), 0.45);
@@ -350,7 +350,7 @@ vec4 treeAxis(vec3 p) {
 /* the span of a ray inside a tree's box */
 vec2 treeBox(vec3 ro, vec3 rd, vec4 T) {
   float H = abs(T.z);
-  float R = T.z < 0.0 ? H * 0.95 : H * 0.95;
+  float R = T.z < 0.0 ? H * 0.95 : H * 0.9;
   vec3 lo = vec3(T.x - R, -0.5, T.y - R), hi = vec3(T.x + R, T.z < 0.0 ? 2.0 : H * 1.12, T.y + R);
   vec3 inv = 1.0 / rd;
   vec3 t0 = (lo - ro) * inv, t1 = (hi - ro) * inv;
@@ -372,7 +372,7 @@ vec3 traceTrees(vec3 ro, vec3 rd, float tmax, float pix) {
     vec3 base = vec3(T.x, 0.0, T.y);
     float t = span.x, mm = 1e9, tm = 0.0;
     bool hit = false;
-    for (int k = 0; k < 64; k++) {
+    for (int k = 0; k < 48; k++) {
       float d = treeD(ro + rd * t - base);
       float m = d / (t * pix);
       if (m < mm) { mm = m; tm = t; }
@@ -548,6 +548,8 @@ vec3 camRay(vec2 fc, out vec3 ro, out float pix) {
 float march(vec3 ro, vec3 rd, float pix, out float rmin, out float tr) {
   float tmax = 9000.0;
   if (rd.y > 0.0) tmax = min(tmax, (340.0 - ro.y) / rd.y);
+  /* a ray bound for the clay need look no further than where it meets it */
+  else tmax = min(tmax, ro.y / max(-rd.y, 1e-6) + 1.0);
   float lip = 0.92 / (abs(rd.y) + 0.78 * length(rd.xz));
   float t = 1.0, lt = 1.0, g = 1e9;
   rmin = 1e9; tr = 0.0;
@@ -683,18 +685,25 @@ vec3 panAlbedo(vec3 p, float fp, float near) {
   float lp = smoothstep(0.11, 0.035, fp);
   float mean = 0.955;
   if (lp > 0.0) {
-    vec2 w = p.xz + 0.12 * vec2(noise(p.xz * 2.1), noise(p.xz * 2.1 + 5.0)) - 0.06;
-    const float CS = 0.42;
+    vec2 w = p.xz + 0.22 * vec2(noise(p.xz * 1.7), noise(p.xz * 1.7 + 5.0)) + 0.05 * vec2(noise(p.xz * 7.0), noise(p.xz * 7.0 + 2.0)) - 0.135;
+    float CS = 0.36 + 0.14 * noise(p.xz * 0.35 + 8.0);
     vec2 c = cells(w / CS);
     float e = c.x * CS;
-    float crack = crackAA(e, 0.006 + 0.006 * noise(p.xz * 4.0), fp);
+    /* not every edge has opened as far: the cracks wax and wane */
+    float open = 0.35 + 0.65 * smoothstep(0.25, 0.65, noise(w * 1.6 + 1.3));
+    float crack = crackAA(e, (0.003 + 0.007 * noise(p.xz * 4.0)) * open, fp) * (0.55 + 0.45 * open);
     float rim = smoothstep(0.05, 0.012, e) * (1.0 - crack) * smoothstep(0.03, 0.01, fp);
     /* finer cracks splitting some plates */
-    vec2 c2 = cells(w / 0.19 + 3.7);
-    float crack2 = crackAA(c2.x * 0.19, 0.0035, fp) * smoothstep(0.35, 0.6, noise(w * 1.3 + c.y * 9.0));
-    float tone = 0.95 + 0.09 * c.y + 0.04 * (c2.y - 0.5);
+    float crack2 = 0.0, t2 = 0.5;
+    float l2 = smoothstep(0.045, 0.02, fp);
+    if (l2 > 0.0) {
+      vec2 c2 = cells(w / 0.19 + 3.7);
+      crack2 = crackAA(c2.x * 0.19, 0.0035, fp) * smoothstep(0.35, 0.6, noise(w * 1.3 + c.y * 9.0)) * l2;
+      t2 = c2.y;
+    }
+    float tone = 0.95 + 0.09 * c.y + 0.04 * (t2 - 0.5);
     vec3 plate = alb * tone * (1.0 + 0.06 * rim);
-    plate *= 1.0 - 0.5 * crack - 0.28 * crack2;
+    plate *= 1.0 - 0.42 * crack - 0.22 * crack2;
     /* sand caught in the wider cracks */
     plate = mix(plate, sandC * 0.8, crack * 0.25 * near);
     alb = mix(alb * mean, plate, lp);

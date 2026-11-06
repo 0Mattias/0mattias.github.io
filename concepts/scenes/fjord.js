@@ -1,49 +1,62 @@
 /* concepts/scenes/fjord.js · the fjord
 
-   The Nærøyfjord, afloat a couple of metres above the water about a
-   kilometre and a half south of Bakka, looking north down the fjord. It is
-   the narrowest fjord in Norway, under five hundred metres across here,
-   and its walls go up to twelve and fourteen hundred metres within a
-   kilometre or two of the water: a glacial trough, steep all the way and
-   rounding over at the top into the uplands. The land is one heightfield
-   laid over the fjord's plan, three reaches bending gently east toward the
-   mouth, with spurs pushed out in turn from either side so that they
-   stand behind one another down the fjord, each paler and bluer in the
-   haze than the one before. Every wall is the same section, a short apron
-   at the water, the steep wall and the rounded shoulder of the uplands,
-   cut by avalanche gullies that run straight down it and leave pale
-   scree fans at the waterline.
+   The Nærøyfjord, afloat a couple of metres above the water a kilometre
+   and a half south of Bakka, looking north down the fjord. It is the
+   narrowest fjord in Norway, under five hundred metres across here, and
+   its walls go up to eleven and fourteen hundred metres within a
+   kilometre of the water: a glacial trough. The land is one heightfield
+   laid over the fjord's plan, three reaches bending gently east toward
+   the mouth, with spurs pushed out in turn from either side and bays
+   between, so that they stand behind one another down the fjord, each
+   paler and bluer in the haze than the one before. Every wall is the same
+   section, steepening as it climbs: a short apron at the water, the wooded
+   wall at forty-odd degrees, a band of cliff at sixty-five or seventy,
+   and the shoulder rounding over into the uplands. Avalanche gullies cut
+   straight down it, and the wall's own detail, buttresses, crags and the
+   rock climbing in steps, is laid over the face itself, along the shore
+   and up it, so nothing is drawn out down the steep walls.
 
    The walls are not bare rock: birch and pine cloak them up to six or
-   eight hundred metres, dark green velvet at a distance and single crowns
-   only near the water, broken by the gullies, where grass and scrub and
-   scree take over, and by the steepest steps, where the grey gneiss shows
-   through in bands. Above the trees the rock comes out, heath on the
-   ledges, and snow lies on the high ground and in the tops of the gullies
-   into summer. Thin falls thread down the walls, white where they leave
-   the rock and lost where they run under the trees. Bakka sits on its fan
-   on the west shore, a handful of houses and the small white church with
-   its spire at the water's edge, and Styvi's farm on a green fan across
-   the fjord further on. Low cloud hangs along the walls.
+   eight hundred metres, single crowns near the water, stacked up the
+   slope as trees are seen from below, then a grain, then the dark green
+   velvet they make at a distance; the gullies are kept open by the
+   avalanches, grass and scrub with small scree cones at their feet, and
+   the steepest steps show the grey gneiss, with heath on its ledges.
+   Snow lies on the high ground and longest on the slopes turned from the
+   sun. Two falls thread down the east wall in pitches, white over the
+   rock and lost under the trees. Bakka stands on its fan on the west
+   shore, a handful of houses and barns and the small white church with
+   its tower and spire at the water's edge, and Styvi's farm on a green
+   fan across the fjord further on; behind each fan the wall stands back,
+   at the mouth of the side valley that built it. Low cloud hangs along
+   the upper west wall.
 
    The air is one model for sky and distance alike, sunlight scattered
    once by Rayleigh and Mie over an exponential atmosphere and a bluer
-   veil of light scattered more than once, with the fjord's own haze
-   thicker over the water; fair-weather cumulus drift over it. The water
-   is dark green glacial water that mirrors all of it by the Fresnel of
-   water, broken by slow, faint ripples. By day the sun stands high in the
-   south-west, behind the left wall, and lights the east wall; at dusk it
-   is low in the north-west, the valley floor lies in blue shade and only
-   the high ground keeps the warm light; at night the moon lights the
-   walls faintly and the aurora folds over the north, curtains brightest
-   and sharpest at their lower edge and fading upward through tall rays,
-   once in the sky and once in the water. A phone looks from nearer the
-   west wall, so that it towers over the words. WebGL2, no libraries, no
-   build step. */
+   veil of light scattered more than once, with the fjord's own haze lying
+   thicker low over the water; in so narrow a trough the walls hide much
+   of the sky from each other and from the air between, and throw green
+   light back across it. Fair-weather cumulus drift over the rim. The
+   water is dark green glacial water that mirrors all of it by the Fresnel
+   of water, broken by slow, faint ripples. By day it is late afternoon
+   and the sun stands in the west behind the west wall, which lays its
+   shadow across the foot of the east wall and lights the rest; at dusk
+   the sun is all but down in the north-west, the valley lies in blue
+   shade and only the high ground keeps the warm light, under peach
+   clouds; at night the moon over the west wall lights the east wall
+   faintly and the aurora folds over the north, curtains brightest and
+   sharpest at their lower edge and fading upward through tall rays, once
+   in the sky and once in the water. A phone looks from closer to Bakka
+   and to the west shore, so that the village stands at its foot.
+
+   Each ray, the eye's and the one the water throws back, marches the land
+   once, and the land, the buildings and the sky are each shaded at one
+   place in the code, so the shader stays small enough to compile quickly.
+   WebGL2, no libraries, no build step. */
 
 window.CONCEPT = {
   id: 'fjord',
-  theme: { day: '#5f8cc0', dusk: '#7a7fa6', night: '#1c2f3a' },
+  theme: { day: '#6192c5', dusk: '#8f99ba', night: '#2e4b7e' },
   t0: 40,
   frag: `
 /* ------------------------------------------------------------ state */
@@ -889,11 +902,11 @@ vec4 lowCloud(vec3 ro, vec3 rd, float tmax, float jit, int n) {
     float hw = wallProfile(pl.x, 1100.0, 0.5);
     float near = exp(-sq((q.y - hw - 40.0) / 160.0)) * smoothstep(-60.0, 120.0, pl.x);
     float band = smoothstep(y0, y0 + 140.0, q.y) * smoothstep(y1, y1 - 260.0, q.y);
-    vec2 w = vec2(pl.y * 0.0035, q.y * 0.006 + pl.x * 0.002) + vec2(TT * 0.01, TT * 0.002);
+    vec2 w = vec2(pl.y * 0.003, q.y * 0.0042 + pl.x * 0.0015) + vec2(TT * 0.01, TT * 0.002);
     float nz = noise(w) * 0.65 + noise(w * 2.7 + 3.0) * 0.35;
     float pat = pl.z < 0.0 ? smoothstep(200.0, 700.0, pl.y) * (1.0 - smoothstep(1900.0, 2600.0, pl.y))
                            : 0.6 * (1.0 - smoothstep(900.0, 1500.0, pl.y));
-    float rho = near * band * pat * smoothstep(0.42, 0.68, nz) * 0.004 * amt;
+    float rho = near * band * pat * smoothstep(0.46, 0.7, nz) * 0.003 * amt;
     float a = 1.0 - exp(-rho * dt);
     float top = smoothstep(y0, y1, q.y);
     L += T * a * lc * (0.7 + 0.5 * top);
@@ -992,7 +1005,7 @@ vec3 scene(vec2 fc) {
     float seg = kind > 0 || water ? tend : 20000.0;
     vec3 T = vec3(1.0), S = vec3(0.0);
     if (kind > 0 || water) air(o, d, seg, T, S);
-    vec4 lc = lowCloud(o, d, kind > 0 || water ? tend : 30000.0, jit, refl ? 3 : 7);
+    vec4 lc = lowCloud(o, d, kind > 0 || water ? tend : 30000.0, jit, refl ? 3 : 8);
     vec4 mi = mist(o, d, seg);
     S = (S * lc.a + lc.rgb) * mi.a + mi.rgb;
     T *= lc.a * mi.a;
