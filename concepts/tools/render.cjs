@@ -7,7 +7,7 @@
    frame is drawn once, in strips, with the clock held (?still).
 
    node concepts/tools/render.cjs [scene ...] [--looks day,dusk,night]
-        [--sizes wide,tall,ultra] [--out DIR] [--t SECONDS] [--stills]
+        [--sizes wide,tall,ultra,tablet] [--out DIR] [--t SECONDS] [--stills]
         [--moon PHASE] [--mix D,U,N] [--q QUERY]
 
    --mix holds the look weights between day, dusk and night, as a turn
@@ -29,6 +29,7 @@ const SIZES = {
   wide: { w: 1600, h: 900, scale: 1 },
   tall: { w: 430, h: 932, scale: 2 },
   ultra: { w: 2400, h: 1000, scale: 1 },
+  tablet: { w: 820, h: 1180, scale: 1 },
 };
 const STILL_KIND = { wide: 'wide', ultra: 'wide', tall: 'tall' };
 
@@ -113,7 +114,7 @@ async function main() {
         const shot = path.join(o.out, `${id}-${o.mix ? 'mix' + o.mix.replace(/,/g, '-') : look}-${size}.png`);
         await page.locator('.letterhead').screenshot({ path: shot });
         let note = '';
-        if (o.stills && !o.mix) {
+        if (o.stills && !o.mix && STILL_KIND[size]) {
           const data = await page.evaluate(() => document.getElementById('sky').toDataURL('image/webp', 0.82));
           const still = path.join(REPO, 'concepts', 'stills', `${id}-${look}-${STILL_KIND[size]}.webp`);
           fs.writeFileSync(still, Buffer.from(data.split(',')[1], 'base64'));

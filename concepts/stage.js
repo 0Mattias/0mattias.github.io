@@ -36,7 +36,8 @@
    window.CONCEPT = {
      id, theme: { day, dusk, night },   the sky's colour behind the page
      frag,                              the GLSL
-     scale   (0.75)   pixels drawn per CSS pixel, before the density cap
+     scale   (1)      pixels drawn per device pixel, up to one and a half
+                      per point, before the density cap (as the meadow)
      budget  (1.4e6)  most pixels drawn in all
      fps     (30)     frames a second while it moves
      t0      (0)      seconds on the clock at the start
@@ -568,6 +569,21 @@ var moon = (function () {
 
 /* pixels up to one and a half per point, by the scene's own scale, and no
    more than its budget; a slow GPU draws fewer */
+function full() {
+  var cw = hero.clientWidth, ch = hero.clientHeight;
+  var k = Math.min(window.devicePixelRatio || 1, 1.5) * (S.scale || 1);
+  var budget = S.budget || 1.4e6;
+  if (cw * ch * k * k > budget) k = Math.sqrt(budget / (cw * ch));
+  return k;
+}
+
+/* the least the canvas may be drawn at before the page takes the still:
+   under about six pixels for ten points the picture goes coarse, and a
+   sharp still says more than a coarse canvas that moves */
+function minQ() {
+  return Math.min(1, Math.max(MINQ, 0.6 / full()));
+}
+
 function size() {
   var cw = hero.clientWidth, ch = hero.clientHeight;
   if (!cw || !ch) return null;
@@ -575,11 +591,16 @@ function size() {
     var s = +(q.get('scale') || 1);
     return [Math.max(1, Math.round(cw * s)), Math.max(1, Math.round(ch * s))];
   }
-  var k = Math.min(window.devicePixelRatio || 1, 1.5) * (S.scale || 0.75);
-  var budget = S.budget || 1.4e6;
-  if (cw * ch * k * k > budget) k = Math.sqrt(budget / (cw * ch));
-  k *= quality;
+  var k = full() * quality;
   return [Math.max(1, Math.round(cw * k)), Math.max(1, Math.round(ch * k))];
+}
+
+/* how many of the screen's own pixels each canvas pixel is spread over;
+   the grain is drawn per canvas pixel, so it is thinned as they grow, or
+   a phone would see it in blocks */
+function spread() {
+  if (STILL || !canvas.width) return 1;
+  return hero.clientWidth * (window.devicePixelRatio || 1) / canvas.width;
 }
 
 function fit() {
@@ -629,7 +650,7 @@ function gradeUniforms(u) {
   gl.uniform1f(u.uExpo, lw(CAMERA.expo));
   gl.uniform1f(u.uSat, lw(CAMERA.sat));
   gl.uniform1f(u.uVig, lw(CAMERA.vig));
-  gl.uniform1f(u.uGrain, CAMERA.grain);
+  gl.uniform1f(u.uGrain, CAMERA.grain * Math.min(1, Math.pow(1.25 / Math.max(spread(), 1e-3), 1.5)));
   gl.uniform1f(u.uLift, lw(CAMERA.lift));
 }
 
@@ -732,8 +753,8 @@ function timed(now) {
   times = [];
   probing = 0;
   if (med <= target) return;
-  if (quality > MINQ + 0.01) {
-    quality = Math.max(MINQ, quality * Math.sqrt(target / med));
+  if (quality > minQ() + 0.01) {
+    quality = Math.max(minQ(), quality * Math.sqrt(target / med));
     fit();
     probing = 1;
     return;
