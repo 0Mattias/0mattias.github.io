@@ -59,13 +59,15 @@ window.CONCEPT = {
   theme: { day: '#6192c5', dusk: '#8f99ba', night: '#2e4b7e' },
   t0: 40,
   /* the meadow's lens and grade; by night more of the colour is kept, so
-     the aurora stays green, and it and the moon bloom more */
+     the aurora stays green, and it and the moon bloom more; the blacks are
+     lifted far less than the meadow's, so the shaded walls stay near black */
   camera: {
     expo: [1.0, 1.05, 1.15],
     bloom: [0.05, 0.08, 0.13],
     thresh: 0.9,
     sat: [0.95, 0.93, 0.9],
     vig: [0.14, 0.16, 0.2],
+    lift: [0.003, 0.004, 0.0015],
     grain: 0.022,
     blur: 0.012
   },
@@ -571,7 +573,7 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   vec2 kh = normalize(KEY.xz + vec2(1e-4, 0.0));
   float away = sat(0.35 - 0.65 * dot(n.xz, kh));
   float litw = look3(1.0, 0.12, 0.6);
-  E += KEYG * vec3(0.045, 0.085, 0.03) * away * litw * (1.0 - 0.5 * n.y) * ao * (1.2 - open);
+  E += KEYG * vec3(0.045, 0.1, 0.03) * away * litw * (1.0 - 0.5 * n.y) * ao * (1.2 - open);
   float wfr = mix(0.14, 0.03, smoothstep(0.0, 400.0, y));
   E += (SKYH * 0.6 + SKYZ * 0.4 + KEYG * 0.02 * litw) * PI * 0.5 * wfr * (1.0 - 0.7 * n.y);
   E += GLOWA * (0.6 + 0.4 * n.y);
