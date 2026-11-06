@@ -47,6 +47,10 @@
        thresh (1.0)                radiance, after exposure, that glows
        sat    [0.92, 0.9, 0.72]    share of the colour kept
        vig    [0.14, 0.16, 0.2]    darkening toward the corners
+       lift   [0.01, 0.01, 0.01]   blacks raised (and tinted by the look),
+                                   linear; the meadow's is 0.01, which
+                                   reads about 31 of 255, so a deep night
+                                   wants less
        grain  (0.024)              film grain
        blur   (0.012)              widest bokeh, a share of the height
      }
@@ -189,6 +193,7 @@ var CAMERA = {
   thresh: CAM.thresh === undefined ? 1.0 : CAM.thresh,
   sat: per(CAM.sat, [0.92, 0.9, 0.72]),
   vig: per(CAM.vig, [0.14, 0.16, 0.2]),
+  lift: per(CAM.lift, [0.01, 0.01, 0.01]),
   grain: CAM.grain === undefined ? 0.024 : CAM.grain,
   blur: CAM.blur === undefined ? 0.012 : CAM.blur
 };
@@ -286,12 +291,12 @@ float fbm3(vec3 p, int oct) {
    grey (more at night, as the eye sees it), blacks lifted and tinted by
    the look, the corners darkened, and a grain that thins in the shadows */
 var GRADE = `
-uniform float uExpo, uSat, uVig, uGrain;
+uniform float uExpo, uSat, uVig, uGrain, uLift;
 vec3 grade(vec3 c, vec2 fc) {
   c = max(c * uExpo, 0.0);
   c = clamp(c * (2.51 * c + 0.03) / (c * (2.43 * c + 0.59) + 0.14), 0.0, 1.0);
   c = mix(vec3(dot(c, vec3(0.299, 0.587, 0.114))), c, uSat);
-  c = c * 0.96 + 0.01 + mix(vec3(0.006, 0.005, 0.004), vec3(0.0, 0.0015, 0.006), uLook.z) + uLook.y * vec3(0.006, 0.002, 0.0);
+  c = c * (1.0 - 4.0 * uLift) + uLift * (1.0 + 100.0 * (mix(vec3(0.006, 0.005, 0.004), vec3(0.0, 0.0015, 0.006), uLook.z) + uLook.y * vec3(0.006, 0.002, 0.0)));
   vec2 uv = fc / uRes;
   c *= 1.0 - smoothstep(0.45, 0.9, distance(uv, vec2(0.5))) * uVig;
   float g = hash12(fc * 0.913 + fract(uTime * 0.37) * 517.0) - 0.5;
@@ -524,14 +529,14 @@ function build(then) {
       }
     }
     prog = p;
-    U = uniforms(p, ['uRes', 'uTime', 'uLook', 'uPoint', 'uMoon', 'uExpo', 'uSat', 'uVig', 'uGrain']);
+    U = uniforms(p, ['uRes', 'uTime', 'uLook', 'uPoint', 'uMoon', 'uExpo', 'uSat', 'uVig', 'uGrain', 'uLift']);
     if (POST) {
       POST.down_p = extra[0];
       POST.up_p = extra[1];
       POST.comp_p = extra[2];
       POST.dU = uniforms(extra[0], ['uSrc', 'uTexel', 'uThresh', 'uExpo', 'uFirst']);
       POST.uU = uniforms(extra[1], ['uSrc', 'uAdd', 'uTexel', 'uSize']);
-      POST.cU = uniforms(extra[2], ['uHdr', 'uBloomT', 'uRes', 'uLook', 'uTime', 'uMaxCoc', 'uBloomK', 'uExpo', 'uSat', 'uVig', 'uGrain']);
+      POST.cU = uniforms(extra[2], ['uHdr', 'uBloomT', 'uRes', 'uLook', 'uTime', 'uMaxCoc', 'uBloomK', 'uExpo', 'uSat', 'uVig', 'uGrain', 'uLift']);
     }
     vao = gl.createVertexArray();
     then();
@@ -623,6 +628,7 @@ function gradeUniforms(u) {
   gl.uniform1f(u.uSat, lw(CAMERA.sat));
   gl.uniform1f(u.uVig, lw(CAMERA.vig));
   gl.uniform1f(u.uGrain, CAMERA.grain);
+  gl.uniform1f(u.uLift, lw(CAMERA.lift));
 }
 
 function pass(t, prg) {
