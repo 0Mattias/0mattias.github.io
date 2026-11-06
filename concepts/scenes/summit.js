@@ -853,62 +853,84 @@ vec4 marchDeck(vec3 ro, vec3 rd, float t1, vec2 fc) {
   if (rd.y >= 0.0 || disc < 0.0) return vec4(0.0);
   float t = (-rd.y - sqrt(disc)) / (2.0 * A);
   if (t > t1) return vec4(0.0);
-  vec3 L = normalize(vec3(LD.x, max(LD.y, 0.015), LD.z));
+  /* the taps toward the light are laid a little lower than the sun, so
+     the heaps shade one another as the afternoon light does */
+  vec3 L = normalize(vec3(LD.x, clamp(LD.y, 0.015, 0.45), LD.z));
   float mu = dot(rd, LD);
   float ph = 0.7 + 3.2 * hg(mu, 0.55);
   vec3 lc = LC / PI * CT * ph;
+  float lod = 5.0;
+  float jit = hash12(fc + 0.37);
   float st = max(25.0, t * 0.008);
-  /* interleaved gradient noise: a jitter whose grain is finer than a
-     hash's */
-  float jit = fract(52.9829189 * fract(dot(fc, vec2(0.06711056, 0.00583715))));
   t += st * jit;
-  bool skipped = false;
+  float lt = t;
+  bool inside = false;
   vec3 acc = vec3(0.0);
-  float tr = 1.0, tw = 0.0;
-  for (int i = 0; i < 72; i++) {
+  float tr = 1.0, tw = 0.0, sti = 0.0;
+  for (int i = 0; i < 80; i++) {
     if (t > t1 || tr < 0.03) break;
-    st = max(25.0, t * 0.008);
     vec3 p = ro + rd * t;
     float h = p.y + drop(p.xz);
     vec2 w = p.xz + DRIFT;
     float gap;
     float top = vtop(p.xz, w, gap);
     float f0 = (top - h) / 170.0 - 3.0 * smoothstep(1950.0, VBOT, h);
-    if (f0 > -2.3) {
-      /* after a skip through clear air the ray is jittered again, or every
-         ray would land on the same surface and sample in step */
-      if (skipped) { t += st * fract(jit + 0.618 * float(i)); skipped = false; p = ro + rd * t; h = p.y + drop(p.xz); w = p.xz + DRIFT; }
-      float lod = clamp(log2(620.0 / (t * PA / max(-rd.y, 0.012))) + 1.0, 2.0, 5.0);
-      vec3 q = vec3(w.x, h + T * 0.6, w.y) / 620.0;
-      q.xz += 0.65 * (vec2(noise(q.xz * 0.45 + 3.1), noise(q.xz * 0.45 + 7.7)) - 0.5);
-      float f = vfield(h, top, q, lod);
-      float den = vden(f) * (1.0 - smoothstep(VFAR - 6000.0, VFAR, t));
-      if (den > 0.002) {
-        /* toward the light: a near tap for the shading of the billows,
-           a far one for the shadow of the bank */
-        vec3 l1 = L * 45.0, l2 = L * 190.0;
-        float d1 = vden(vfield(h + l1.y, top, q + l1 / 620.0, lod - 1.0));
-        float d2 = vden(vfield(h + l2.y, top, q + l2 / 620.0, 2.0));
-        float od = 0.045 * (45.0 * d1 + 145.0 * d2);
-        /* light that has scattered on through the cloud keeps some of
-           the shadows from going black */
-        float sun = exp(-od) + 0.1 * exp(-0.2 * od);
-        /* bright tops, blue-grey bellies */
-        float hf = sat((h - 1800.0) / max(top - 1800.0, 80.0));
-        vec3 c = lc * sun + AMB * (0.2 + 0.8 * hf) * (0.45 + 0.55 * exp(-0.5 * od)) * 1.25;
-        float a = 1.0 - exp(-den * 0.022 * st);
-        acc += tr * a * c;
-        tw += tr * a * t;
-        tr *= 1.0 - a;
-      }
-      /* inside the cloud, finer steps */
-      st *= den > 0.002 ? 0.3 : 1.0;
-    } else {
+    st = max(18.0, t * 0.005);
+    if (f0 <= -2.3 && !inside) {
       /* clear air: skip ahead by as much as the field allows */
-      st = max(st, (-2.3 - f0) * 170.0 / max(-rd.y, 0.02) * 0.5);
-      skipped = true;
+      lt = t;
+      t += clamp((-2.3 - f0) * 170.0 / max(-rd.y, 0.02) * 0.5, st, 500.0);
+      continue;
     }
-    t += st;
+    lod = clamp(log2(620.0 / (t * PA / max(-rd.y, 0.012))) + 1.0, 2.0, 5.0);
+    vec3 q = vec3(w.x, h + T * 0.6, w.y) / 620.0;
+    q.xz += 0.65 * (vec2(noise(q.xz * 0.45 + 3.1), noise(q.xz * 0.45 + 7.7)) - 0.5);
+    float f = vfield(h, top, q, lod);
+    if (!inside) {
+      /* outside: the further out, the longer the step */
+      if (f <= 0.0) { lt = t; t += max(st, -f * 55.0); continue; }
+      /* found the cloud: its edge is found exactly, so the march inside
+         starts at the same place for neighbouring pixels */
+      float a = lt, b = t;
+      for (int k = 0; k < 4; k++) {
+        float m = 0.5 * (a + b);
+        vec3 pm = ro + rd * m;
+        float hm = pm.y + drop(pm.xz);
+        vec2 wm = pm.xz + DRIFT;
+        float gm;
+        float tm = vtop(pm.xz, wm, gm);
+        vec3 qm = vec3(wm.x, hm + T * 0.6, wm.y) / 620.0;
+        qm.xz += 0.65 * (vec2(noise(qm.xz * 0.45 + 3.1), noise(qm.xz * 0.45 + 7.7)) - 0.5);
+        if (vfield(hm, tm, qm, lod) > 0.0) b = m; else a = m;
+      }
+      t = a;
+      inside = true;
+      sti = max(4.0, t * 0.0011);
+      continue;
+    }
+    float den = vden(f) * (1.0 - smoothstep(VFAR - 6000.0, VFAR, t));
+    if (den > 0.002) {
+      /* toward the light: a near tap for the shading of the billows, a
+         far one for the shadow of the bank */
+      vec3 l1 = L * 45.0, l2 = L * 190.0;
+      float d1 = vden(vfield(h + l1.y, top, q + l1 / 620.0, lod - 1.0));
+      float d2 = vden(vfield(h + l2.y, top, q + l2 / 620.0, 2.0));
+      float od = 0.1 * (45.0 * d1 + 145.0 * d2);
+      /* light that has scattered on through the cloud keeps the shadows
+         from going black */
+      float sun = exp(-od) + 0.1 * exp(-0.2 * od);
+      /* bright tops, blue-grey bellies */
+      float hf = sat((h - 1800.0) / max(top - 1800.0, 80.0));
+      vec3 c = lc * sun * (0.75 + 0.25 * hf) + AMB * (0.15 + 0.85 * hf) * (0.35 + 0.65 * exp(-0.4 * od)) * 1.1;
+      float a = 1.0 - exp(-den * 0.03 * sti);
+      acc += tr * a * c;
+      tw += tr * a * t;
+      tr *= 1.0 - a;
+    }
+    /* out of the cloud again, through a thin place: back to long steps */
+    if (f < -0.6) { inside = false; lt = t; t += st; continue; }
+    t += sti;
+    sti *= 1.18;
   }
   float al = 1.0 - tr;
   if (al < 1e-4) return vec4(0.0);
@@ -1008,7 +1030,9 @@ vec3 scene(vec2 fc) {
   /* where the ray leaves the bottom of the near deck, if it does before
      the deck hands over to the far one */
   float tX = rd.y < 0.0 ? (ro.y - VBOT) / -rd.y : 1e9;
-  bool under = tX < VFAR - 6000.0;
+  /* a ray already under the far deck where that takes over sees the
+     ground under it */
+  bool under = (ro.y - 1950.0) / max(-rd.y, 1e-4) < VFAR - 6000.0 && rd.y < 0.0;
   if (aR < 1.0 && aB < 1.0 && under) col = underdeck(ro, rd);
   if (aR < 1.0 && aB < 1.0 && !under) {
     float tF = traceFuji(ro, rd, nearF);
