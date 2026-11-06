@@ -257,10 +257,10 @@ float map(vec3 p) {
       float plat;
       if (dp < -22.0) plat = p.y - pt;
       else {
-        float th = 17.0 + 5.0 * noise(vec2(q.x / 40.0, 9.0));
-        float terr = 11.0 * smoothstep(th - 1.0, th + 1.0, p.y) * smoothstep(0.45, 0.7, noise(vec2(q.x / 45.0, 5.0))) * (1.0 - smoothstep(330.0, 370.0, q.x));
+        float th = 17.0 + 4.0 * sin(q.x * 0.027 + 1.0);
+        float terr = 11.0 * smoothstep(th - 1.0, th + 1.0, p.y) * smoothstep(0.3, 0.55, noise(vec2(q.x / 45.0, 5.0))) * (1.0 - smoothstep(330.0, 370.0, q.x));
         float fp = faceOff(p.y + 5.0, sp + 300.0, 1.6, 1.0) + terr + lip(p.y, pt, sp) + lump;
-        plat = smax(p.y - pt + 2.0 * exp(min(dp + fp, 0.0) / 3.5), dp + fp, 1.0);
+        plat = smax(p.y - pt + (0.6 + 4.0 * smoothstep(0.4, 0.8, noise(vec2(sp / 7.0, 2.9)))) * exp(min(dp + fp, 0.0) / 4.0), dp + fp, 1.0);
       }
       r = min(r, smax(plat, q.x - 380.0, 4.0));
     } else r = min(r, q.x - 386.0);
@@ -683,14 +683,17 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa, float d0) {
     /* rush and long grass in darker patches */
     grass = mix(grass, vec3(0.036, 0.044, 0.022), 0.55 * smoothstep(0.55, 0.8, noise(p.xz / 11.0 + 8.0)));
     grass = mix(grass, vec3(0.1, 0.09, 0.05), smoothstep(0.92, 0.6, n.y) * 0.7);
+    /* the platform's turf, flat to the sun, is the same olive and tawny,
+       a shade darker so it reads as the ridge's does */
+    grass = mix(grass, grass * vec3(0.8, 0.74, 0.8) + vec3(0.012, 0.01, 0.004), step(q.x, 340.0) * step(dp, dm));
     /* sheep tracks across the slopes */
     grass *= 1.0 - 0.12 * smoothstep(0.55, 0.75, noise(vec2(p.y * 1.3, s / 30.0))) * smoothstep(0.95, 0.75, n.y);
   }
   vec3 alb = mix(rock, grass, gw);
   /* the platform's turf is broken everywhere by low outcrops of the flow
      beneath, grey with lichen */
-  float oc = smoothstep(0.7, 0.8, noise(p.xz / 9.0 + 7.0) + 0.25 * noise(p.xz / 2.5)) * gw * step(q.x, 340.0) * step(dp, dm);
-  alb = mix(alb, vec3(0.13, 0.13, 0.12) * (0.7 + 0.6 * noise(p.xz * 1.3)), oc * 0.75);
+  float oc = smoothstep(0.66, 0.78, noise(p.xz / 9.0 + 7.0)) * gw * step(q.x, 340.0) * step(dp, dm);
+  alb = mix(alb, vec3(0.075, 0.072, 0.066) * (0.75 + 0.5 * noise(p.xz * 1.3)), oc * 0.8);
 
   /* tussocks on the turf, catching and losing the light */
   float tfade = sat(2.0 - fp * 1.2) * gw;

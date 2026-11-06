@@ -678,7 +678,10 @@ float fujiShadow(vec3 p) {
 }
 
 float cloudShadow(vec3 p, float far) {
-  float s = 1.0, t = 10.0, cav;
+  /* started clear of the surface, so the hit's own small error does not
+     speckle it */
+  float s = 1.0, t = 30.0, cav;
+  p.y += 6.0;
   int n = far > 20000.0 ? 5 : 8;
   vec3 l = normalize(vec3(LD.x, max(LD.y, 0.03), LD.z));
   for (int i = 0; i < 8; i++) {

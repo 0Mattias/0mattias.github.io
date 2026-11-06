@@ -210,7 +210,7 @@ void buildLimb(int i, vec3 p, vec3 dir, float len, float r0, float s, float up, 
     vec3 side = normalize(cross(pd, vec3(g.x, 1.0, g.z) + 0.2));
     float sd = g.y > 0.0 ? 1.0 : -1.0;
     vec3 bd = normalize(pd * 0.7 + side * sd * (0.55 + 0.4 * abs(g.z)) + vec3(0.0, 0.15, 0.0));
-    float bl = len * (m == 0 ? 0.42 : 0.3) * (0.6 + 0.8 * abs(g.x));
+    float bl = len * (m == 0 ? 0.48 : 0.36) * (0.6 + 0.8 * abs(g.x));
     float br = jr[m + 1] * 0.62;
     vec3 q1 = o + bd * bl * 0.55;
     bd = normalize(bd + (hash33(vec3(s, float(m) + 7.0, float(i))) - 0.5) * kink + vec3(0.0, up, 0.0));
@@ -291,7 +291,7 @@ void buildTree(vec4 T) {
   if (s < 1.5) hab = 1;
   float hf = H * (hab == 0 ? 0.26 + 0.12 * r0.z : (hab == 1 ? 0.04 + 0.06 * r0.z : (hab == 2 ? 0.16 + 0.12 * r0.z : 0.1 + 0.08 * r0.z)));
   nLimb = hab == 1 ? 2 + int(r0.y * 1.99) : (hab == 2 ? 2 + int(r0.y * 1.6) : 3 + int(r0.y * 1.99));
-  if (s < 1.5) nLimb = 3;
+  if (s < 1.5) nLimb = 4;
   /* the trunk leans */
   float la = r1.y * TAU, lean = (hab == 2 ? 0.18 : 0.08) + 0.12 * r1.z;
   vec3 ld = vec3(cos(la) * sin(lean), cos(lean), sin(la) * sin(lean));

@@ -443,25 +443,30 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   float steepOk = smoothstep(0.36, 0.48, slope + 0.14 * (m2 - 0.5) + 0.08 * (m3 - 0.5));
   float aval = smoothstep(0.3, 0.7, gg.x) * smoothstep(30.0, 160.0, y);
   float forest = steepOk * (1.0 - smoothstep(tl - 160.0, tl + 30.0, y + 120.0 * (m3 - 0.5))) * (1.0 - 0.9 * aval) * smoothstep(0.8, 2.5, y);
-  // birch low down and along the gullies, pine and spruce on the ribs
-  float bf = sat(0.25 + 0.5 * m1 + 0.35 * (1.0 - smoothstep(60.0, 420.0, y)) + 0.4 * gg.y - 0.25 * smoothstep(400.0, 700.0, y));
-  vec3 pine = vec3(0.012, 0.024, 0.012), birch = vec3(0.032, 0.06, 0.014);
+  // birch in patches, low down and along the gullies, yellow-green among
+  // the darker spruce and pine that hold the ribs and the higher slopes
+  vec2 fq = vec2(u, y * 1.25);
+  float bp = noise(fq * 0.007 + 11.0) * 0.6 + noise(fq * 0.019 + 4.0) * 0.4;
+  float bf = sat(smoothstep(0.42, 0.64, bp) * 0.85 + 0.3 * (1.0 - smoothstep(60.0, 400.0, y)) + 0.35 * gg.y - 0.3 * smoothstep(350.0, 650.0, y));
+  vec3 pine = vec3(0.012, 0.019, 0.011), birch = vec3(0.037, 0.049, 0.022);
   vec3 trees = mix(pine, birch, bf);
-  // single crowns near the water, a grain where they shrink to a pixel
-  // or two, and beyond that the velvet they make
-  float cw = 4.6;
-  float ca = sat(1.6 - fp / (0.3 * cw));
+  // clumps a few tens of metres across, and the runnels between them in
+  // shade
+  float cl = noise(fq * 0.05 + 7.0) * 0.65 + noise(fq * 0.12 + 2.0) * 0.35;
+  trees *= (0.7 + 0.6 * cl) * (1.0 - 0.3 * smoothstep(0.15, 0.6, gg.y));
+  // single crowns only on the nearest slopes; a fine grain where they
+  // shrink under a few pixels; beyond that the velvet they make
+  float cw = 3.4;
+  float ca = sat(1.0 - (fp - 0.12) / 0.22);
   if (ca > 0.0) {
-    GAPS = smoothstep(0.45, 0.8, noise(vec2(u, y * 1.25) * 0.035 + 3.0));
-    vec2 q = vec2(u, y * 1.25) / cw;
+    GAPS = smoothstep(0.45, 0.8, noise(fq * 0.035 + 3.0));
     vec2 l = normalize(vec2(dot(KEY.xz, tg), KEY.y + 0.25));
-    vec2 c = crowns(q, l);
+    vec2 c = crowns(fq / cw, l);
     vec3 one = mix(pine, birch, step(1.0 - bf, c.y)) * (0.85 + 0.3 * fract(c.y * 17.0));
-    trees = mix(trees, one * c.x, ca);
+    trees = mix(trees, mix(trees, one * (0.7 + 0.6 * cl), 0.85) * mix(1.0, c.x, 0.75), ca);
   }
-  float grain = sat(1.0 - fp / (2.5 * cw)) * (1.0 - ca);
-  trees *= 1.0 + grain * (noise(vec2(u, y * 1.25) / cw * 1.3) - 0.5) * 0.9;
-  trees *= (0.85 + 0.3 * m2) * (0.7 + 0.6 * noise(vec2(u, y * 1.25) * 0.045 + 7.0));
+  float grain = sat(1.0 - fp / 1.6) * (1.0 - ca);
+  trees *= 1.0 + grain * (noise(fq / cw * 1.1) - 0.5) * 0.45;
   // the gullies: grass and scrub, scree low down and snow high up
   vec3 grass = mix(vec3(0.055, 0.09, 0.025), vec3(0.08, 0.1, 0.04), m2);
   alb = mix(alb, grass, aval * smoothstep(0.3, 0.45, slope) * 0.8);
@@ -1068,8 +1073,7 @@ vec3 scene(vec2 fc) {
       c = mix(c, cl, w);
     }
   }
-  if (refl) return kind == 0 ? vec3(0.0, 0.0, 0.6) : kind == 1 ? vec3(0.0, 0.25, 0.0) : vec3(0.6, 0.6, 0.0);
-  return kind == 0 ? vec3(0.8, 0.0, 0.8) : kind == 1 ? vec3(0.0, 0.08, 0.0) : vec3(0.8, 0.8, 0.0);
+  return acc + thr * c;
 }
 `
 };
