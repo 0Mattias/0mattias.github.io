@@ -52,6 +52,7 @@
     </script>
     <link rel="stylesheet" href="/style.css">
     <script src="/sky.js" defer></script>
+    <script src="/places.js" defer></script>
 
     <script type="application/ld+json">
     {
@@ -91,6 +92,11 @@
             <button type="button" data-look="day" title="Day" aria-pressed="false">day</button>
             <button type="button" data-look="dusk" title="Dusk" aria-pressed="false">dusk</button>
             <button type="button" data-look="night" title="Night" aria-pressed="false">night</button>
+        </div>
+        <div class="places" role="group" aria-label="Place">
+            <button type="button" data-step="-1" aria-label="Previous place">&lsaquo;</button>
+            <span class="place" aria-live="polite" title="The meadow above Zermatt, Switzerland">Zermatt</span>
+            <button type="button" data-step="1" aria-label="Next place">&rsaquo;</button>
         </div>
     </header>
 

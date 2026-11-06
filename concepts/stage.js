@@ -62,23 +62,35 @@
 (function () {
 'use strict';
 
+/* On its own page (the concepts' preview) the stage starts by itself,
+   with the scene loaded before it, and wears the whole page. On the site
+   it waits to be asked: the site's places.js calls ConceptStage(scene,
+   host) for each place a visitor turns to, giving it a canvas and a still
+   of its own (host.canvas, host.still, and host.base, where the stills
+   are), and turns it on and off as the places change. Embedded, it draws
+   only its picture: the page's colours, its look buttons and its poster
+   stay the meadow's to keep. */
 function later() {
-  requestAnimationFrame(function () { setTimeout(start, 0); });
+  requestAnimationFrame(function () { setTimeout(function () { start(window.CONCEPT, null); }, 0); });
 }
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', later);
-else later();
+if (!window.CONCEPT_EMBED) {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', later);
+  else later();
+}
+window.ConceptStage = function (scene, host) { return start(scene, host); };
 
-function start() {
+function start(S, host) {
 
+var EMBED = !!host;
 var root = document.documentElement;
 var hero = document.querySelector('.letterhead');
-var canvas = document.getElementById('sky');
+var canvas = EMBED ? host.canvas : document.getElementById('sky');
 var buttons = Array.prototype.slice.call(document.querySelectorAll('.looks button'));
-var S = window.CONCEPT;
-if (!hero || !canvas) return;
+var active = !EMBED, stale = false;
+if (!hero || !canvas) return null;
 
 var q = new URLSearchParams(location.search);
-var STILL = q.has('still');
+var STILL = !EMBED && q.has('still');
 var reduced = matchMedia('(prefers-reduced-motion: reduce)');
 var LOOKS = { day: [1, 0, 0], dusk: [0, 1, 0], night: [0, 0, 1] };
 var MINQ = 0.4;
@@ -106,7 +118,7 @@ var quality = 1, probing = 0, times = [];
 var PX = new Uint8Array(4);
 
 function themeColor() {
-  if (!themeMeta) return;
+  if (!themeMeta || EMBED) return;
   var c = [0, 1, 2].map(function (i) {
     return Math.round(TH.day[i] * w[0] + TH.dusk[i] * w[1] + TH.night[i] * w[2]);
   });
@@ -115,12 +127,12 @@ function themeColor() {
 
 function posterURL() {
   var a = innerWidth / Math.max(innerHeight, 480);
-  return new URL('stills/' + (S ? S.id : '') + '-' + look + '-' + (a > 1.2 ? 'wide' : 'tall') + '.webp', location.href).href;
+  return new URL((EMBED ? host.base : '') + 'stills/' + (S ? S.id : '') + '-' + look + '-' + (a > 1.2 ? 'wide' : 'tall') + '.webp', location.href).href;
 }
 
 function setLook(name, instant) {
   look = name;
-  buttons.forEach(function (b) {
+  if (!EMBED) buttons.forEach(function (b) {
     b.setAttribute('aria-pressed', String(b.getAttribute('data-look') === name));
   });
   var to = LOOKS[name];
@@ -133,13 +145,15 @@ function setLook(name, instant) {
     wFrom = w.slice();
     tr = { t0: performance.now(), dur: dur };
   }
-  clearTimeout(turning);
-  root.classList.toggle('turning', dur > 0);
-  if (dur) turning = setTimeout(function () { root.classList.remove('turning'); }, dur + 100);
-  root.style.setProperty('--turn', Math.round(dur) + 'ms');
-  root.setAttribute('data-look', name);
-  root.style.setProperty('--sky', theme[name]);
-  root.style.setProperty('--poster', 'url("' + posterURL() + '")');
+  if (!EMBED) {
+    clearTimeout(turning);
+    root.classList.toggle('turning', dur > 0);
+    if (dur) turning = setTimeout(function () { root.classList.remove('turning'); }, dur + 100);
+    root.style.setProperty('--turn', Math.round(dur) + 'ms');
+    root.setAttribute('data-look', name);
+    root.style.setProperty('--sky', theme[name]);
+    root.style.setProperty('--poster', 'url("' + posterURL() + '")');
+  } else if (failed || !live) poster();
   themeColor();
   wake(true);
 }
@@ -163,7 +177,7 @@ buttons.forEach(function (b) {
   });
 });
 
-window.setConceptLook = function (n) {
+if (!EMBED) window.setConceptLook = function (n) {
   if (!LOOKS[n] || n === look) return;
   try { sessionStorage.setItem('look', n); } catch (err) {}
   setLook(n, false);
@@ -172,7 +186,7 @@ window.setConceptLook = function (n) {
 var initial = root.getAttribute('data-look');
 if (!LOOKS[initial]) initial = 'day';
 setLook(initial, true);
-root.classList.add('sky');
+if (!EMBED) root.classList.add('sky');
 
 /* a capture may hold the weights anywhere between the looks (?mix=d,u,n),
    to see a scene partway through a turn */
@@ -555,8 +569,9 @@ try {
   });
 } catch (err) {}
 if (!gl || !S || !S.frag) {
+  failed = true;
   poster();
-  return;
+  return { activate: activate, deactivate: deactivate };
 }
 
 /* tonight's moon, 0 new, 0.5 full; a capture takes a waxing gibbous */
@@ -709,12 +724,12 @@ function draw(now) {
 }
 
 function animating() {
-  return live && visible && inView && !reduced.matches && !slow;
+  return active && live && visible && inView && !reduced.matches && !slow;
 }
 
 function frame(now) {
   raf = 0;
-  if (lost || failed || !prog) return;
+  if (lost || failed || !prog || !active) return;
   var busy = tr || Math.abs(tx - px) > 0.002 || Math.abs(ty - py) > 0.002;
   var gap = 1000 / (S.fps || 30) - 4;
   if (dirty || (visible && inView && busy && !slow) || (animating() && now - last >= gap)) {
@@ -728,7 +743,30 @@ function frame(now) {
 
 function wake(redraw) {
   if (redraw) dirty = true;
-  if (!raf && prog && !lost && !failed && !STILL) raf = requestAnimationFrame(frame);
+  if (!raf && active && prog && !lost && !failed && !STILL) raf = requestAnimationFrame(frame);
+}
+
+/* on the site, the place on show is drawn and the others sleep, each
+   keeping its last frame for when it is turned back to */
+function activate() {
+  if (active) return;
+  active = true;
+  if (failed || slow) {
+    poster();
+    return;
+  }
+  if (stale) {
+    stale = false;
+    fit();
+  }
+  last = -1e9;
+  wake(true);
+}
+
+function deactivate() {
+  active = false;
+  if (raf) cancelAnimationFrame(raf);
+  raf = 0;
 }
 
 /* the first frames are timed to the GPU's finish; if they run long the
@@ -772,8 +810,10 @@ function timed(now) {
 
 function reveal() {
   canvas.classList.add('drawn');
-  root.classList.remove('still');
-  root.classList.add('live');
+  if (!EMBED) {
+    root.classList.remove('still');
+    root.classList.add('live');
+  }
   live = true;
 }
 
@@ -785,6 +825,19 @@ function fail() {
 }
 
 function poster() {
+  if (EMBED) {
+    /* the still of the look, swapped in only once the new one is ready */
+    var url = posterURL();
+    if (host.still.getAttribute('src') === url) return;
+    var next = new Image(), on = function () {
+      host.still.src = url;
+      host.still.classList.add('on');
+    };
+    next.src = url;
+    if (next.decode) next.decode().then(on, function () {});
+    else next.onload = on;
+    return;
+  }
   root.classList.add('still');
   if (root.classList.contains('pic')) return;
   var img = new Image(), on = function () { root.classList.add('pic'); };
@@ -859,8 +912,16 @@ if (window.IntersectionObserver) {
 /* a resize draws at once, in the same frame, so the canvas never shows
    cleared */
 function resized() {
+  if (EMBED && (failed || slow)) {
+    poster();
+    return;
+  }
   if (!prog || lost || failed || STILL) return;
-  root.style.setProperty('--poster', 'url("' + posterURL() + '")');
+  if (!EMBED) root.style.setProperty('--poster', 'url("' + posterURL() + '")');
+  if (!active) {
+    stale = true;
+    return;
+  }
   if (fit()) draw(performance.now());
 }
 if (window.ResizeObserver) new ResizeObserver(resized).observe(hero);
@@ -886,7 +947,9 @@ canvas.addEventListener('webglcontextrestored', function () {
   build(go);
 });
 
+if (EMBED) poster();
 build(go);
+return { activate: activate, deactivate: deactivate };
 
 }
 })();

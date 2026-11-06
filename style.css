@@ -168,6 +168,7 @@ h1, h2, h3 { text-wrap: balance; }
     text-align: center;
     padding: 0 24px;
     color: #f6f3ec;
+    touch-action: pan-y pinch-zoom;
 }
 
 .scene {
@@ -253,6 +254,40 @@ html:not(.live) #sky { filter: blur(var(--soft)); }
 #sky.swap { transition-duration: 0.6s; }
 
 .under { opacity: 0; }
+
+/* another place (places.js): a layer over the meadow, its still first
+   and its live picture over that once drawn; inside the scene, so the
+   foot of the picture dissolves into the page as the meadow's does */
+.scene .alt {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.7s ease, visibility 0s 0.7s;
+}
+
+.scene .alt.on {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.7s ease, visibility 0s;
+}
+
+.alt img,
+.alt canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    opacity: 0;
+}
+
+.alt img { transition: opacity 0.5s ease; }
+.alt canvas { transition: opacity 1s ease; }
+.alt img.on,
+.alt canvas.drawn { opacity: 1; }
 
 .under.on { opacity: 1; }
 
@@ -392,6 +427,58 @@ html.still .looks {
     outline-offset: 4px;
 }
 
+/* the places, beside the dots: back, the place on show, on */
+.places {
+    position: absolute;
+    left: calc(max(22px, env(safe-area-inset-left)) + 90px);
+    bottom: max(22px, env(safe-area-inset-bottom));
+    height: 18px;
+    display: none;
+    align-items: center;
+    font: italic 400 15px/1 var(--serif);
+    color: var(--quiet);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.9s ease, visibility 0s 0.9s;
+}
+
+html.sky .places { display: flex; }
+
+html.live .places,
+html.still .places {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.9s ease 0.5s, visibility 0s 0.5s;
+}
+
+.places .place {
+    min-width: 6.6em;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.places button {
+    width: 26px;
+    height: 26px;
+    margin: -4px 0;
+    padding: 0 0 2px;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: inherit;
+    font: 400 21px/1 var(--serif);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.places button:hover { color: var(--ink); transform: scale(1.12); }
+
+.places button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
 main, footer {
     max-width: 34em;
     margin: 0 auto;
@@ -477,6 +564,8 @@ footer a { color: inherit; }
 @media (pointer: coarse) {
     .looks { gap: 16px; }
     .looks button::before { inset: -8px; }
+    .places { left: calc(max(22px, env(safe-area-inset-left)) + 104px); }
+    .places button { width: 36px; height: 36px; margin: -9px 0; }
 }
 
 @media (max-width: 540px) {
@@ -497,7 +586,7 @@ footer a { color: inherit; }
     body { background: #fff; }
     body:has(.letterhead)::before { display: none; }
     main, footer { max-width: none; padding: 0; }
-    .skip, .scene, .looks, .load { display: none; }
+    .skip, .scene, .looks, .places, .load { display: none; }
     .letterhead { height: auto; min-height: 0; padding: 0 0 32px; color: #000; }
     .letterhead .words { transform: none; }
     .letterhead .name, .dateline { text-shadow: none; }

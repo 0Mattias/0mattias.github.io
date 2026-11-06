@@ -2651,13 +2651,17 @@ var MINQ = 0.45, quality = 1, calibrated = false, probing = true, retunes = 0, t
 var warmed = 0;
 var LIM = Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE), gl.getParameter(gl.MAX_RENDERBUFFER_SIZE));
 
+/* while the hero shows another place (places.js), the meadow sleeps:
+   no frames, no builds, and a resize waits until it is back */
+var away = false, staleSize = false;
+
 function animating() {
-  return !!view && visible && inView && !reduced.matches && !slow;
+  return !!view && visible && inView && !reduced.matches && !slow && !away;
 }
 
 function frame(now) {
   raf = 0;
-  if (lost || failed) return;
+  if (lost || failed || away) return;
   if (!glUp()) {
     progress(0.06 + 0.2 * (1 - Math.exp((began - now) / 900)));
     if (!failed) raf = requestAnimationFrame(frame);
@@ -2904,7 +2908,7 @@ function poster() {
 }
 
 function wake() {
-  if (lost || failed || raf) return;
+  if (lost || failed || raf || away) return;
   if (!glReady || pend || (view && view.phase === 2) || animating()) raf = requestAnimationFrame(frame);
   else if (view && visible) draw(performance.now());
 }
@@ -2934,6 +2938,10 @@ var pending = 0;
 
 function resize() {
   if (lost || failed) return;
+  if (away) {
+    staleSize = true;
+    return;
+  }
   var sz = canvasSize();
   if (!sz || (pend && pend.w === sz[0] && pend.h === sz[1])) return;
   clearTimeout(pending);
@@ -2991,6 +2999,25 @@ hero.addEventListener('pointerleave', function () {
   hand = null;
   wake();
 });
+
+document.addEventListener('place', function (ev) {
+  var a = ev.detail !== 'meadow';
+  if (a === away) return;
+  away = a;
+  if (away) {
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+    return;
+  }
+  if (staleSize) {
+    staleSize = false;
+    resize();
+  }
+  wake();
+});
+/* a page opened on another place (?scene=) may have turned to it before
+   the meadow woke */
+if ((root.getAttribute('data-place') || 'meadow') !== 'meadow') away = true;
 
 document.addEventListener('visibilitychange', function () {
   visible = !document.hidden;
