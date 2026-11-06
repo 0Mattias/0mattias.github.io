@@ -6,27 +6,27 @@
 window.CONCEPT_LIST = [
   {
     id: 'fjord',
-    title: 'Fjord',
-    place: 'Nærøyfjord, Norway',
-    blurb: 'Afloat at dead calm a hand above the water, the walls falling sheer into their own reflection. At night the aurora lights the fjord twice.'
+    title: 'Nærøyfjord',
+    place: 'Vestland, Norway',
+    blurb: 'Afloat at water level in Norway\u2019s narrowest fjord, its forested walls rising 1,400 m into their own reflection. At night the aurora lights it twice.'
   },
   {
     id: 'dunes',
-    title: 'Erg',
+    title: 'Deadvlei',
     place: 'Sossusvlei, Namibia',
-    blurb: 'A low drone pass along the crests of the great red dunes, every ridge a knife edge of light and shade. At night the Milky Way stands over them.'
+    blurb: 'On the white clay pan among camel-thorn trees dead for centuries, with Big Daddy rising red behind them. At night the Milky Way stands over the trees.'
   },
   {
     id: 'summit',
     title: 'Above the clouds',
-    place: 'A summit ridge, 4,000 m',
-    blurb: 'From a rocky ridge over a sea of cloud, far peaks breaking through it to the horizon. At night the moon lays a path across the cloud tops.'
+    place: 'Mount Fuji from the Southern Alps, Japan',
+    blurb: 'From an alpine ridge in the Akaishi Mountains, Fuji rising out of a sea of cloud. At dusk it glows red under the Belt of Venus.'
   },
   {
     id: 'headland',
-    title: 'Headland',
-    place: 'Atlantic coast, Ireland',
-    blurb: 'High on a sea cliff, looking along the coast to a lighthouse on the point while the surf works the rocks below. At night its beam turns.'
+    title: 'Neist Point',
+    place: 'Isle of Skye, Scotland',
+    blurb: 'From the clifftop above Neist Point, the basalt ridge of An t-Aigeach running out to its lighthouse. The sun sets beyond it, and at night its beam turns.'
   }
 ];
 
