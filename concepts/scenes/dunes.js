@@ -603,24 +603,47 @@ vec3 moonDisc(vec3 rd, vec3 M, vec3 S, float pix) {
 
 /* ----------------------------------------------------------- the camera */
 
-/* eye height on the pan. A wide frame holds its width of view and puts the
-   horizon a little below the middle; a tall one narrows, and turns left
-   so the summit and its crest stay in the picture. The pointer turns the
-   head a little and steps it sideways, so the trees slide over the dune */
-float gTanV;
+/* eye height on the pan, framed as the meadow frames itself: every frame
+   is the desktop's picture. A frame of three to two or wider holds the
+   width of view; a narrower one, down to seven to ten, sees exactly as
+   wide as three to two, its lens widening up into the sky while the
+   horizon keeps its height on screen; narrower still the lens widens no
+   further and the frame is a crop of the seven to ten one, turned toward
+   Big Daddy's summit so the summit keeps its place on screen. The
+   pointer turns the head a little and steps it sideways, so the trees
+   slide over the dune */
+const float T1 = 0.62;
+const float QH = -0.25;
+float gTanV, gTanW, gYaw;
 vec3 camRay(vec2 fc, out vec3 ro, out float pix) {
   float asp = uRes.x / uRes.y;
-  float wide = smoothstep(0.7, 1.5, asp);
-  float tanV = mix(0.41, max(0.62 / asp, 0.30), wide);
+  float tanV = asp >= 1.5 ? max(T1 / asp, 0.30) : T1 / max(asp, 0.7);
+  float tanW = tanV * asp;
+  float yaw = 0.0;
+  if (asp < 0.7) {
+    float subj = atan(SUMMIT.x, SUMMIT.y);
+    yaw = subj - atan(tan(subj) / T1 * tanW);
+  }
   gTanV = tanV;
-  float hor = mix(0.61, 0.625, wide);
-  float yaw = radians(mix(-6.5, 0.0, wide)) + uPoint.x * 0.012;
+  gTanW = tanW;
+  gYaw = yaw;
+  yaw += uPoint.x * 0.012;
   vec2 q = (fc - 0.5 * uRes) / (0.5 * uRes.y);
-  vec3 r = normalize(vec3(q.x * tanV, (q.y - 1.0 + 2.0 * hor) * tanV + uPoint.y * 0.006, 1.0));
+  vec3 r = normalize(vec3(q.x * tanV, (q.y - QH) * tanV + uPoint.y * 0.006, 1.0));
   r.xz = rot(yaw) * r.xz;
   ro = vec3(uPoint.x * 0.8, EYE, 0.0);
   pix = 2.0 * tanV / uRes.y;
   return r;
+}
+
+/* the moon's disc where a three to two frame shows it, at the same place
+   on any narrower screen; its light keeps its true direction */
+vec3 moonSeen(vec3 M) {
+  if (uRes.x / uRes.y >= 1.5) return M;
+  vec2 s15 = vec2(M.x / M.z / T1, M.y / M.z / (T1 / 1.5));
+  vec3 d = normalize(vec3(s15.x * gTanW, s15.y * gTanV, 1.0));
+  d.xz = rot(gYaw) * d.xz;
+  return d;
 }
 
 /* the ray over the dunes: steps by its height over the sand over the
@@ -987,9 +1010,10 @@ vec3 scene(vec2 fc) {
       lights = (starsAt(rd, pix, band) + mw * 0.045) * gWM * smoothstep(0.0, 0.03, rd.y);
     }
     /* the moon, pale by day, bright by night */
-    vec3 md = moonDisc(rd, gM, gLd, pix);
+    vec3 mS = moonSeen(gM);
+    vec3 md = moonDisc(rd, mS, gLd, pix);
     col += md * (gWS * 0.38 * (1.0 - gFu * 0.3) + gWM * 2.4);
-    float ma = acos(clamp(dot(rd, gM), -1.0, 1.0));
+    float ma = acos(clamp(dot(rd, mS), -1.0, 1.0));
     /* the aureole round the moon, in the dry air small and tight */
     col += vec3(0.62, 0.66, 0.74) * (0.08 * exp(-ma / 0.01) + 0.012 * exp(-ma / 0.045) + 0.003 * exp(-ma / 0.2)) * gWM;
     /* a skyline the ray only just cleared is part sand */
