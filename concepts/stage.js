@@ -379,7 +379,9 @@ void main() {
 
 /* the picture through the lens: each pixel gathers a golden spiral of
    taps out to the widest disc, and takes each one whose own disc reaches
-   it, as a lens spreads every point it does not focus. What lies behind a
+   it, as a lens spreads every point it does not focus. The spiral is the
+   same at every pixel, so a thin branch a little out of focus softens
+   evenly rather than speckling. What lies behind a
    pixel cannot spread over it further than the pixel itself is blurred,
    so a sharp thing keeps its edge against a soft background. Then the
    bloom, and the grade */
@@ -396,7 +398,7 @@ void main() {
   vec3 col = c0.rgb;
   if (uMaxCoc > 0.5) {
     float k0 = clamp(c0.a, -uMaxCoc, uMaxCoc), s0 = abs(k0);
-    float stp = uMaxCoc * uMaxCoc / 128.0, r = max(stp, 0.5), ang = hash12(fc) * 0.6, tot = 1.0;
+    float stp = uMaxCoc * uMaxCoc / 128.0, r = max(stp, 0.5), ang = 0.0, tot = 1.0;
     for (int i = 0; i < 72; i++) {
       if (r >= uMaxCoc) break;
       vec2 o = vec2(cos(ang), sin(ang)) * r;

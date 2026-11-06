@@ -22,26 +22,34 @@
    limbs that lean out and kink as they thin to bare tips, each tree
    with its own habit (a vase, a split at the ground, one dominant limb,
    low and wide), blackened charcoal in shade and silvery where the sun
-   strikes; the fallen ones bleached paler. Each is found by a box test
+   strikes, split by fissures; the nearest swollen with burls and hollowed
+   at its foot, the fallen ones bleached paler. Each is found by a box test
    and a few bounding balls first, and casts its own shadow.
+   Light is thrown back: the white clay lights the foot of every dune from
+   below, and a dune's sunlit sand lights the clay at its foot red. The
+   air between is dry and very clear, a little blue laid over the far
+   dunes and warmer toward the sun. The lens is a normal one focused on
+   the middle trees, so the near clay goes soft while the
+   dune stays crisp; the stage's camera blooms the moon and grades it all.
    Day is mid-afternoon, the sun high in the west-northwest; dusk the sun
    six degrees up in the west-southwest where it sets in summer, the pan
    and the dune's foot in the shadow of the western dunes and only the
    sand that faces the sun still burning, a warm glow along the west, the
    moon up in the east; night the Milky Way arches over the dune, a broad
    soft band brightening toward its core low behind the eastern shoulder,
-   split by one feathered rift, and the moon lights the sand faintly.
-   The air is very clear: no haze, no shimmer at the foot.
+   split by one feathered rift, a halo round the moon, and the moon
+   lighting the sand faintly. No haze lies on the pan, no shimmer at the
+   foot.
    WebGL2, no libraries, no build step. */
 
 window.CONCEPT = {
   id: 'dunes',
-  theme: { day: '#275fa0', dusk: '#24447e', night: '#0c0e14' },
+  theme: { day: '#3469ad', dusk: '#2d4684', night: '#101115' },
   t0: 20,
   /* a normal lens on the pan: the near clay soft, the dune crisp; the
      white clay and the lit sand roll off without much glow, the moon
      blooms; the Milky Way keeps its colour */
-  camera: { expo: [0.96, 1.0, 1.05], bloom: [0.035, 0.055, 0.12], thresh: 1.15, sat: [0.94, 0.92, 0.88], vig: [0.12, 0.16, 0.2], grain: 0.022, blur: 0.012 },
+  camera: { expo: [0.96, 1.0, 1.05], bloom: [0.035, 0.055, 0.12], thresh: 1.15, sat: [0.94, 0.92, 0.88], vig: [0.12, 0.16, 0.2], lift: [0.003, 0.004, 0.0015], grain: 0.022, blur: 0.012 },
   frag: `
 const float EYE = 1.7;
 
@@ -138,7 +146,7 @@ float dunes(vec2 p) {
 /* --------------------------------------------------------------- trees */
 
 /* the dead camelthorns: x, z, height (negative for a fallen one), seed */
-const int NT = 24;
+const int NT = 23;
 const vec4 TREES[NT] = vec4[NT](
   vec4(-12.0, 25.0, 6.6, 1.0),
   vec4(9.5, 41.0, 5.4, 2.0),
@@ -161,7 +169,6 @@ const vec4 TREES[NT] = vec4[NT](
   vec4(75.0, 350.0, 4.8, 21.0),
   vec4(-40.0, 335.0, 6.0, 22.0),
   vec4(-6.0, 105.0, 5.0, 23.0),
-  vec4(3.1, 4.9, 2.2, 24.0),
   vec4(16.0, 33.0, -5.2, 17.0),
   vec4(-46.0, 140.0, -6.0, 18.0)
 );
@@ -305,33 +312,22 @@ void buildTree(vec4 T) {
   }
   /* the habit: 0 a vase, 1 split near the ground, 2 one dominant limb,
      3 low and wide */
-  if (s > 23.5) {
-    /* a stump broken off a little above head height, close to the lens:
-       one limb carrying on up, one arm reaching out away from the pan */
-    nLimb = 2;
-    vec3 fk = vec3(0.06, H * 0.5, 0.04);
-    float rb = 0.16;
-    cA[0] = vec4(0.0, -0.3, 0.0, rb * 1.5);
-    cB[0] = vec4(fk, rb);
-    gTrunkR = rb * 1.5 + 0.3;
-    cA[1] = vec4(0.0, 0.15, 0.0, rb * 0.6);
-    cB[1] = vec4(0.35, 0.0, -0.2, 0.04);
-    cA[2] = vec4(0.0, 0.15, 0.0, rb * 0.6);
-    cB[2] = vec4(-0.3, 0.0, 0.25, 0.04);
-    buildLimb(0, fk, normalize(vec3(-0.2, 1.0, 0.2)), H * 0.5, rb * 0.75, s, 0.1, 0.7);
-    buildLimb(1, fk * 0.8, normalize(vec3(0.9, 0.6, 0.1)), H * 0.55, rb * 0.5, s, 0.12, 0.7);
-    return;
-  }
+  /* a stump (seed 24, listed beside the lens when one is wanted) is
+     broken off a little above head height: one limb carries on up, one
+     arm reaches out away from the pan. None is listed now: out of focus
+     at the frame's edge it read as a post */
+  bool stump = s > 23.5;
   int hab = int(r1.x * 3.99);
   if (s < 1.5) hab = 1;
   float hf = H * (hab == 0 ? 0.26 + 0.12 * r0.z : (hab == 1 ? 0.04 + 0.06 * r0.z : (hab == 2 ? 0.16 + 0.12 * r0.z : 0.1 + 0.08 * r0.z)));
   nLimb = hab == 1 ? 2 + int(r0.y * 1.99) : (hab == 2 ? 2 + int(r0.y * 1.6) : 3 + int(r0.y * 1.99));
   if (s < 1.5) nLimb = 4;
+  if (stump) { nLimb = 2; hf = H * 0.5; }
   /* the trunk leans */
   float la = r1.y * TAU, lean = (hab == 2 ? 0.18 : 0.08) + 0.12 * r1.z;
   vec3 ld = vec3(cos(la) * sin(lean), cos(lean), sin(la) * sin(lean));
-  vec3 fk = ld * hf / ld.y;
-  float rb = 0.034 * H + 0.11;
+  vec3 fk = stump ? vec3(0.06, hf, 0.04) : ld * hf / ld.y;
+  float rb = stump ? 0.16 : 0.034 * H + 0.11;
   cA[0] = vec4(0.0, -0.4, 0.0, rb * 1.4);
   cB[0] = vec4(fk, rb * 0.95);
   gTrunkR = max(rb * 1.4, H * 0.13 + 0.05);
@@ -351,7 +347,17 @@ void buildTree(vec4 T) {
     float len = (H - hf) * reach * (0.85 + 0.3 * h.z) / max(cos(tilt * 0.7), 0.45);
     float lr = rb * (hab == 2 && i == 0 ? 0.88 : 0.58 + 0.2 * h.x);
     if (hab == 2 && i > 0) len *= 0.65;
-    buildLimb(i, fk + dir * rb * 0.3, dir, len, lr, s, hab == 3 ? 0.08 : 0.17, kink);
+    vec3 o = fk + dir * rb * 0.3;
+    float up = hab == 3 ? 0.08 : 0.17;
+    if (stump) {
+      dir = i == 0 ? normalize(vec3(-0.2, 1.0, 0.2)) : normalize(vec3(0.9, 0.6, 0.1));
+      len = H * (i == 0 ? 0.5 : 0.55);
+      lr = rb * (i == 0 ? 0.75 : 0.5);
+      o = fk * (i == 0 ? 1.0 : 0.8);
+      up = 0.1;
+      kink = 0.7;
+    }
+    buildLimb(i, o, dir, len, lr, s, up, kink);
   }
 }
 
@@ -871,7 +877,7 @@ vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune) {
     float foot = smoothstep(70.0, 0.0, p.y);
     col += alb * ePan * (0.5 - 0.5 * n.y + 0.06) * foot * 0.9 / PI;
   } else {
-    float near = smoothstep(-110.0, -1.0, f);
+    float near = smoothstep(-70.0, -1.0, f);
     near *= near;
     if (near > 0.0) {
       vec2 gd = normalize(vec2(dunes(p.xz + vec2(6.0, 0.0)) - f, dunes(p.xz + vec2(0.0, 6.0)) - f) + 1e-5);
