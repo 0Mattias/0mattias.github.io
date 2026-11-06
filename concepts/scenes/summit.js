@@ -1,43 +1,53 @@
 /* concepts/scenes/summit.js · above the clouds
    Mount Fuji from the main ridge of the Southern Alps, the Akaishi
-   Mountains, as the photographs from Ogochi-dake, Mae-Ogochi and Shiomi
-   show it: the eye stands at 2,950 metres and looks east-south-east,
-   bearing 110 degrees, fifty-four kilometres to the mountain over a sea of
-   stratocumulus whose tops lie near 2,150 metres. The frame is a long
-   lens, as theirs are, so the cone stands broad and low out of the cloud,
-   four and a half times as wide as it is high over the deck.
-   Fuji is drawn from its profile in those photographs: the north flank
-   on the left long and flaring, the south-west flank on the right steeper
-   and straighter, the summit a flat crater rim eight hundred metres
+   Mountains, as the photographs from Mae-Ogochi, Shiomi and Tsubakuro
+   show it: the eye stands at 2,950 metres near Ogochi-dake and looks
+   east-south-east, bearing 110 degrees, fifty-four kilometres to the
+   mountain over a sea of stratocumulus whose tops lie near 2,050 metres.
+   The frame is a long lens, as theirs are, so the cone stands broad and
+   low out of the cloud, four and a half times as wide as it is high over
+   the deck, its summit two thirds of a degree over the eye.
+   Fuji is drawn to its outline in those photographs: the north flank on
+   the left starting at 0.65 under a shoulder and flaring out to a quarter
+   by the cloud, the south-west flank on the right steeper and straighter,
+   0.70 easing to 0.53; the summit a flat crater rim eight hundred metres
    across with its named tops where they stand on it, Hakusan-dake on the
-   left, Kengamine highest on the right, a low notch between. The
-   Osawa-kuzure, the great ravine of the west face, runs down right of the
-   middle. The upper slopes are scored with radial gullies, and in early
-   July the last snow lies in some of them, long streaks on the north and
-   west, short ones on the sunny side. Fifty kilometres of air turn it the
-   deep blue of the photographs, and a hazier layer under 2,900 metres
-   pales its lower half.
-   The cloud is a height field traced from its top: domes of cloud a few
-   hundred metres across, heaped here and there into cumulus, broken open
-   in places so the ranges under it show blue in the gaps; the tops of the
-   ranges between, the Akaishi's own front ridges and the hills over the
-   Fuji River, stand out of it as dark forested islands. In the lower left
-   is a spur of the ridge the eye stands on, its crest of broken grey-brown
-   rock and its flanks under mats of dwarf pine.
-   By day the sun stands high in the south, on the right, the sky a deep
-   blue over a pale haze on the cloud. At dusk the sun is setting behind
-   the eye, so the west face of Fuji and the cloud glow pink-red, the
-   Aka-Fuji, against the blue-grey band of the earth's shadow with the pink
-   belt of Venus over it. At night the moon is behind the eye on the right:
-   it lights the snow streaks and silvers the cloud under the stars, and on
-   the left skyline climbers' lamps make a faint zigzag up the Yoshida
-   trail to the lights of the huts and the summit. While the looks turn
-   between the sun and the moon the light dims, so a turn passes through
-   twilight. WebGL2, no libraries, no build step. */
+   left, Kengamine highest on the right, Izu-dake behind, a low notch
+   between. The Osawa-kuzure, the great ravine of the west face, runs down
+   right of the middle with a dotted line of snow in it. The Hoei crater,
+   on the south-east, is behind the right-hand skyline from here, as the
+   photographs show. Radial gullies score the upper slopes, and in early
+   July the last snow lies in some of them: a run of long streaks down the
+   north-west flank on the left, one long one down the face just left of
+   the middle, a few short ones on the sunny side. Fifty kilometres of air
+   turn it the deep blue of the photographs, and a hazier layer under
+   2,900 metres pales its lower half.
+   The cloud is a height field traced from its top: cells a few hundred
+   metres across heaped of rounded puffs, a bank of them twenty-six
+   kilometres out, heaps of cumulus here and there, lying thick about
+   Fuji's foot. A summit of the Minobu hills over the Fuji River stands
+   out of it on the left as a dark forested island, wrapped in mist where
+   the cloud meets it. In the lower left is a spur of the ridge the eye
+   stands on, two knolls of broken grey-brown rock on its crest and its
+   flanks under mats of dwarf pine.
+   By day the sun stands in the south-south-east, high on the right, the
+   sky a deep blue over a pale haze on the cloud, the cloud brilliant. At
+   dusk the sun is setting behind the eye, so the west face of Fuji and
+   the cloud glow pink-red, the Aka-Fuji, against the blue-grey band of the
+   earth's shadow with the pink belt of Venus over it. At night the moon
+   is behind the eye on the right: it lights the snow streaks and silvers
+   the cloud under the stars, Fuji dark against the glow low in the sky,
+   and up its north flank climbers' lamps make a faint zigzag to the huts
+   and the summit (the real trails lie just behind the skylines from the
+   west; the lamps are brought onto the face that can be seen). While the
+   looks turn between the sun and the moon the light dims and the sky goes
+   to twilight blue, so a turn never flashes through day. The tall frame
+   turns to Fuji and sets it under the name. WebGL2, no libraries, no
+   build step. */
 
 window.CONCEPT = {
   id: 'summit',
-  theme: { day: '#4f7fc4', dusk: '#6a5f8e', night: '#121829' },
+  theme: { day: '#5482cd', dusk: '#b89ab9', night: '#0f1223' },
   t0: 40,
   frag: `
 #define DEG 0.0174532925
@@ -49,7 +59,7 @@ const float EYE = 2950.0;
 const float RE = 7.4e6;          /* the earth's radius, lengthened by refraction */
 const vec2 FJ = vec2(0.0, 54000.0);
 const float DECK = 2040.0;       /* the cloud's mean top */
-const float CTOP = 2450.0;       /* no cloud or island rises above this */
+const float CTOP = 2520.0;       /* no cloud or island rises above this */
 const float RIM = 420.0;         /* the crater rim's radius */
 
 float T, ASP, WIDE, PA, KEY, SK, HOR;
@@ -125,6 +135,22 @@ vec3 haze(vec3 rd, vec3 c) {
   float m = smoothstep(0.55, 0.8, n) * exp(-sq((x - 0.7) / 0.7));
   vec3 col = vec3(0.42, 0.43, 0.50) * SK;
   return mix(c, col, m * 0.25 * uLook.x);
+}
+
+/* a thin sheet of cirrostratus six kilometres over the eye, drawn out by
+   the wind into the long streaks the photographs show across the sky,
+   foreshortened toward the horizon; pink at dusk, unseen at night */
+vec3 cirrus(vec3 rd, vec3 c) {
+  float w = look3(1.0, 0.8, 0.0);
+  if (rd.y < 0.01 || w <= 0.0) return c;
+  vec2 p = rd.xz / rd.y * 6.0 + vec2(0.012, 0.004) * T;
+  vec2 q = vec2(dot(p, vec2(0.96, 0.28)), dot(p, vec2(-0.28, 0.96))) * vec2(0.03, 0.11);
+  q.y += 0.8 * noise(q * vec2(0.4, 0.2) + 3.0);
+  float f = fbm(q + vec2(0.0, 5.0), 4);
+  float m = smoothstep(0.42, 0.8, f) * smoothstep(0.3, 0.6, noise(p * 0.01 + 2.0));
+  m *= smoothstep(0.04, 0.09, rd.y);
+  vec3 col = look3(vec3(0.62, 0.68, 0.80), vec3(0.95, 0.42, 0.45), vec3(0.0)) * SK;
+  return mix(c, col, m * 0.4 * w);
 }
 
 /* what the air between lays over what is seen through it: a blue,
@@ -332,7 +358,7 @@ vec2 deckShape(vec2 x, vec2 w) {
   float bank = exp(-sq((x.y - zb) / 1700.0)) * smoothstep(0.3, 0.62, noise(vec2(w.x / 3600.0, 5.0)));
   float hp = smoothstep(0.62, 0.88, noise(w / 2300.0 + 3.0));
   float foot = exp(-max(length(x - FJ) - 6500.0, 0.0) / 3500.0);
-  return vec2(sw + 220.0 * bank + 160.0 * hp, foot);
+  return vec2(sw + 220.0 * bank + 230.0 * hp, foot);
 }
 
 /* fp is how far a pixel reaches over the cloud along the line of sight,
@@ -345,7 +371,7 @@ float cloudH(vec2 x, float fp, out float cav) {
   float d1 = domes(q, T * 0.05);
   /* the floor between the cells is not flat */
   d1 = max(d1, -0.6 + 0.35 * noise(q * 1.7 + 4.0));
-  float h = DECK + sh.x + 85.0 * d1;
+  float h = DECK + sh.x + 100.0 * d1;
   /* the cells are heaped of rounded puffs with sharp creases between
      them, and smaller puffs on those: folded noise, drawn out a little
      along the line of sight so it holds where that foreshortens it */
@@ -354,7 +380,7 @@ float cloudH(vec2 x, float fp, out float cav) {
   if (k1 > 0.0) {
     d2 = domes(q * vec2(2.6, 2.1) + 7.3, T * 0.08);
     float am = 0.35 + 0.9 * smoothstep(0.2, 0.8, noise(w / 2600.0 + 1.7));
-    h += 44.0 * am * k1 * (d2 - 0.2) * (0.55 + 0.45 * sat(d1 + 0.3));
+    h += 58.0 * am * k1 * (d2 - 0.2) * (0.55 + 0.45 * sat(d1 + 0.3));
   }
   h = mix(h, smax(h, DECK + 90.0, 50.0), sh.y);
   cav = sat(sat(0.5 - d1) * 1.4 + 0.35 * (0.2 - d2));
@@ -372,9 +398,9 @@ float cloudFine(vec2 x, float fp) {
   return k * f;
 }
 
-/* the islands: the tops of the ranges between, the Minobu hills over
-   the Fuji River on the left and the Tenshi range beyond, standing out of
-   the cloud as low dark domes of forest, a few summits along each */
+/* an island: the top of a range between, a summit of the Minobu hills
+   over the Fuji River, standing out of the cloud as a dark ridge of
+   forest with a few tops along it */
 float island(vec2 x, vec2 c, float ax, float top, float k, float seed) {
   vec2 d = x - c;
   vec2 q = vec2(d.x * cos(ax) + d.y * sin(ax), -d.x * sin(ax) + d.y * cos(ax));
@@ -749,7 +775,7 @@ void setup() {
   SK = 0.18 + 0.82 * KEY;
   LC = look3(vec3(5.6, 5.35, 4.9), vec3(20.0, 7.0, 4.6), vec3(0.8, 1.1, 1.75)) * KEY;
   AMB = look3(vec3(0.14, 0.18, 0.30), mix(vec3(0.03, 0.04, 0.08), vec3(0.09, 0.075, 0.13), KEY), vec3(0.012, 0.017, 0.034)) * look3(SK, SK, 1.0);
-  CUP = look3(vec3(1.5, 1.5, 1.55), vec3(0.6, 0.38, 0.36), vec3(0.08, 0.1, 0.15)) * (0.2 + 0.8 * KEY);
+  CUP = look3(vec3(1.5, 1.5, 1.55), mix(vec3(0.15, 0.18, 0.3), vec3(0.6, 0.38, 0.36), KEY), vec3(0.08, 0.1, 0.15)) * (0.2 + 0.8 * KEY);
   AIRN = look3(vec3(0.045, 0.16, 0.42), mix(vec3(0.03, 0.05, 0.12), vec3(0.16, 0.07, 0.10), KEY), vec3(0.005, 0.011, 0.03)) * look3(SK, SK, 1.0);
   AIRF = look3(vec3(0.30, 0.34, 0.47), vec3(0.14, 0.14, 0.21), vec3(0.008, 0.013, 0.033)) * look3(SK, SK, 1.0);
   /* the spur, laid into the corner of each frame */
@@ -794,7 +820,7 @@ vec3 scene(vec2 fc) {
         col = mix(col, aerial(lc, rd, nearL.y, pl.y), 0.5 * (1.0 - nearL.x));
       }
     } else {
-      col = haze(rd, sky(rd));
+      col = cirrus(rd, haze(rd, sky(rd)));
       if (uLook.z > 0.0) col += uLook.z * stars(rd);
       if (aF > 0.0) {
         Fj F;

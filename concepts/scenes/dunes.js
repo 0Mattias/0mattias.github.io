@@ -155,11 +155,14 @@ const vec4 TREES[NT] = vec4[NT](
   vec4(-46.0, 140.0, -6.0, 18.0)
 );
 
-/* a tree as capsules: a trunk with two roots splayed over the clay, and
-   three or four limbs of three gnarled segments, each with a branch off
-   its two joints and a snag forking at its tip, and a twig off each
-   branch. A fallen one is the same pieces laid on the ground */
-const int NC = 43;
+/* a tree as tapered capsules: a short thick trunk with two roots over
+   the clay, splitting low into two to four heavy limbs that lean out and
+   twist, each a chain of four kinked segments thinning to a bare tip,
+   with up to two long side branches of two segments and one snag. Each
+   tree takes its habit from its seed: a vase, a split near the ground,
+   one dominant leaning limb, or low and wide. A fallen one is a trunk
+   laid on the clay with its root plate and broken limbs */
+const int NC = 39;
 vec4 cA[NC], cB[NC];
 vec4 limbB[4];
 int nLimb;
@@ -170,142 +173,184 @@ float capD(vec3 p, vec4 a, vec4 b) {
   return length(pa - ba * h) - mix(a.w, b.w, h);
 }
 
-/* one limb from p along dir: segments, branches and twigs into slot j */
-void buildLimb(int i, vec3 p, vec3 dir, float len, float r, float s, float up) {
-  vec3 lo = p, hi = p;
-  int j = 3 + i * 10;
-  for (int k = 0; k < 3; k++) {
+/* one limb from p along dir, slots 3 + 9i on: four segments, two side
+   branches of two segments, a snag. The radius thins along the whole
+   length to a bare tip; each joint kinks the limb by kink */
+void buildLimb(int i, vec3 p, vec3 dir, float len, float r0, float s, float up, float kink) {
+  int j = 3 + i * 9;
+  vec3 lo = p - r0, hi = p + r0;
+  vec3 jp[5];
+  vec3 jd[5];
+  float jr[5];
+  jp[0] = p; jd[0] = dir; jr[0] = r0;
+  float run = 0.0;
+  for (int k = 0; k < 4; k++) {
     vec3 g = hash33(vec3(s + float(i) * 3.1, float(k), 8.7)) - 0.5;
-    dir = normalize(dir + g * 1.05 + vec3(0.0, up, 0.0));
-    float sl = len * (k == 0 ? 0.4 : (k == 1 ? 0.33 : 0.27));
+    /* each joint kinks the limb, swinging it to one side then the other */
+    vec3 sw = normalize(cross(dir, vec3(0.0, 1.0, 0.0)) + 1e-4) * ((k & 1) == 0 ? 1.0 : -1.0) * (0.25 + g.x);
+    if (k > 0) dir = normalize(dir + (g + sw) * kink + vec3(0.0, up, 0.0));
+    float sl = len * (k == 0 ? 0.32 : (k == 1 ? 0.28 : (k == 2 ? 0.22 : 0.18)));
     vec3 q = p + dir * sl;
-    float r1 = k == 2 ? 0.025 : r * 0.72;
-    cA[j + k] = vec4(p, r);
+    run += sl;
+    float r1 = mix(r0, 0.016, pow(run / len, 0.75));
+    cA[j + k] = vec4(p, k == 0 ? r0 : jr[k]);
     cB[j + k] = vec4(q, r1);
+    jp[k + 1] = q; jd[k + 1] = dir; jr[k + 1] = r1;
     lo = min(lo, q);
     hi = max(hi, q);
-    vec3 side = normalize(cross(dir, vec3(g.z + 0.3, 1.0, g.x - 0.2)));
-    float sd = g.y > 0.0 ? 1.0 : -1.0;
-    vec3 td = normalize(dir * (k == 2 ? 0.9 : 0.4) + side * sd * (k == 2 ? 0.6 : 1.0) + vec3(0.0, up * 1.3, 0.0));
-    vec3 o = k == 2 ? mix(p, q, 0.5) : q;
-    float bl = sl * (k == 2 ? 0.6 : 0.6 + 0.7 * abs(g.x));
-    vec3 tq = o + td * bl;
-    float rb = (k == 2 ? r * 0.6 : r1) * 0.55;
-    cA[j + 3 + k] = vec4(o, rb);
-    cB[j + 3 + k] = vec4(tq, 0.016);
-    lo = min(lo, tq);
-    hi = max(hi, tq);
-    {
-      vec3 m = mix(o, tq, 0.45);
-      vec3 sd2 = normalize(td + cross(td, side) * (g.z > 0.0 ? 1.1 : -1.1) + vec3(0.0, 0.25, 0.0));
-      vec3 sq = m + sd2 * bl * (0.35 + 0.3 * abs(g.z));
-      cA[j + 6 + k] = vec4(m, rb * 0.5);
-      cB[j + 6 + k] = vec4(sq, 0.012);
-      lo = min(lo, sq);
-      hi = max(hi, sq);
-    }
-    if (k == 1) {
-      /* a twig off the middle of the limb, to the other side */
-      vec3 m = mix(p, q, 0.5);
-      vec3 td2 = normalize(dir * 0.5 - side * (g.y > 0.0 ? 1.0 : -1.0) + vec3(0.0, 0.35, 0.0));
-      vec3 eq = m + td2 * sl * (0.45 + 0.4 * abs(g.z));
-      cA[j + 9] = vec4(m, mix(r, r1, 0.5) * 0.45);
-      cB[j + 9] = vec4(eq, 0.014);
-      lo = min(lo, eq);
-      hi = max(hi, eq);
-    }
     p = q;
-    r = r1;
   }
-  limbB[i] = vec4(0.5 * (lo + hi), 0.5 * length(hi - lo) + r * 2.0 + 0.15);
+  /* side branches off the first and second joints, leaving at a slant
+     and climbing, each kinked once */
+  for (int m = 0; m < 2; m++) {
+    vec3 g = hash33(vec3(s * 1.3 + float(i), float(m), 4.1)) - 0.5;
+    vec3 o = jp[m + 1];
+    vec3 pd = jd[m + 1];
+    vec3 side = normalize(cross(pd, vec3(g.x, 1.0, g.z) + 0.2));
+    float sd = g.y > 0.0 ? 1.0 : -1.0;
+    vec3 bd = normalize(pd * 0.7 + side * sd * (0.55 + 0.4 * abs(g.z)) + vec3(0.0, 0.15, 0.0));
+    float bl = len * (m == 0 ? 0.42 : 0.3) * (0.6 + 0.8 * abs(g.x));
+    float br = jr[m + 1] * 0.62;
+    vec3 q1 = o + bd * bl * 0.55;
+    bd = normalize(bd + (hash33(vec3(s, float(m) + 7.0, float(i))) - 0.5) * kink + vec3(0.0, up, 0.0));
+    vec3 q2 = q1 + bd * bl * 0.45;
+    cA[j + 4 + m * 2] = vec4(o, br);
+    cB[j + 4 + m * 2] = vec4(q1, br * 0.5);
+    cA[j + 5 + m * 2] = vec4(q1, br * 0.5);
+    cB[j + 5 + m * 2] = vec4(q2, 0.014);
+    lo = min(lo, min(q1, q2));
+    hi = max(hi, max(q1, q2));
+  }
+  /* a snag off the third joint */
+  vec3 g = hash33(vec3(s, float(i), 6.6)) - 0.5;
+  vec3 sdir = normalize(jd[3] + normalize(cross(jd[3], vec3(0.3, 1.0, g.x))) * (g.y > 0.0 ? 0.9 : -0.9) + vec3(0.0, 0.3, 0.0));
+  vec3 sq = jp[3] + normalize(sdir + jd[3]) * len * (0.2 + 0.14 * abs(g.z));
+  cA[j + 8] = vec4(jp[3], jr[3] * 0.75);
+  cB[j + 8] = vec4(sq, 0.012);
+  lo = min(lo, sq);
+  hi = max(hi, sq);
+  limbB[i] = vec4(0.5 * (lo + hi), 0.5 * length(hi - lo) + r0);
 }
 
 void buildTree(vec4 T) {
   float H = abs(T.z), s = T.w;
   vec3 r0 = hash33(vec3(s * 7.13, s * 1.71 + 3.0, 5.3));
+  vec3 r1 = hash33(vec3(s * 3.7, 9.2, s * 0.61));
   float a0 = r0.x * TAU;
   if (T.z < 0.0) {
-    /* fallen: the trunk lies along d in three bent lengths, its root end
-       resting on stubs of root, broken branches standing off it */
+    /* fallen: the trunk lies along d, its root end propped on the root
+       plate, sagging to the clay and lifting a little where a broken limb
+       holds it, twisting as it goes; two snapped limbs stand off it */
     float al = 0.3 + (r0.x - 0.5) * 0.7;
     vec3 d = vec3(cos(al), 0.0, sin(al)) * (r0.y > 0.5 ? 1.0 : -1.0), dz = vec3(-d.z, 0.0, d.x);
-    float rb = 0.2 + 0.06 * r0.y;
-    cA[0] = vec4(vec3(0.0, rb * 1.3, 0.0), rb * 1.35);
-    vec3 p = d * H * 0.3 + dz * (r0.z - 0.5) * 0.8 + vec3(0.0, rb * 0.95, 0.0);
-    cB[0] = vec4(p, rb);
-    cA[1] = vec4(cA[0].xyz, rb * 0.8);
-    cB[1] = vec4(-d * 0.7 + dz * 0.8 + vec3(0.0, 0.05, 0.0), 0.05);
-    cA[2] = vec4(cA[0].xyz, rb * 0.8);
-    cB[2] = vec4(-d * 0.6 - dz * 0.7 + vec3(0.0, 0.7, 0.0), 0.05);
+    float rb = 0.24 + 0.06 * r0.y;
+    cA[0] = vec4(vec3(0.0, 0.42, 0.0), rb * 1.25);
+    cB[0] = vec4(d * 0.5 + vec3(0.0, 0.38, 0.0), rb * 1.05);
+    cA[1] = vec4(cA[0].xyz, rb * 0.7);
+    cB[1] = vec4(-d * 0.35 + dz * 0.7 - vec3(0.0, 0.05, 0.0), 0.07);
+    cA[2] = vec4(cA[0].xyz, rb * 0.7);
+    cB[2] = vec4(-d * 0.25 - dz * 0.8 + vec3(0.0, 0.0, 0.0), 0.06);
     nLimb = 1;
-    float r = rb;
-    vec3 lo = vec3(-1.0), hi = p;
-    for (int k = 0; k < 3; k++) {
+    vec3 p = cB[0].xyz;
+    float r = rb * 1.05;
+    vec3 lo = vec3(-1.0, 0.0, -1.0) - 1.0, hi = p + 1.0;
+    for (int k = 0; k < 4; k++) {
       vec3 g = hash33(vec3(s, float(k), 1.9)) - 0.5;
-      vec3 q = p + d * H * (k == 0 ? 0.3 : 0.2) + dz * g.x * 0.9;
-      float r1 = k == 2 ? 0.03 : r * 0.7;
-      q.y = r1 * 0.9 + max(g.y, 0.0) * 0.2;
+      vec3 q = p + d * H * 0.22 + dz * g.x * 0.7;
+      float r2 = mix(rb, 0.07, float(k + 1) / 4.0);
+      q.y = r2 + (k == 2 ? 0.25 + 0.2 * g.y : 0.02);
       cA[3 + k] = vec4(p, r);
-      cB[3 + k] = vec4(q, r1);
-      /* a broken branch standing off the joint */
-      vec3 bd = normalize(vec3(0.0, 0.35 + g.z, 0.0) + dz * (g.y > 0.0 ? 1.0 : -1.0) * 0.5 + d * 0.8);
-      vec3 bq = q + bd * (0.4 + 0.9 * abs(g.z));
-      cA[6 + k] = vec4(q, r1 * 0.55);
-      cB[6 + k] = vec4(bq, 0.02);
-      vec3 sq = mix(q, bq, 0.5) + normalize(bd + d) * 0.4;
-      cA[9 + k] = vec4(mix(q, bq, 0.5), r1 * 0.3);
-      cB[9 + k] = vec4(sq, 0.012);
-      lo = min(lo, min(q, bq));
-      hi = max(hi, max(q, bq));
+      cB[3 + k] = vec4(q, r2);
+      lo = min(lo, q - 1.0);
+      hi = max(hi, q + 1.0);
       p = q;
-      r = r1;
+      r = r2;
     }
-    cA[12] = vec4(cB[4].xyz, 0.05);
-    cB[12] = cB[4] + vec4(dz * 0.5 + vec3(0.0, 0.3, 0.0), -0.03);
+    /* snapped limbs: short, blunt, one propping the trunk */
+    for (int m = 0; m < 2; m++) {
+      vec3 g = hash33(vec3(s, float(m), 5.5)) - 0.5;
+      vec3 o = cB[3 + m * 2].xyz;
+      vec3 bd = normalize(d * 0.6 + dz * (m == 0 ? 1.0 : -1.0) * 0.7 + vec3(0.0, m == 0 ? 0.9 : -0.4, 0.0));
+      vec3 q1 = o + bd * (0.7 + 0.5 * abs(g.x));
+      q1.y = max(q1.y, 0.05);
+      cA[7 + m * 2] = vec4(o, cB[3 + m * 2].w * 0.6);
+      cB[7 + m * 2] = vec4(q1, 0.05);
+      cA[8 + m * 2] = vec4(q1, 0.05);
+      cB[8 + m * 2] = vec4(q1 + normalize(bd + d + g) * 0.3, 0.035);
+    }
+    cA[11] = vec4(cB[4].xyz, 0.04);
+    cB[11] = vec4(cB[4].xyz + dz * 0.4 + vec3(0.0, 0.25, 0.0), 0.02);
     limbB[0] = vec4(0.5 * (lo + hi), 0.5 * length(hi - lo) + 0.6);
     return;
   }
-  nLimb = s < 1.5 ? 4 : 3 + int(r0.y * 1.99);
-  float hf = H * (0.1 + 0.18 * r0.z);
-  vec3 fk = vec3((r0.x - 0.5) * 0.7, hf, (hash11(s * 9.1) - 0.5) * 0.7);
-  float rb = 0.03 * H + 0.1;
-  cA[0] = vec4(0.0, -0.4, 0.0, rb * 1.5);
-  cB[0] = vec4(fk, rb * 0.88);
-  /* two roots running over the clay from the foot */
+  /* the habit: 0 a vase, 1 split near the ground, 2 one dominant limb,
+     3 low and wide */
+  int hab = int(r1.x * 3.99);
+  if (s < 1.5) hab = 1;
+  float hf = H * (hab == 0 ? 0.26 + 0.12 * r0.z : (hab == 1 ? 0.04 + 0.06 * r0.z : (hab == 2 ? 0.16 + 0.12 * r0.z : 0.1 + 0.08 * r0.z)));
+  nLimb = hab == 1 ? 2 + int(r0.y * 1.99) : (hab == 2 ? 2 + int(r0.y * 1.6) : 3 + int(r0.y * 1.99));
+  if (s < 1.5) nLimb = 3;
+  /* the trunk leans */
+  float la = r1.y * TAU, lean = (hab == 2 ? 0.18 : 0.08) + 0.12 * r1.z;
+  vec3 ld = vec3(cos(la) * sin(lean), cos(lean), sin(la) * sin(lean));
+  vec3 fk = ld * hf / ld.y;
+  float rb = 0.034 * H + 0.11;
+  cA[0] = vec4(0.0, -0.4, 0.0, rb * 1.4);
+  cB[0] = vec4(fk, rb * 0.95);
   for (int k = 0; k < 2; k++) {
-    float ra = a0 + 1.3 + float(k) * 2.6 + r0.z;
-    cA[1 + k] = vec4(0.0, 0.15, 0.0, rb * 0.5);
-    cB[1 + k] = vec4(cos(ra) * H * 0.14, 0.02, sin(ra) * H * 0.14, 0.035);
+    float ra = a0 + 1.3 + float(k) * 2.4 + r0.z;
+    cA[1 + k] = vec4(0.0, 0.2, 0.0, rb * 0.55);
+    cB[1 + k] = vec4(cos(ra) * H * 0.13, 0.0, sin(ra) * H * 0.13, 0.04);
   }
+  float kink = 0.85 + 0.5 * r1.z;
   for (int i = 0; i < 4; i++) {
     if (i >= nLimb) break;
     vec3 h = hash33(vec3(s, float(i) + 0.5, 2.9));
-    float az = a0 + (float(i) + 0.5 * (h.x - 0.5)) * TAU / float(nLimb);
-    float tilt = 0.3 + 0.55 * h.y;
-    vec3 dir = vec3(sin(tilt) * cos(az), cos(tilt), sin(tilt) * sin(az));
-    float len = (H - hf) * (0.85 + 0.3 * h.z) / cos(tilt * 0.5);
-    buildLimb(i, fk, dir, len, rb * (0.6 + 0.2 * h.x), s, 0.22);
+    float az = a0 + (float(i) + 0.6 * (h.x - 0.5)) * TAU / float(nLimb);
+    float tilt = hab == 0 ? 0.32 + 0.3 * h.y : (hab == 1 ? 0.45 + 0.35 * h.y : (hab == 2 ? (i == 0 ? 0.1 + 0.15 * h.y : 0.6 + 0.35 * h.y) : 0.75 + 0.35 * h.y));
+    vec3 dir = normalize(vec3(sin(tilt) * cos(az), cos(tilt), sin(tilt) * sin(az)) + ld - vec3(0.0, 1.0, 0.0));
+    float reach = hab == 3 ? 0.75 : 1.0;
+    float len = (H - hf) * reach * (0.85 + 0.3 * h.z) / max(cos(tilt * 0.7), 0.45);
+    float lr = rb * (hab == 2 && i == 0 ? 0.88 : 0.58 + 0.2 * h.x);
+    if (hab == 2 && i > 0) len *= 0.65;
+    buildLimb(i, fk + dir * rb * 0.3, dir, len, lr, s, hab == 3 ? 0.08 : 0.17, kink);
   }
 }
 
 float treeD(vec3 p) {
   float d = capD(p, cA[0], cB[0]);
-  d = smin(d, min(capD(p, cA[1], cB[1]), capD(p, cA[2], cB[2])), 0.12);
+  d = smin(d, min(capD(p, cA[1], cB[1]), capD(p, cA[2], cB[2])), 0.15);
   for (int i = 0; i < 4; i++) {
     if (i >= nLimb) break;
     if (length(p - limbB[i].xyz) - limbB[i].w > d) continue;
-    int j = 3 + i * 10;
+    int j = 3 + i * 9;
     float l = capD(p, cA[j], cB[j]);
-    for (int k = 1; k < 10; k++) l = min(l, capD(p, cA[j + k], cB[j + k]));
-    d = smin(d, l, 0.08);
+    for (int k = 1; k < 9; k++) l = min(l, capD(p, cA[j + k], cB[j + k]));
+    d = smin(d, l, 0.1);
   }
   return d;
+}
+
+/* the capsule nearest p, for the grain of the wood: its axis in xyz, how
+   far along it in w */
+vec4 treeAxis(vec3 p) {
+  float best = 1e9;
+  vec4 ax = vec4(0.0, 1.0, 0.0, 0.0);
+  int n = 3 + nLimb * 9;
+  for (int k = 0; k < NC; k++) {
+    if (k >= n) break;
+    vec3 pa = p - cA[k].xyz, ba = cB[k].xyz - cA[k].xyz;
+    float h = sat(dot(pa, ba) / dot(ba, ba));
+    float d = length(pa - ba * h) - mix(cA[k].w, cB[k].w, h);
+    if (d < best) { best = d; ax = vec4(normalize(ba), h * length(ba) + float(k) * 3.7); }
+  }
+  return ax;
 }
 
 /* the span of a ray inside a tree's box */
 vec2 treeBox(vec3 ro, vec3 rd, vec4 T) {
   float H = abs(T.z);
-  float R = T.z < 0.0 ? H * 0.9 : H * 0.85;
+  float R = T.z < 0.0 ? H * 0.95 : H * 0.95;
   vec3 lo = vec3(T.x - R, -0.5, T.y - R), hi = vec3(T.x + R, T.z < 0.0 ? 2.0 : H * 1.12, T.y + R);
   vec3 inv = 1.0 / rd;
   vec3 t0 = (lo - ro) * inv, t1 = (hi - ro) * inv;
@@ -435,22 +480,26 @@ vec3 milky(vec3 rd, out float band) {
   float b = asin(clamp(dot(rd, GAL), -1.0, 1.0));
   float l = atan(dot(rd, GY), dot(rd, GCORE));
   vec2 g = vec2(l, b);
-  float wid = 0.065 + 0.07 * exp(-l * l * 5.0);
+  /* a broad soft band, brightening toward the core and its bulge */
+  float wid = 0.1 + 0.07 * exp(-l * l * 4.0);
   band = exp(-b * b / (wid * wid));
-  float bulge = exp(-(l * l + b * b * 3.5) / 0.02);
-  /* star clouds, drawn out along the band */
-  float cl = fbm(g * vec2(7.0, 16.0) + 3.1, 5);
-  float clouds = (0.3 + 0.7 * smoothstep(0.32, 0.7, cl)) * (0.7 + 0.35 * noise(g * vec2(30.0, 60.0)) + 0.3 * noise(g * vec2(90.0, 160.0)));
-  /* the rift: a dark lane wandering along the plane, broken here and
-     there, and finer lanes of dust along the band */
-  float off = 0.018 * sin(l * 4.0 + 0.7) + 0.022 * (fbm(vec2(l * 6.0, 1.7), 3) - 0.5);
-  float rw = 0.014 + 0.012 * noise(vec2(l * 9.0, 4.0)) + 0.01 * exp(-l * l * 8.0);
-  float rift = smoothstep(1.0, 0.45, abs(b - off) / rw) * smoothstep(0.05, 0.18, abs(l)) * smoothstep(0.32, 0.55, fbm(vec2(l * 5.0, 8.0), 3));
-  float fil = 1.0 - abs(2.0 * fbm(g * vec2(9.0, 26.0) + 5.0, 4) - 1.0);
-  float lanes = smoothstep(0.88, 0.97, fil) * band;
-  float dust = sat(rift * 0.9 + lanes * 0.35);
-  float m = band * 0.95 * clouds + exp(-b * b / 0.06) * 0.06 + bulge * (1.3 + 1.2 * clouds);
-  vec3 col = mix(vec3(0.66, 0.76, 1.0), vec3(1.0, 0.84, 0.62), sat(bulge * 1.3 + 0.25 * band)) * m;
+  float along = 0.4 + 0.6 * exp(-l * l * 1.1);
+  float bulge = exp(-(l * l + b * b * 3.0) / 0.03);
+  /* star clouds: gentle broad swells, and a fine grain of clouds and
+     stars too faint to part */
+  float swell = 0.85 + 0.3 * fbm(g * vec2(4.0, 9.0) + 3.1, 3);
+  float grain = 0.72 + 0.28 * noise(g * vec2(70.0, 120.0)) + 0.22 * noise(g * vec2(190.0, 300.0)) - 0.11;
+  /* the Great Rift: one lane of dust along the plane, wandering a little,
+     soft at its edges, running through the bulge */
+  float off = 0.016 * sin(l * 2.6 + 0.7) + 0.02 * (fbm(vec2(l * 3.0, 1.7), 3) - 0.5) + 0.004 * (noise(g * vec2(40.0, 60.0)) - 0.5);
+  float rw = 0.024 + 0.01 * fbm(vec2(l * 4.0, 4.0), 2) + 0.012 * exp(-l * l * 6.0);
+  float rift = exp(-pow((b - off) / rw, 2.0)) * (0.7 + 0.3 * fbm(vec2(l * 10.0, 2.0), 2));
+  /* and a few thin lanes beside it, short and broken */
+  float l1 = exp(-pow((b - 0.05 - 0.02 * sin(l * 7.0)) / 0.006, 2.0)) * smoothstep(0.62, 0.78, noise(vec2(l * 11.0, 3.0)));
+  float l2 = exp(-pow((b + 0.055 + 0.02 * sin(l * 5.0 + 2.0)) / 0.007, 2.0)) * smoothstep(0.64, 0.8, noise(vec2(l * 9.0, 9.0)));
+  float dust = sat(rift * 0.55 + (l1 + l2) * 0.28) * smoothstep(0.0, 0.3, band);
+  float m = band * along * swell * grain * 0.9 + exp(-b * b / 0.08) * 0.05 + bulge * (1.1 + 0.4 * grain);
+  vec3 col = mix(vec3(0.68, 0.77, 1.0), vec3(1.0, 0.85, 0.64), sat(bulge * 1.4 + 0.3 * band * along)) * m;
   return col * (1.0 - dust);
 }
 
@@ -607,44 +656,69 @@ vec2 cells(vec2 x) {
   return vec2((sqrt(d2) - sqrt(d1)) * 0.5, hash12(id));
 }
 
+/* a crack along the edges of a cell field, as the pixel sees it: e how
+   far from the edge in metres, w the crack's width; wider than the pixel
+   it is solid, narrower it is a faint line, so it never shimmers */
+float crackAA(float e, float w, float fp) {
+  return smoothstep(max(w, fp) * 1.2, 0.0, e) * min(1.0, (w + 0.001) / fp);
+}
+
 /* the clay: near white and a little warm, whiter in some places and
-   dustier in others; broken into plates a few metres across with sand
-   in the gaps, and those into small plates by fine cracks; red sand
-   blown onto it at the dune feet and in drifts */
+   dustier and rougher in others; dried into plates a few tenths of a
+   metre across, edged by thin dark cracks and split again by finer ones,
+   their rims lifted and catching the light, each plate its own tone;
+   red sand washed onto it toward the dune feet and in drifts */
 vec3 panAlbedo(vec3 p, float fp, float near) {
   vec3 alb = vec3(0.84, 0.665, 0.48);
   float big = fbm(p.xz * 0.009 + 7.0, 3);
   float mid = noise(p.xz * 0.07) * 0.6 + noise(p.xz * 0.27) * 0.4;
   alb *= (0.74 + 0.42 * big) * (0.94 + 0.12 * mid);
   alb = mix(alb, alb * vec3(1.0, 0.93, 0.86), smoothstep(0.55, 0.3, big));
+  /* rougher, dustier patches */
+  float rough = smoothstep(0.5, 0.75, noise(p.xz * 0.22 + 11.0) * 0.7 + noise(p.xz * 0.9) * 0.3);
+  alb *= 1.0 - 0.1 * rough;
+  alb = mix(alb, alb * vec3(0.97, 0.95, 0.94), rough);
   vec3 sandC = vec3(0.6, 0.25, 0.12);
-  /* the big plates: their gaps hold sand */
+  /* the plates and their cracks, where they are big enough to draw */
+  float lp = smoothstep(0.11, 0.035, fp);
+  float mean = 0.955;
+  if (lp > 0.0) {
+    vec2 w = p.xz + 0.12 * vec2(noise(p.xz * 2.1), noise(p.xz * 2.1 + 5.0)) - 0.06;
+    const float CS = 0.42;
+    vec2 c = cells(w / CS);
+    float e = c.x * CS;
+    float crack = crackAA(e, 0.006 + 0.006 * noise(p.xz * 4.0), fp);
+    float rim = smoothstep(0.05, 0.012, e) * (1.0 - crack) * smoothstep(0.03, 0.01, fp);
+    /* finer cracks splitting some plates */
+    vec2 c2 = cells(w / 0.19 + 3.7);
+    float crack2 = crackAA(c2.x * 0.19, 0.0035, fp) * smoothstep(0.35, 0.6, noise(w * 1.3 + c.y * 9.0));
+    float tone = 0.95 + 0.09 * c.y + 0.04 * (c2.y - 0.5);
+    vec3 plate = alb * tone * (1.0 + 0.06 * rim);
+    plate *= 1.0 - 0.5 * crack - 0.28 * crack2;
+    /* sand caught in the wider cracks */
+    plate = mix(plate, sandC * 0.8, crack * 0.25 * near);
+    alb = mix(alb * mean, plate, lp);
+  } else {
+    alb *= mean;
+  }
+  /* the big plates a few metres across, their seams faint */
   float lb = smoothstep(0.25, 0.06, fp);
   if (lb > 0.0) {
     vec2 c = cells(p.xz / 2.2 + 0.3 * vec2(noise(p.xz * 0.4), noise(p.xz * 0.4 + 5.0)));
-    float gap = (1.0 - smoothstep(0.004, 0.022 + fp * 0.4, c.x)) * smoothstep(0.35, 0.65, noise(p.xz * 0.5 + 3.0));
+    float gap = crackAA(c.x * 2.2, 0.02, fp) * smoothstep(0.35, 0.65, noise(p.xz * 0.5 + 3.0));
     alb *= mix(1.0, 0.97 + 0.05 * c.y, lb);
-    alb = mix(alb, alb * vec3(0.88, 0.83, 0.79), gap * lb * smoothstep(0.004, 0.03, fp));
-    /* the plates curl up a little at their edges, catching the light */
-    alb *= 1.0 + 0.05 * lb * smoothstep(0.1, 0.03, c.x) * (1.0 - gap);
+    alb = mix(alb, alb * vec3(0.8, 0.74, 0.7), gap * lb);
   }
-  alb *= mix(1.0, 0.96, (1.0 - lb) * smoothstep(0.1, 0.4, fp));
-  /* the fine cracks */
-  float lf = smoothstep(0.035, 0.008, fp);
-  if (lf > 0.0) {
-    vec2 c = cells(p.xz / 0.32 + 0.15 * vec2(noise(p.xz * 3.0), noise(p.xz * 3.0 + 4.0)));
-    float crack = 1.0 - smoothstep(0.0, 0.012 + fp * 0.6, c.x - 0.003);
-    alb *= mix(1.0, (0.97 + 0.05 * c.y) * (1.0 - 0.28 * crack), lf);
-  }
-  /* red sand blown onto the clay */
+  /* red sand washed toward the dune feet, and blown into drifts */
   float drift = smoothstep(0.58, 0.82, noise(p.xz * 0.016 + 2.0) * 0.65 + noise(p.xz * vec2(0.09, 0.05)) * 0.35);
   float sand = max(near, drift * 0.55);
   alb = mix(alb, sandC * (0.9 + 0.2 * mid), sat(sand) * 0.8);
   /* tufts of grass where the sand has gathered */
   vec2 gc = floor(p.xz / 7.0);
   vec3 gh = hash33(vec3(gc, 5.7));
-  float tuft = step(gh.z, 0.35 * near) * sat((0.25 + 0.5 * gh.x - length(p.xz - (gc + 0.2 + 0.6 * gh.xy) * 7.0)) / max(fp, 0.03) + 0.5);
-  float tf = mix(0.35 * near * 0.02, tuft, smoothstep(2.0, 0.6, fp));
+  float toe = smoothstep(0.55, 0.75, near);
+  float tuft = step(gh.z, 0.35 * toe) * sat((0.25 + 0.5 * gh.x - length(p.xz - (gc + 0.2 + 0.6 * gh.xy) * 7.0)) / max(fp, 0.03) + 0.5);
+  float tf = mix(0.35 * toe * 0.02, tuft, smoothstep(2.0, 0.6, fp));
   alb = mix(alb, mix(vec3(0.09, 0.1, 0.05), vec3(0.2, 0.19, 0.1), gh.y), sat(tf));
   return alb;
 }
@@ -686,7 +760,7 @@ vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune) {
     occ = 0.75 + 0.25 * smoothstep(0.0, 40.0, p.y);
   } else {
     p.y = 0.0;
-    float near = smoothstep(-30.0, -2.0, f) * (0.55 + 0.45 * noise(p.xz * 0.05)) + 0.35 * smoothstep(-8.0, -1.0, f);
+    float near = pow(smoothstep(-80.0, -2.0, f), 1.6) * (0.45 + 0.4 * noise(p.xz * 0.05)) + 0.35 * smoothstep(-8.0, -1.0, f);
     alb = panAlbedo(p, fp, near);
     occ = 0.85 + 0.15 * smoothstep(-80.0, -10.0, -f);
   }
@@ -703,7 +777,9 @@ vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune) {
   return col;
 }
 
-/* the dead wood: grey-brown, sun-baked, darker in the cracks */
+/* the dead wood: blackened charcoal in shade, sun-bleached to a silvery
+   grey-brown where it faces the sun, split along its length by fissures;
+   the fallen trunks bleached paler */
 vec3 shadeTree(vec3 ro, vec3 rd, float t, float pix, int i) {
   vec4 T = TREES[i];
   buildTree(T);
@@ -713,16 +789,29 @@ vec3 shadeTree(vec3 ro, vec3 rd, float t, float pix, int i) {
   float e = max(0.004, t * pix * 0.5);
   vec2 k = vec2(1.0, -1.0);
   vec3 n = normalize(k.xyy * treeD(lp + k.xyy * e) + k.yyx * treeD(lp + k.yyx * e) + k.yxy * treeD(lp + k.yxy * e) + k.xxx * treeD(lp + k.xxx * e));
-  float grain = noise(vec2(atan(n.x, n.z) * 9.0, lp.y * 1.5)) * 0.6 + noise(lp.xz * 9.0 + lp.y * 2.0) * 0.4;
-  float groove = smoothstep(0.55, 0.8, noise(vec2(atan(n.x, n.z) * 14.0 + lp.y * 0.8, lp.y * 0.6)));
-  vec3 alb = vec3(0.2, 0.17, 0.145) * (0.75 + 0.5 * grain) * (1.0 - 0.45 * groove * smoothstep(0.08, 0.004, t * pix));
-  alb *= mix(0.55, 1.0, smoothstep(0.0, 0.4, lp.y));
+  /* the fissures run along the wood */
+  vec4 ax = treeAxis(lp);
+  vec3 u1 = normalize(cross(ax.xyz, abs(ax.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
+  vec3 u2 = cross(ax.xyz, u1);
+  float ang = atan(dot(n, u2), dot(n, u1));
+  float fine = smoothstep(0.06, 0.006, t * pix);
+  float fis = noise(vec2(ang * 5.0, ax.w * 1.3)) * 0.6 + noise(vec2(ang * 13.0, ax.w * 3.5)) * 0.4;
+  float groove = smoothstep(0.45, 0.75, fis);
+  bool fallen = T.z < 0.0;
+  vec3 alb = fallen ? vec3(0.21, 0.195, 0.18) : vec3(0.088, 0.081, 0.075);
+  alb *= 1.0 - (0.55 * groove - 0.12) * fine;
+  alb *= 0.9 + 0.2 * noise(lp.xz * 3.0 + lp.y * 2.0);
+  /* near the ground the wood is darker still, and the sand has climbed it */
+  alb *= mix(0.75, 1.0, smoothstep(0.0, 0.6, lp.y));
   float sh = 1.0;
-  if (dot(n, gL) > 0.0 && gWS > 0.001) sh = duneShadow(p, gL, t * pix);
-  vec3 L = lightAt(p, n, sh, 1.0, 0.8);
-  /* the bright clay lights the wood from below */
+  float dif = max(dot(n, gL), 0.0);
+  if (dif > 0.0 && gWS > 0.001) sh = duneShadow(p, gL, t * pix);
+  /* weathered wood turns silvery toward the sun */
+  float sheen = 1.0 + 0.75 * sat(dif) * sh * (1.0 - 0.5 * groove * fine);
+  vec3 sky = gSkyE * (0.55 + 0.45 * n.y) * 0.75;
   vec3 ePan = gSunE * max(gL.y, 0.0) * sh + gSkyE + gMoonE * max(gM.y, 0.0);
-  L += vec3(0.78, 0.64, 0.5) * ePan * (0.5 - 0.5 * n.y) * 0.8;
+  vec3 gnd = vec3(0.78, 0.64, 0.5) * ePan * (0.5 - 0.5 * n.y) * 0.55;
+  vec3 L = gSunE * dif * sh * sheen + sky + gnd + gMoonE * max(dot(n, gM), 0.0);
   return alb * L / PI;
 }
 
@@ -746,7 +835,7 @@ vec3 scene(vec2 fc) {
   gGndE = mix(vec3(0.55, 0.38, 0.26), vec3(0.20, 0.13, 0.10), gFu) * gWS + vec3(0.004, 0.004, 0.005) * gWM;
   gM = azel(26.0, 17.0);
   gLd = azel(-110.0, -12.0);
-  gMoonE = vec3(0.5, 0.54, 0.6) * gWM;
+  gMoonE = vec3(0.62, 0.66, 0.72) * gWM;
 
   float rmin, tr;
   float t = march(ro, rd, pix, rmin, tr);
@@ -789,7 +878,7 @@ vec3 scene(vec2 fc) {
   }
 
   /* night: moonlight drains the colour and turns it blue */
-  col = mix(col, vec3(luma(col)) * vec3(0.55, 0.75, 1.3), 0.75 * gWM);
+  col = mix(col, vec3(luma(col)) * vec3(0.6, 0.78, 1.25), 0.55 * gWM);
   return col + lights;
 }
 `

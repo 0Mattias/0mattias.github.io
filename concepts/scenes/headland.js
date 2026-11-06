@@ -37,7 +37,7 @@
 
 window.CONCEPT = {
   id: 'headland',
-  theme: { day: '#8eaac8', dusk: '#b89a8e', night: '#1a2131' },
+  theme: { day: '#c3ceda', dusk: '#ead6b9', night: '#2f384d' },
   t0: 12,
   frag: `
 /* ------------------------------------------------------------ the world
@@ -411,7 +411,7 @@ vec3 sunDisc(vec3 rd, float pa) {
   float d = acos(clamp(dot(rd, SUND), -1.0, 1.0));
   float cov = sat((R - d) / pa + 0.5);
   float limb = sqrt(max(1.0 - (d / R) * (d / R), 0.0));
-  return cov * (0.55 + 0.45 * limb) * DISC * exp(-0.06 * airmass(SUND.y));
+  return cov * (0.55 + 0.45 * limb) * DISC * DIP * exp(-0.06 * airmass(SUND.y));
 }
 
 /* the Outer Hebrides, thirty-odd kilometres west over the Little Minch:
@@ -465,7 +465,7 @@ vec2 seaSlope(vec2 p, float fp, out float var) {
     g += (gg * W) * fade;
     var += 0.003 * (1.0 - fade * fade);
   }
-  return g + 0.0 * var;
+  return g;
 }
 
 float beckmann(float nh, float m2) {

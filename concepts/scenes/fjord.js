@@ -210,7 +210,7 @@ vec2 gullies(float u, float s, float sd) {
    and its path wandering as it comes down */
 float fallOff(float u, float s, float sd) {
   float a = sd > 0.0 ? u - 2050.0 - 14.0 * sin(s * 0.007) - 6.0 * sin(s * 0.023 + 1.0) : 1e4;
-  float b = sd < 0.0 && s > 380.0 ? u - 4300.0 - 18.0 * sin(s * 0.006 + 2.0) : 1e4;
+  float b = sd > 0.0 && s > 150.0 ? u - 4850.0 - 18.0 * sin(s * 0.006 + 2.0) : 1e4;
   return min(abs(a), abs(b));
 }
 
@@ -254,7 +254,7 @@ float ground(vec2 p, vec3 pl, int det) {
   vec2 f = vec2(u + sd * 300.0, h0 * 1.1);
   float bn = noise(f * vec2(0.0045, 0.0011) + vec2(sd * 4.0, 0.0));
   float bt = mix(bn, 1.0 - abs(2.0 * bn - 1.0), 0.6);
-  s += (90.0 * bt - 50.0) * (1.0 - kf);
+  s += (90.0 * bt - 50.0) * (1.0 - 0.6 * kf);
   if (det > 0) {
     float cn = noise(f * vec2(0.012, 0.006) + 1.3);
     s += 30.0 * mix(cn, 1.0 - abs(2.0 * cn - 1.0), 0.4) - 15.0;
@@ -325,7 +325,7 @@ float march(vec3 ro, vec3 rd, float tmax, int steps, int dmax, float grow) {
     // or the shore bends toward it
     float reachOut = -pl.x - 150.0 + 0.45 * max(p.y - 40.0, 0.0);
     float close = hl * (abs(hd.x * PLT.y - hd.y * PLT.x) + 0.36) + 0.45 * abs(rd.y);
-    t += max(max((0.3 + 0.12 * smoothstep(1500.0, 8000.0, t)) * dy, reachOut * 0.9 / close), grow * t + 0.25);
+    t += max(max((0.32 + 0.16 * smoothstep(600.0, 4000.0, t)) * dy, reachOut * 0.9 / close), grow * t + 0.25);
   }
   EDGEC = sat(0.5 - ec);
   // a ray that ran out of steps low over the land is taken as a hit
@@ -335,8 +335,8 @@ float march(vec3 ro, vec3 rd, float tmax, int steps, int dmax, float grow) {
 
 /* the light's way out from p, tested against the land in a few
    lengthening taps; the clearance over each sets a soft edge */
-float shadow(vec3 p, int n) {
-  float r = 1.0, d = 30.0;
+float shadow(vec3 p, int n, float d) {
+  float r = 1.0;
   for (int i = ZERO; i < 10; i++) {
     if (i >= n) break;
     vec3 q = p + KEY * d;
@@ -364,6 +364,7 @@ vec3 landNormal(vec3 p, float t, int det, out float h0) {
    below. Each is a dome lit on its side toward the light (l, in the same
    plane). Returns the light on it, about one on the mean, and which tree
    it is */
+float GAPS;   // how open the canopy stands here
 vec2 crowns(vec2 q, vec2 l) {
   vec2 i = floor(q), f = fract(q);
   float best = 1e9, k = 0.16, id = 0.5;
@@ -372,7 +373,7 @@ vec2 crowns(vec2 q, vec2 l) {
     for (int c = -1; c <= 1; c++) {
       vec2 g = vec2(float(c), float(j));
       vec3 h = hash33(vec3(i + g, 3.7));
-      if (h.z < 0.12) continue;
+      if (h.z < 0.12 + 0.3 * GAPS) continue;
       vec2 o = g + h.xy - f;
       float r = 0.42 + 0.5 * fract(h.z * 7.13);
       vec2 e = o * vec2(1.0, 0.8) / r;
@@ -382,7 +383,7 @@ vec2 crowns(vec2 q, vec2 l) {
         best = z;
         vec3 nn = vec3(-e, sqrt(1.0 - d));
         float lit = max(dot(nn, L), 0.0);
-        k = (0.22 + 1.0 * lit) * (0.75 + 0.5 * fract(h.z * 31.7)) * (0.7 + 0.3 * sqrt(1.0 - d));
+        k = (0.2 + 1.0 * lit) * (0.55 + 0.9 * fract(h.z * 31.7)) * (0.65 + 0.35 * sqrt(1.0 - d));
         id = fract(h.z * 17.3 + h.x * 5.1);
       }
     }
@@ -434,6 +435,7 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   float cw = 4.6;
   float ca = sat(1.6 - fp / (0.3 * cw));
   if (ca > 0.0) {
+    GAPS = smoothstep(0.45, 0.8, noise(vec2(u, y * 1.25) * 0.035 + 3.0));
     vec2 q = vec2(u, y * 1.25) / cw;
     vec2 l = normalize(vec2(dot(KEY.xz, tg), KEY.y + 0.25));
     vec2 c = crowns(q, l);
@@ -442,13 +444,13 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   }
   float grain = sat(1.0 - fp / (2.5 * cw)) * (1.0 - ca);
   trees *= 1.0 + grain * (noise(vec2(u, y * 1.25) / cw * 1.3) - 0.5) * 0.9;
-  trees *= 0.85 + 0.3 * m2;
+  trees *= (0.85 + 0.3 * m2) * (0.7 + 0.6 * noise(vec2(u, y * 1.25) * 0.045 + 7.0));
   // the gullies: grass and scrub, scree low down and snow high up
   vec3 grass = mix(vec3(0.055, 0.09, 0.025), vec3(0.08, 0.1, 0.04), m2);
   alb = mix(alb, grass, aval * smoothstep(0.3, 0.45, slope) * 0.8);
   alb = mix(alb, trees, forest);
-  float scree = smoothstep(0.3, 0.8, gg.x) * (1.0 - smoothstep(10.0, 70.0 + 50.0 * m3, y)) * smoothstep(0.6, 0.8, noise(vec2(u * 0.006, sd)));
-  alb = mix(alb, vec3(0.2, 0.198, 0.19) * (0.8 + 0.35 * noise(p.xz * 0.1)), scree * 0.8);
+  float scree = smoothstep(0.45, 0.85, gg.x) * (1.0 - smoothstep(6.0, 30.0 + 40.0 * m3, y)) * smoothstep(0.6, 0.8, noise(vec2(u * 0.006, sd)));
+  alb = mix(alb, vec3(0.17, 0.168, 0.16) * (0.6 + 0.6 * noise(vec2(u, y) * 0.3)), scree * 0.8);
 
   // the farms' fans: mown grass, a few trees
   float fan = smoothstep(-2.5, -0.3, fanH(p.xz) - y) * smoothstep(0.8, 0.92, slope);
@@ -677,7 +679,7 @@ vec4 clouds(vec3 rd) {
   float thick = smoothstep(cov + 0.02, cov + 0.22, f);
   float lit = sat(0.4 + 4.0 * (f - f2)) * (0.6 + 0.8 * noise(q * 5.0 + 2.0));
   float c = dot(rd, KEY);
-  vec3 sunc = KEYC * (0.05 + 0.42 * lit * (1.0 - 0.55 * thick) + 1.3 * phaseM(c, 0.6) * (1.0 - 0.8 * thick)) * look3(0.85, 0.32, 0.5);
+  vec3 sunc = KEYC * (0.04 + 0.24 * lit * (1.0 - 0.5 * thick) + 0.9 * phaseM(c, 0.6) * (1.0 - 0.8 * thick)) * look3(0.85, 0.5, 0.5);
   vec3 amb = (SKYZ * 0.7 + SKYH * 0.3) * PI * mix(0.42, 0.2, thick) * look3(1.0, 0.5, 1.0);
   float fade = smoothstep(0.015, 0.1, rd.y) * exp(-t0 * 0.00003);
   return vec4((sunc + amb) * a * fade, a * fade);
@@ -942,7 +944,7 @@ vec3 scene(vec2 fc) {
   KEY = normalize(mix(sunD, MOOND, KEYS));
   E0 = look3(vec3(9.0), vec3(24.0), vec3(0.5, 0.75, 1.5) * 1.5) * dip;
   MIE = look3(3.5e-6, 1.2e-5, 5e-6);
-  HAZE = look3(1.6e-5, 2.6e-5, 1.6e-5);
+  HAZE = look3(2.3e-5, 2.8e-5, 1.6e-5);
   AIRLIT = look3(0.4, 0.2, 0.6);
   KEYG = keyLight(KEY.y, 1.0);
   MSL = keyLight(max(KEY.y, 0.0) + 0.2, 0.35) * look3(0.7, 0.4, 0.85);
@@ -1035,7 +1037,7 @@ vec3 scene(vec2 fc) {
   if (kind > 0 || w > 0.0) {
     float sh = 0.0;
     vec3 ps = kind == 2 ? p + n * 0.5 + vec3(0.0, 1.0, 0.0) : p + vec3(n.x, 0.0, n.z) * 25.0 + vec3(0.0, 4.0, 0.0);
-    if (dot(n, KEY) > -0.25) sh = shadow(ps, refl ? 4 : 7);
+    if (dot(n, KEY) > -0.25) sh = shadow(ps, refl ? 5 : 7, refl ? 70.0 : 30.0);
     if (kind == 2) c = shadeBuilding(p, n, ba, sh);
     else {
       vec3 cl = shadeLand(p, n, ng, te + tl, sh, !refl);
