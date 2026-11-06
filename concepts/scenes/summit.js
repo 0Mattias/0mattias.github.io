@@ -803,7 +803,11 @@ float vfbm(vec3 q, float lod) {
   for (int i = 0; i < 5; i++) {
     float k = sat(lod - float(i));
     if (k <= 0.0) { v += a; break; }
-    v += a * mix(0.5, noise3(q), k);
+    /* the first octave lays out the heaps; the finer ones are billows,
+       rounded bulges with narrow folds between, the cauliflower */
+    float n = noise3(q);
+    n = i == 0 ? n : 0.81 - abs(2.0 * n - 1.0);
+    v += a * mix(0.5, n, k);
     q = q * 2.07 + vec3(1.7, 9.2, 4.1);
     a *= 0.5;
   }
@@ -816,7 +820,7 @@ float vfield(float h, float top, vec3 q, float lod) {
   return f + 8.0 * (vfbm(q, lod) - 0.5);
 }
 
-float vden(float f) { return sat(f * 2.5); }
+float vden(float f) { return sat(f * 1.6); }
 
 float vtop(vec2 x, vec2 w, out float gap) {
   vec3 B = deckBase(x, w);
@@ -854,12 +858,14 @@ vec4 marchDeck(vec3 ro, vec3 rd, float t1, vec2 fc) {
   float ph = 0.7 + 3.2 * hg(mu, 0.55);
   vec3 lc = LC / PI * CT * ph;
   float st = max(25.0, t * 0.008);
-  float jit = hash12(fc);
+  /* interleaved gradient noise: a jitter whose grain is finer than a
+     hash's */
+  float jit = fract(52.9829189 * fract(dot(fc, vec2(0.06711056, 0.00583715))));
   t += st * jit;
   bool skipped = false;
   vec3 acc = vec3(0.0);
   float tr = 1.0, tw = 0.0;
-  for (int i = 0; i < 64; i++) {
+  for (int i = 0; i < 72; i++) {
     if (t > t1 || tr < 0.03) break;
     st = max(25.0, t * 0.008);
     vec3 p = ro + rd * t;
@@ -872,7 +878,7 @@ vec4 marchDeck(vec3 ro, vec3 rd, float t1, vec2 fc) {
       /* after a skip through clear air the ray is jittered again, or every
          ray would land on the same surface and sample in step */
       if (skipped) { t += st * fract(jit + 0.618 * float(i)); skipped = false; p = ro + rd * t; h = p.y + drop(p.xz); w = p.xz + DRIFT; }
-      float lod = clamp(log2(620.0 / st) + 0.6, 2.0, 5.0);
+      float lod = clamp(log2(620.0 / (t * PA / max(-rd.y, 0.012))) + 1.0, 2.0, 5.0);
       vec3 q = vec3(w.x, h + T * 0.6, w.y) / 620.0;
       q.xz += 0.65 * (vec2(noise(q.xz * 0.45 + 3.1), noise(q.xz * 0.45 + 7.7)) - 0.5);
       float f = vfield(h, top, q, lod);
@@ -883,20 +889,20 @@ vec4 marchDeck(vec3 ro, vec3 rd, float t1, vec2 fc) {
         vec3 l1 = L * 45.0, l2 = L * 190.0;
         float d1 = vden(vfield(h + l1.y, top, q + l1 / 620.0, lod - 1.0));
         float d2 = vden(vfield(h + l2.y, top, q + l2 / 620.0, 2.0));
-        float od = 0.03 * (45.0 * d1 + 145.0 * d2);
+        float od = 0.045 * (45.0 * d1 + 145.0 * d2);
         /* light that has scattered on through the cloud keeps some of
            the shadows from going black */
-        float sun = exp(-od) + 0.12 * exp(-0.25 * od);
+        float sun = exp(-od) + 0.1 * exp(-0.2 * od);
         /* bright tops, blue-grey bellies */
         float hf = sat((h - 1800.0) / max(top - 1800.0, 80.0));
-        vec3 c = lc * sun * 0.9 + AMB * (0.25 + 0.75 * hf) * (0.5 + 0.5 * exp(-od)) * 1.3;
-        float a = 1.0 - exp(-den * 0.035 * st);
+        vec3 c = lc * sun + AMB * (0.2 + 0.8 * hf) * (0.45 + 0.55 * exp(-0.5 * od)) * 1.25;
+        float a = 1.0 - exp(-den * 0.022 * st);
         acc += tr * a * c;
         tw += tr * a * t;
         tr *= 1.0 - a;
       }
       /* inside the cloud, finer steps */
-      st *= den > 0.002 ? 0.4 : 1.0;
+      st *= den > 0.002 ? 0.3 : 1.0;
     } else {
       /* clear air: skip ahead by as much as the field allows */
       st = max(st, (-2.3 - f0) * 170.0 / max(-rd.y, 0.02) * 0.5);
