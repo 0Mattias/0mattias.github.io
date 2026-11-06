@@ -282,15 +282,16 @@ float map(vec3 p) {
   return r;
 }
 
-vec3 normalAt(vec3 p, float t) {
+/* the normal by forward differences from d0, the distance the march
+   already found at p */
+vec3 normalAt(vec3 p, float t, float d0) {
   float e = max(0.04, t * 0.0009);
-  vec2 k = vec2(1.0, -1.0);
-  return normalize(k.xyy * map(p + k.xyy * e) + k.yyx * map(p + k.yyx * e) +
-                   k.yxy * map(p + k.yxy * e) + k.xxx * map(p + k.xxx * e));
+  return normalize(vec3(map(p + vec3(e, 0.0, 0.0)), map(p + vec3(0.0, e, 0.0)), map(p + vec3(0.0, 0.0, e))) - d0);
 }
 
-float march(vec3 ro, vec3 rd, float tmax, float pa, out bool hit) {
-  float t = 0.5, d = 1e4;
+float march(vec3 ro, vec3 rd, float tmax, float pa, out bool hit, out float d) {
+  float t = 0.5;
+  d = 1e4;
   hit = false;
   for (int i = 0; i < 130; i++) {
     d = map(ro + rd * t);
@@ -542,7 +543,7 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
      them */
   if (d < 320.0) {
     float rt = 1.0;
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 7; i++) {
       vec3 rp = p + r * rt;
       if (rp.y > 98.0) break;
       float h = map(rp);
@@ -559,8 +560,8 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
   float csh = cloudShade(p);
   if (d < 160.0 && SUN.y > 0.0) {
     float lt = 1.0;
-    for (int i = 0; i < 3; i++) {
-      float ts = 10.0 + 45.0 * float(i * i);
+    for (int i = 0; i < 2; i++) {
+      float ts = 14.0 + 70.0 * float(i);
       vec3 sp3 = p + SUN * ts;
       if (sp3.y > 85.0) break;
       lt = min(lt, sat(map(sp3) / 3.0 + 0.3));
@@ -611,9 +612,9 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
 
 /* ------------------------------------------------------- the land's skin */
 
-vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa) {
+vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa, float d0) {
   vec3 p = ro + rd * t;
-  vec3 n = normalAt(p, t);
+  vec3 n = normalAt(p, t, d0);
   vec2 q = toPen(p.xz);
   float sp, sm;
   float dp = penD(q, sp), dm = mainD(q, sm);
@@ -930,12 +931,13 @@ vec3 scene(vec2 fc) {
   float tMax = min(tSea, 4000.0);
   bool hit = false;
   float t = tMax;
-  if (rd.y < 0.0) t = march(ro, rd, tMax, pa, hit);
+  float d0 = 0.0;
+  if (rd.y < 0.0) t = march(ro, rd, tMax, pa, hit, d0);
 
   vec3 col;
   float tEnd;
   if (hit) {
-    col = aerial(shadeLand(ro, rd, t, pa), ro, rd, t);
+    col = aerial(shadeLand(ro, rd, t, pa, d0), ro, rd, t);
     tEnd = t;
   } else if (rd.y < 0.0 && tSea < 33000.0) {
     col = aerial(shadeSea(ro, rd, tSea, pa), ro, rd, tSea);
