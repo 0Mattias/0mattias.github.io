@@ -44,8 +44,8 @@
    lamps make a faint zigzag to the huts and the summit (the real trails
    lie just behind the skylines from the west). While the looks turn
    between the sun and the moon the light dims and the sky goes to
-   twilight blue, so a turn never flashes through day. The tall frame
-   turns to Fuji and sets it under the name. WebGL2, no libraries, no
+   twilight blue, so a turn never flashes through day. A narrower frame
+   shows the wide one's picture, framed as the meadow frames it. WebGL2, no libraries, no
    build step. */
 
 window.CONCEPT = {
@@ -68,7 +68,7 @@ const float DECK = 2040.0;       /* the cloud's mean top */
 const float CTOP = 2700.0;       /* no cloud or island rises above this */
 const float RIM = 420.0;         /* the crater rim's radius */
 
-float T, ASP, WIDE, PA, KEY, SK, HOR;
+float T, ASP, PA, KEY, SK, HOR;
 vec3 LD, LC, AMB, CUP, AIRN, AIRF, CT;
 vec2 DRIFT;
 vec3 FA, FB;
@@ -901,10 +901,12 @@ vec3 shadePanel(vec3 rd, float D, float dd, float seed, float mist, float far) {
   vec2 g = vec2(f.x / (D * 0.011), dd / (D * 0.03)) + seed * 3.0;
   g.x += 0.6 * noise(g * vec2(0.5, 1.0));
   float r0 = ridged(g), dr = (ridged(g + vec2(0.06, 0.0)) - r0) / 0.06;
-  float rel = smoothstep(5.0, 60.0, dd);
+  /* the spurs show in the band under the crest; further down, where a
+     tall frame looks, only the forest's own mottling */
+  float rel = smoothstep(5.0, 60.0, dd) * smoothstep(D * 0.07, D * 0.025, dd);
   float lit = mix(0.55, sat(0.45 + 0.35 * dr * sign(LD.x + 1e-4)) * (0.6 + 0.4 * r0), rel);
   lit *= 0.5 + 0.5 * smoothstep(0.25, 0.7, noise(f / (D * 0.02) + seed * 3.0));
-  vec3 col = alb * (LC / PI * 0.45 * lit + AMB * 0.75 * (0.75 + 0.25 * r0));
+  vec3 col = alb * (LC / PI * 0.45 * lit + AMB * 0.75 * (0.75 + 0.25 * mix(1.0, r0, rel)));
   vec3 hz = look3(vec3(0.13, 0.2, 0.36), vec3(0.17, 0.13, 0.23), vec3(0.007, 0.01, 0.02)) * look3(SK, SK, 1.0);
   /* the further ridges stand in the blue of the haze */
   col = mix(col, hz, far + (1.0 - far) * mist * smoothstep(10.0, 300.0, dd));
@@ -934,15 +936,32 @@ vec3 stars(vec3 rd) {
 
 /* ------------------------------------------------------------ the frame */
 
-/* a long lens. A wide frame puts Fuji's summit to the right of the name
-   and a little over it; a tall one turns to Fuji and puts it under the
-   name. th is the tangent of half the frame's height */
+/* a long lens. A frame of three to two or wider puts Fuji's summit to
+   the right of the name and a little over it. Every other frame is that
+   same picture, as the meadow's are: narrower than three to two, down to
+   seven to ten, it sees as wide as a three to two frame, its lens
+   widening up into the sky, and it tips up just enough to hold the
+   cloud's horizon at the same height on the screen. Narrower than seven
+   to ten the lens widens no further: the frame is a crop of that one's,
+   turned toward Fuji so the summit keeps its place across the screen.
+   th is the tangent of half the frame's height */
 vec3 camera(vec2 fc, out vec3 ro, out float th) {
-  th = mix(0.18, 0.07, WIDE);
-  vec2 sF = mix(vec2(0.04, -0.15), vec2(0.95, 0.22), WIDE);
+  const float TV = 0.07;                 /* a wide frame's half height */
+  const vec2 SF = vec2(0.95, 0.22);      /* where Fuji's summit stands on it */
+  float t1 = TV * 1.5;                   /* a three to two frame's half width */
   float eS = atan((3776.0 - EYE - drop(FJ)) / FJ.y);
-  float pitch = eS - atan(sF.y * th) + uPoint.y * 0.06 * DEG;
-  float yaw = -atan(sF.x * th) + uPoint.x * 0.12 * DEG;
+  float pitch0 = eS - atan(SF.y * TV), yaw0 = -atan(SF.x * TV);
+  float pitch = pitch0, yaw = yaw0;
+  th = TV;
+  if (ASP < 1.5) {
+    th = t1 / max(ASP, 0.7);
+    float hz = -HOR * DEG;
+    pitch = hz - atan(tan(hz - pitch0) / TV * th);
+    /* Fuji's summit is on the line of sight, at azimuth 0 */
+    if (ASP < 0.7) yaw = -atan(tan(-yaw0) / t1 * (ASP * th));
+  }
+  pitch += uPoint.y * 0.06 * DEG;
+  yaw += uPoint.x * 0.12 * DEG;
   vec2 uv = (fc - 0.5 * uRes) / (0.5 * uRes.y);
   vec3 d = normalize(vec3(uv * th, 1.0));
   float cp = cos(pitch), sp = sin(pitch);
@@ -956,7 +975,6 @@ vec3 camera(vec2 fc, out vec3 ro, out float th) {
 
 void setup() {
   ASP = uRes.x / uRes.y;
-  WIDE = smoothstep(0.8, 1.45, ASP);
   T = mod(uTime, 32768.0);
   DRIFT = vec2(-2.1, 0.8) * T;
   HOR = sqrt(2.0 * (EYE - DECK) / RE) / DEG;
@@ -974,9 +992,9 @@ void setup() {
   AIRN = look3(vec3(0.045, 0.16, 0.42), mix(vec3(0.03, 0.05, 0.12), vec3(0.16, 0.07, 0.10), KEY), vec3(0.005, 0.011, 0.03)) * look3(SK, SK, 1.0);
   CT = look3(vec3(1.25), vec3(0.62, 0.78, 0.98), vec3(0.85));
   AIRF = look3(vec3(0.30, 0.34, 0.47), vec3(0.14, 0.14, 0.21), vec3(0.008, 0.013, 0.033)) * look3(SK, SK, 1.0);
-  /* the spur, laid into the corner of each frame */
-  FA = mix(vec3(-69.7, 2928.5, 645.9), vec3(-130.4, 2934.9, 636.6), WIDE);
-  FB = mix(vec3(3.1, 2806.3, 888.5), vec3(-99.1, 2870.2, 941.4), WIDE);
+  /* the spur, laid into the lower left of the wide frame */
+  FA = vec3(-130.4, 2934.9, 636.6);
+  FB = vec3(-99.1, 2870.2, 941.4);
   FDIR = normalize(FB.xz - FA.xz);
   FNRM = vec2(FDIR.y, -FDIR.x);
   FLEN = length(FB.xz - FA.xz);
