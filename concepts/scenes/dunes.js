@@ -13,19 +13,25 @@
    east, humped dunes close the pan on either side, far dunes beyond.
    The slip faces carry grainflow lobes running down from the brink, a
    little proud of the face, so the grazing sun picks out their flanks;
-   the backs carry long low swells across the wind and tufts of grass at
-   their feet. The pan is near-white clay, warm, cracked into plates, with
-   red sand blown onto it at the dune feet. The trees are capsules: a
-   flared trunk with roots over the clay, three or four gnarled limbs, a
-   branch off each joint, a twig off each branch and a snag at each tip,
-   each tree found by a box test first and casting its own shadow.
+   the backs carry broad soft swells with no period to them, and tufts of
+   grass at their feet. The pan is near-white clay, warm, dried into
+   irregular plates a few tenths of a metre across edged by thin dark
+   cracks, drawn no finer than the pixel so they never shimmer, with red
+   sand washed onto it toward the dune feet. The camelthorns are tapered
+   capsules: a short thick trunk splitting low into two to four heavy
+   limbs that lean out and kink as they thin to bare tips, each tree
+   with its own habit (a vase, a split at the ground, one dominant limb,
+   low and wide), blackened charcoal in shade and silvery where the sun
+   strikes; the fallen ones bleached paler. Each is found by a box test
+   and a few bounding balls first, and casts its own shadow.
    Day is mid-afternoon, the sun high in the west-northwest; dusk the sun
    six degrees up in the west-southwest where it sets in summer, the pan
    and the dune's foot in the shadow of the western dunes and only the
    sand that faces the sun still burning, a warm glow along the west, the
-   moon up in the east; night the Milky Way arches over the dune with its
-   core low behind the eastern shoulder, and the moon lights the sand
-   faintly. The air is very clear: no haze, no shimmer at the foot.
+   moon up in the east; night the Milky Way arches over the dune, a broad
+   soft band brightening toward its core low behind the eastern shoulder,
+   split by one feathered rift, and the moon lights the sand faintly.
+   The air is very clear: no haze, no shimmer at the foot.
    WebGL2, no libraries, no build step. */
 
 window.CONCEPT = {
