@@ -31,7 +31,9 @@
    toward the eye at eight, four and a half and two kilometres, each in
    less of the blue haze, the nearest near-black and filling the bottom of
    the frame, with a spur of the ridge the eye stands on in the lower left,
-   broken grey-brown rock on its crest and dwarf pine on its flanks.
+   broken grey-brown rock on its crest and dwarf pine on its flanks. The
+   long lens holds everything from the spur out sharp; the stage's camera
+   blooms the light and grades the frame, its blacks kept deep.
    By day the sun stands in the south-south-east, high on the right, the
    sky a deep blue over a pale haze on the cloud. At dusk the sun is
    setting behind the eye, so the west face of Fuji and the cloud tops glow
@@ -52,7 +54,7 @@ window.CONCEPT = {
   t0: 40,
   /* a long lens from the ridge: Fuji, the bands and the ridges all in
      focus, only the pine at the lens soft */
-  camera: { expo: [1.0, 1.0, 0.9], bloom: [0.04, 0.1, 0.08], thresh: 0.9, sat: [0.9, 0.92, 0.82], vig: [0.12, 0.15, 0.2], grain: 0.022, blur: 0.036 },
+  camera: { expo: [1.0, 1.0, 1.0], bloom: [0.04, 0.1, 0.08], thresh: 0.9, sat: [1.0, 0.94, 0.82], vig: [0.12, 0.15, 0.2], lift: [0.003, 0.004, 0.0015], grain: 0.022, blur: 0.0 },
   frag: `
 #define DEG 0.0174532925
 
@@ -176,7 +178,7 @@ vec3 aerial(vec3 col, vec3 rd, float t, float y) {
      first fifty kilometres */
   vec3 air = mix(AIRN * mix(0.35, 1.0, smoothstep(15000.0, 50000.0, t)), AIRF, smoothstep(45000.0, 115000.0, t));
   /* on the side toward the sun the haze is lit, warmer and brighter */
-  air += LC / PI * vec3(1.0, 0.88, 0.7) * SUNSIDE(rd) * look3(0.05, 0.0, 0.004);
+  air += LC / PI * vec3(1.0, 0.88, 0.7) * SUNSIDE(rd) * look3(0.03, 0.0, 0.003) * smoothstep(48000.0, 30000.0, t);
   return col * tr + air * (1.0 - tr);
 }
 
@@ -980,75 +982,13 @@ void setup() {
   FLEN = length(FB.xz - FA.xz);
 }
 
-/* ------------------------------------------------------ the near pine */
-/* a sprig of dwarf pine on the ridge a metre and a half from the lens,
-   reaching into the lower right corner: a few branchlets from the corner,
-   each ending in a tuft of needles. The lens is focused on Fuji, so the
-   sprig is drawn as the lens sees it, already soft: each tuft a disc of
-   dark green with its needles only a faint texture, lit on the side
-   toward the light, with a few bright discs where the light catches the
-   needles; the camera softens it further. p is from the frame's lower
-   right corner, in its half height */
-float tuft(vec2 p, vec2 c, float r, float seed, out float lit) {
-  vec2 d = p - c;
-  float l = length(d), a = atan(d.y, d.x);
-  /* a brush of needles, longer up and out along its branchlet than
-     back toward it, its edge lumpy */
-  vec2 ax = normalize(c - vec2(0.06, -0.06));
-  float al = dot(d / max(l, 1e-4), ax);
-  float len = r * (0.62 + 0.38 * noise(vec2(a * 3.2, seed)) + 0.25 * al);
-  float m = 1.0 - smoothstep(len - 0.38 * r, len + 0.06 * r, l);
-  m *= 0.8 + 0.2 * noise(vec2(a * 9.0, l / r * 3.0 + seed));
-  vec2 ld = normalize(vec2(LD.x, LD.y + 0.25) + 1e-4);
-  lit = sat(0.5 + 0.6 * dot(d / max(l, 1e-4), ld)) * smoothstep(0.2 * r, 0.9 * r, l);
-  return m;
-}
-
-float twig(vec2 p, vec2 a, vec2 b, float w) {
-  vec2 ab = b - a;
-  float h = sat(dot(p - a, ab) / dot(ab, ab));
-  float r = w * (1.0 - 0.4 * h);
-  return 1.0 - smoothstep(r * 0.4, r * 1.6, length(p - a - ab * h));
-}
-
-vec4 pine(vec2 fc) {
-  vec2 uv = (fc - 0.5 * uRes) / (0.5 * uRes.y);
-  vec2 p = (uv - vec2(uRes.x / uRes.y, -1.0)) / mix(1.05, 1.28, WIDE);
-  if (p.x < -0.62 || p.y > 0.62) return vec4(0.0);
-  float m = 0.0, lit = 0.0, l, k;
-  const vec2 B = vec2(0.06, -0.06);
-  vec2 T1 = vec2(-0.36, 0.31), T2 = vec2(-0.19, 0.42), T3 = vec2(-0.07, 0.25), T4 = vec2(-0.45, 0.12), T5 = vec2(-0.25, 0.17);
-  m = max(m, twig(p, B, T1, 0.022));
-  m = max(m, twig(p, B + vec2(-0.1, 0.1), T2, 0.016));
-  m = max(m, twig(p, B, T3, 0.018));
-  m = max(m, twig(p, B + vec2(-0.15, 0.06), T4, 0.015));
-  k = tuft(p, T1, 0.12, 1.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
-  k = tuft(p, T1 + vec2(0.07, -0.06), 0.09, 6.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
-  k = tuft(p, T2, 0.1, 2.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
-  k = tuft(p, T3, 0.11, 3.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
-  k = tuft(p, T3 + vec2(-0.07, -0.08), 0.1, 7.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
-  k = tuft(p, T4, 0.09, 4.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
-  k = tuft(p, T5, 0.12, 5.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
-  k = tuft(p, vec2(-0.12, 0.05), 0.13, 8.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
-  vec3 alb = vec3(0.016, 0.03, 0.013);
-  vec3 col = alb * (AMB * 1.2 + LC / PI * (0.15 + 1.4 * lit * lit));
-  /* the glints, spread by the lens into discs */
-  float gl = 0.0;
-  gl += 1.0 - smoothstep(0.016, 0.022, length(p - vec2(-0.29, 0.37)));
-  gl += 1.0 - smoothstep(0.012, 0.018, length(p - vec2(-0.13, 0.47)));
-  gl += 1.0 - smoothstep(0.014, 0.02, length(p - vec2(-0.02, 0.31)));
-  gl += 1.0 - smoothstep(0.01, 0.016, length(p - vec2(-0.2, 0.23)));
-  col += LC / PI * vec3(1.0, 0.95, 0.75) * 0.1 * gl * look3(1.0, 0.7, 0.35);
-  return vec4(col, m);
-}
-
 vec3 scene(vec2 fc) {
   setup();
   vec3 ro;
   float th;
   vec3 rd = camera(fc, ro, th);
-  /* the lens is focused on Fuji; at this aperture everything from the
-     spur out is sharp and only the pine at the lens is soft */
+  /* the lens is focused on Fuji; at a long lens's aperture everything
+     from the spur out is sharp */
   gFocus = FJ.y;
   gAperture = 5e-7;
   vec2 nearR = vec2(1e9, -1.0), nearF = vec2(1e9, -1.0);
@@ -1119,11 +1059,8 @@ vec3 scene(vec2 fc) {
   /* the forested ridges stepping up toward the eye */
   if (aR < 1.0 && a1 < 1.0 && a2 < 1.0 && a3 > 0.0) { col = mix(col, shadePanel(rd, 8000.0, d3, 7.0, 0.5, 0.42), a3); if (a3 > 0.5) gDepth = 8000.0; }
   if (aR < 1.0 && a1 < 1.0 && a2 > 0.0) { col = mix(col, shadePanel(rd, 4500.0, d2, 4.0, 0.35, 0.18), a2); if (a2 > 0.5) gDepth = 4500.0; }
-  if (aR < 1.0 && a1 > 0.0) { col = mix(col, shadePanel(rd, 2200.0, d1, 1.0, 0.06, 0.0), a1); if (a1 > 0.5) gDepth = 2200.0; }
+  if (aR < 1.0 && a1 > 0.0) { col = mix(col, shadePanel(rd, 2200.0, d1, 1.0, 0.06, 0.1), a1); if (a1 > 0.5) gDepth = 2200.0; }
   if (aR > 0.0) { col = mix(col, aerial(shadeRidge(ro, rd, tRs), rd, tRs, EYE), aR); if (aR > 0.5) gDepth = tRs; }
-  /* the pine at the lens over all */
-  vec4 pn = pine(fc);
-  if (pn.a > 0.0) { col = mix(col, pn.rgb, pn.a); if (pn.a > 0.35) gDepth = 1.6; }
   return col;
 }
 `
