@@ -145,7 +145,7 @@ float densInt(float y0, float mu, float d, float H) {
    walls' shadow the haze takes only the sky's light */
 void air(vec3 ro, vec3 rd, float d, out vec3 T, out vec3 S) {
   vec3 tR = BR * densInt(ro.y, rd.y, d, 8000.0);
-  float tM = MIE * densInt(ro.y, rd.y, d, 1200.0) + HAZE * densInt(ro.y, rd.y, d, 900.0);
+  float tM = MIE * densInt(ro.y, rd.y, d, 1200.0) + HAZE * densInt(ro.y, rd.y, max(d - 900.0, 0.0), 900.0);
   T = exp(-(tR + tM * 1.11));
   vec3 veil = (skyMS(0.0) * 0.35 + (SKYH * 0.6 + SKYZ * 0.4) * look3(0.72, 0.62, 0.5)) * vec3(1.0, 0.98, 0.9) + twilight(0.0);
   S = scatter1(tR, tM, dot(rd, KEY), KEYG * AIRLIT) + veil * (1.0 - T);
@@ -272,7 +272,11 @@ float ground(vec2 p, vec3 pl, int det) {
     float cn = noise(f * vec2(0.012, 0.006) + 1.3);
     s += 30.0 * mix(cn, 1.0 - abs(2.0 * cn - 1.0), 0.15) - 15.0;
   }
-  if (det > 1) s += 14.0 * noise(f * 0.03 + 4.1) - 7.0;
+  if (det > 1) {
+    s += 14.0 * noise(f * 0.03 + 4.1) - 7.0;
+    float rb = noise(f * vec2(0.013, 0.004) + vec2(2.0, 7.0));
+    s += 26.0 * (1.0 - abs(2.0 * rb - 1.0)) * smoothstep(40.0, 200.0, h0) * (1.0 - smoothstep(600.0, 900.0, h0)) - 10.0;
+  }
   if (det > 2) s += 5.0 * noise(f * 0.09 + 2.7) - 2.5;
   float band = smoothstep(250.0, 500.0, h0) * (1.0 - smoothstep(1000.0, 1200.0, h0));
   if (det > 1) {
@@ -376,36 +380,32 @@ vec3 landNormal(vec3 p, float t, int det, out float h0) {
 /* ------------------------------------------------------------ the land's skin */
 
 /* the crowns of the trees, one to a cell of a jittered grid laid on the
-   wall (q, in crowns), of many sizes and with gaps between; where crowns
-   overlap the lower one stands in front, as trees do up a slope seen from
-   below. Each is a dome lit on its side toward the light (l, in the same
-   plane). Returns the light on it, about one on the mean, and which tree
-   it is */
+   wall (q, in crowns), of many sizes and with gaps between, each a soft
+   dome lit on its side toward the light (l, in the same plane) with the
+   understorey dark between. Returns the light on it, about one on the
+   mean, and which tree it is */
 float GAPS;   // how open the canopy stands here
 vec2 crowns(vec2 q, vec2 l) {
   vec2 i = floor(q), f = fract(q);
-  float best = 1e9, k = 0.16, id = 0.5;
-  vec3 L = normalize(vec3(l, 0.7));
+  float d1 = 9.0, id = 0.5;
+  vec2 o1 = vec2(0.0);
   for (int j = -1; j <= 1; j++) {
     for (int c = -1; c <= 1; c++) {
       vec2 g = vec2(float(c), float(j));
       vec3 h = hash33(vec3(i + g, 3.7));
-      if (h.z < 0.12 + 0.3 * GAPS) continue;
+      if (h.z < 0.08 + 0.55 * GAPS) continue;
       vec2 o = g + h.xy - f;
-      float r = 0.42 + 0.5 * fract(h.z * 7.13);
-      vec2 e = o * vec2(1.0, 0.8) / r;
+      float r = 0.38 + 0.55 * fract(h.z * 7.13);
+      vec2 e = o * vec2(1.0, 0.85) / r;
       float d = dot(e, e);
-      float z = g.y + h.y - r;
-      if (d < 1.0 && z < best) {
-        best = z;
-        vec3 nn = vec3(-e, sqrt(1.0 - d));
-        float lit = max(dot(nn, L), 0.0);
-        k = (0.2 + 1.0 * lit) * (0.55 + 0.9 * fract(h.z * 31.7)) * (0.65 + 0.35 * sqrt(1.0 - d));
-        id = fract(h.z * 17.3 + h.x * 5.1);
-      }
+      if (d < d1) { d1 = d; o1 = e; id = fract(h.z * 17.3 + h.x * 5.1); }
     }
   }
-  return vec2(k * 1.45, id);
+  float m = smoothstep(1.0, 0.55, d1);
+  float dome = sqrt(max(1.0 - d1, 0.0));
+  float lit = sat(0.55 + 0.55 * dot(-o1, l) + 0.25 * dome);
+  float k = mix(0.14, (0.35 + 1.0 * lit) * (0.6 + 0.8 * fract(id * 31.7)), m);
+  return vec2(k * 1.55, id);
 }
 
 /* the land's colour and light at p: n shades it, ng (the land's own
@@ -438,9 +438,9 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   alb *= 1.0 + 0.35 * smoothstep(0.6, 0.85, noise(vec2(stx * 1.7 + 9.0, y * 0.006))) * steep;
 
   // ledges: grass and heath catch on every step of the rock
-  float led = smoothstep(0.35, 0.6, noise(vec2(y * 0.045 + 3.0 * noise(p.xz * 0.004), u * 0.004 + sd)));
+  float led = smoothstep(0.42, 0.62, noise(vec2(y * 0.045 + 3.0 * noise(p.xz * 0.004), u * 0.004 + sd))) * smoothstep(0.35, 0.6, noise(vec2(u * 0.03, y * 0.02) + 5.0));
   float ledge = max(smoothstep(0.4, 0.58, slope), led * smoothstep(0.16, 0.3, slope));
-  vec3 heath = mix(vec3(0.05, 0.068, 0.026), vec3(0.075, 0.072, 0.04), m2);
+  vec3 heath = mix(vec3(0.045, 0.07, 0.025), vec3(0.07, 0.078, 0.038), m2);
   alb = mix(alb, heath, ledge * smoothstep(1300.0, 1100.0, y));
 
   // the forest: birch and pine up to the tree line, on all but the
@@ -460,22 +460,21 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   vec3 trees = mix(pine, birch, bf);
   // clumps a few tens of metres across, and the runnels between them in
   // shade
-  float cl = noise(fq * 0.05 + 7.0) * 0.65 + noise(fq * 0.12 + 2.0) * 0.35;
-  trees *= (0.5 + 1.0 * cl * cl) * (1.0 - 0.35 * smoothstep(0.15, 0.6, gg.y));
+  float cl = noise(fq * 0.03 + 7.0) * 0.65 + noise(fq * 0.09 + 2.0) * 0.35;
+  trees *= (0.72 + 0.56 * cl) * (1.0 - 0.35 * smoothstep(0.15, 0.6, gg.y));
   // single crowns only on the nearest slopes; a fine grain where they
   // shrink under a few pixels; beyond that the velvet they make
-  float cw = 3.4;
-  float ca = sat(1.0 - (fp - 0.12) / 0.22);
+  float cw = 2.5;
+  float ca = sat(1.0 - (fp - 0.25) / 0.7);
   if (ca > 0.0) {
-    GAPS = smoothstep(0.45, 0.8, noise(fq * 0.035 + 3.0));
+    GAPS = smoothstep(0.4, 0.75, noise(fq * 0.09 + 3.0) * 0.6 + noise(fq * 0.03 + 8.0) * 0.4);
     vec2 l = normalize(vec2(dot(KEY.xz, tg), KEY.y + 0.25));
     vec2 c = crowns(fq / cw, l);
     vec3 one = mix(pine, birch, step(1.0 - bf, c.y)) * (0.85 + 0.3 * fract(c.y * 17.0));
-    trees = mix(trees, mix(trees, one * (0.7 + 0.6 * cl), 0.85) * mix(1.0, c.x, 0.75), ca);
+    trees = mix(trees, mix(trees, one * (0.72 + 0.56 * cl), 0.8) * c.x, ca);
   }
-  float grain = sat(1.0 - fp / 3.0) * (1.0 - ca);
-  float gn = noise(fq / cw * 1.1) * 0.6 + noise(fq / cw * 0.45 + 3.0) * 0.4;
-  trees *= 1.0 + grain * (gn - 0.5) * 1.1;
+  float grain = sat(1.0 - fp / 3.5) * (1.0 - ca);
+  trees *= 1.0 + grain * (noise(fq / cw * 0.8) - 0.5) * 0.8;
   // the gullies: grass and scrub, scree low down and snow high up
   vec3 grass = mix(vec3(0.055, 0.09, 0.025), vec3(0.08, 0.1, 0.04), m2);
   alb = mix(alb, grass, aval * smoothstep(0.3, 0.45, slope) * 0.8);
@@ -708,7 +707,7 @@ vec4 clouds(vec3 rd) {
   if (rd.y < 0.012) return vec4(0.0);
   float t0 = 2100.0 / (rd.y + 0.015);
   vec2 q = (rd.xz * t0 + vec2(TT * 4.0, TT * 1.5)) * 0.00085;
-  float cov = look3(0.6, 0.6, 0.95) + 0.1 * (1.0 - smoothstep(0.08, 0.35, rd.y));
+  float cov = look3(0.63, 0.62, 0.95) + 0.1 * (1.0 - smoothstep(0.08, 0.35, rd.y));
   float f = cloudD(q);
   float a = smoothstep(cov - 0.015, cov + 0.09, f);
   if (a <= 0.0) return vec4(0.0);

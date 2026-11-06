@@ -680,15 +680,15 @@ float fujiShadow(vec3 p) {
 float cloudShadow(vec3 p, float far) {
   /* started clear of the surface, so the hit's own small error does not
      speckle it */
-  float s = 1.0, t = 30.0, cav;
-  p.y += 6.0;
+  float s = 1.0, t = 70.0, cav;
+  p.y += 10.0;
   int n = far > 20000.0 ? 5 : 8;
   vec3 l = normalize(vec3(LD.x, max(LD.y, 0.03), LD.z));
   for (int i = 0; i < 8; i++) {
     vec3 q = p + l * t;
     if (q.y > CTOP || i >= n) break;
     float h = cloudH(q.xz, 1e4, cav) - drop(q.xz);
-    s = min(s, sat(0.5 + (q.y - h) / (0.08 * t + 10.0)));
+    s = min(s, sat(0.5 + (q.y - h) / (0.14 * t + 30.0)));
     t *= 1.85;
   }
   return s;
@@ -719,7 +719,7 @@ vec3 farNormal(vec3 p, float t, float fp, out float mat, out float cav) {
    tops and 0 deep in the troughs */
 vec3 shadeCloud(vec3 ro, vec3 rd, float t, vec3 n, float ao) {
   vec3 p = ro + rd * t;
-  float sh = mix(0.4, 1.0, cloudShadow(p, t)) * fujiShadow(p);
+  float sh = mix(0.5, 1.0, cloudShadow(p, t)) * fujiShadow(p);
   vec3 l = normalize(vec3(LD.x, max(LD.y, 0.02), LD.z));
   float dif = pow(sat(dot(n, l) * 0.5 + 0.5), 1.5);
   vec3 sun = LC / PI * dif * sh * (0.42 + 0.58 * ao);
