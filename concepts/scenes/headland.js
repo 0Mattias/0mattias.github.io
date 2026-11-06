@@ -87,11 +87,46 @@ float HAZE, LAMP, NIGHT, DIP;
 
 vec3 L3(vec3 d, vec3 u, vec3 n) { return d * W3.x + u * W3.y + n * W3.z; }
 
+/* the frame. Every frame is the wide one's picture, as the meadow's are.
+   A frame of three to two or wider looks as it always has. One narrower,
+   down to seven to ten, sees exactly as wide as a three to two frame:
+   its lens widens and the camera tips down just enough to hold the
+   horizon at the same height on the screen, so the extra view opens
+   down onto the sea and the foot of the cliffs. Narrower still the lens
+   widens no further, and the frame is a crop of that one, turned toward
+   the lighthouse so it keeps its place. The low sun and the moon are
+   moved with it, to stand where the wide frame shows them. */
+const float TV15 = 0.21661;       /* a 3:2 frame's half-height, as a tangent */
+const float HOFF = 0.72;          /* the horizon over the middle, in half-heights */
+const float YAW0 = 226.3;         /* the wide frame's bearing */
+float FTV, FTW, FYAW, FPITCH;
+void frameFor(float asp) {
+  float t1 = 1.5 * TV15;
+  FTV = asp >= 1.5 ? max(tan(radians(18.0)) / asp, 0.185) : t1 / max(asp, 0.7);
+  FTW = FTV * asp;
+  FPITCH = -atan(HOFF * FTV);
+  FYAW = YAW0;
+  if (asp < 0.7) {
+    vec2 e = fromPen(EYEQ), l = fromPen(LHQ);
+    float subj = degrees(atan(l.x - e.x, l.y - e.y));
+    FYAW = subj - degrees(atan(tan(radians(subj - YAW0)) / t1 * FTW));
+  }
+}
+/* a light the wide frame shows at bearing b and elevation e, set where a
+   narrower frame shows it at the same place on its screen */
+vec3 aimed(float b, float e) {
+  float t1 = 1.5 * TV15, p15 = -atan(HOFF * TV15);
+  if (FTV <= TV15 + 1e-4) return dirBE(b, e);
+  float bb = FYAW + degrees(atan(tan(radians(b - YAW0)) / t1 * min(FTW, t1)));
+  float ee = degrees(FPITCH + atan(tan(radians(e) - p15) / TV15 * FTV));
+  return dirBE(bb, ee);
+}
+
 void setup() {
   DIP = max(0.0, 1.0 - 3.8 * (uLook.x + uLook.y) * uLook.z);
   W3 = vec3(uLook.xy * DIP, uLook.z);
-  vec3 dSun = dirBE(196.0, 36.0), uSun = dirBE(238.5, 1.7);
-  MOON = dirBE(238.0, 2.3);
+  vec3 dSun = dirBE(196.0, 36.0), uSun = aimed(238.5, 1.7);
+  MOON = aimed(238.0, 2.3);
   SUN = normalize(dSun * uLook.x + uSun * uLook.y + MOON * uLook.z);
   SUND = normalize(dSun * uLook.x + uSun * (uLook.y + uLook.z));
   SUNC = L3(vec3(3.2, 3.0, 2.75), vec3(3.0, 1.45, 0.5), vec3(0.17, 0.2, 0.27));
@@ -304,7 +339,9 @@ vec3 normalAt(vec3 p, float t, float d0) {
 }
 
 float march(vec3 ro, vec3 rd, float tmax, float pa, out bool hit, out float d) {
-  float t = 0.5;
+  /* the turf at the eye's own feet is never drawn: a frame that looks
+     down far enough to see it has the blurred tussocks there instead */
+  float t = 14.0;
   d = 1e4;
   hit = false;
   for (int i = 0; i < 130; i++) {
@@ -945,15 +982,17 @@ vec4 nearGrass(vec2 fc, vec3 fw, out float depth) {
   vec2 q = vec2((fc.x - 0.5 * uRes.x) / uRes.y, fc.y / uRes.y);
   vec4 res = vec4(0.0);
   depth = 1e6;
-  if (q.y > 0.13) return res;
+  /* a narrow frame, looking further down, has a little more of it */
+  float steep = smoothstep(0.85, 0.6, uRes.x / uRes.y);
+  if (q.y > 0.13 + 0.06 * steep) return res;
   float back = pow(sat(dot(fw, SUN)), 2.0);
   for (int k = 2; k >= 0; k--) {
     float fk = float(k);
     float dz = 1.6 + 1.2 * fk;
-    float tall = 0.1 - 0.022 * fk, wdt = 0.009 - 0.002 * fk;
+    float tall = 0.1 - 0.022 * fk + 0.05 * steep, wdt = 0.009 - 0.002 * fk;
     vec2 p = q + vec2(uPoint.x * 0.01 / dz + fk * 3.7, 0.0);
     /* the tussocks' own mass, and the blades over it */
-    float mass = 0.03 * (0.4 + noise(vec2(p.x * 7.0, fk * 3.0))) - 0.008 * fk;
+    float mass = (0.03 + 0.03 * steep) * (0.4 + noise(vec2(p.x * 7.0, fk * 3.0))) - 0.008 * fk;
     float cov = smoothstep(0.003, 0.0, p.y - mass);
     float flower = 0.0;
     float ci = floor(p.x / wdt);
@@ -985,13 +1024,12 @@ vec4 nearGrass(vec2 fc, vec3 fw, out float depth) {
 }
 
 vec3 scene(vec2 fc) {
-  setup();
   float asp = uRes.x / uRes.y;
-  float wide = smoothstep(0.75, 1.5, asp);
-  float k = mix(2.0 * tan(radians(26.0)), max(2.0 * tan(radians(18.0)) / asp, 0.37), wide);
-  float yaw = radians(mix(227.5, 226.3, wide) + uPoint.x * 0.6);
-  float hz = mix(0.22, 0.14, wide);
-  float pitch = -atan((0.5 - hz) * k) + radians(uPoint.y * 0.4);
+  frameFor(asp);
+  setup();
+  float k = 2.0 * FTV;
+  float yaw = radians(FYAW + uPoint.x * 0.6);
+  float pitch = FPITCH + radians(uPoint.y * 0.4);
   vec3 fw = vec3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch));
   vec3 rt = normalize(vec3(fw.z, 0.0, -fw.x));
   vec3 up = cross(fw, rt);
@@ -1004,9 +1042,6 @@ vec3 scene(vec2 fc) {
   float s0;
   float de = mainD(eq, s0);
   ro.y = mainTop(eq, -de) - 3.0 * exp(de / 5.0) + 1.7 + uPoint.y * 0.8;
-  /* a tall frame looks steeply down: the eye stands a little higher, on
-     the rocks at the lip, so its own ground stays out of the picture */
-  ro.y += (1.0 - wide) * 7.0;
 
   float tSea = rd.y < 0.0 ? ro.y / -rd.y : 1e9;
   float tMax = min(tSea, 4000.0);
