@@ -150,7 +150,8 @@ void air(vec3 ro, vec3 rd, float d, out vec3 T, out vec3 S) {
   float tM = MIE * densInt(ro.y, rd.y, d, 1200.0) + HAZE * densInt(ro.y, rd.y, max(d - 1600.0, 0.0), 900.0);
   T = exp(-(tR + tM * 1.11));
   vec3 veil = (skyMS(0.0) * 0.35 + (SKYH * 0.6 + SKYZ * 0.4) * look3(0.72, 0.62, 0.5)) * vec3(1.0, 0.98, 0.9) + twilight(0.0);
-  S = scatter1(tR, tM, dot(rd, KEY), KEYG * AIRLIT) + veil * (1.0 - T);
+  // close to, the walls hide most of the sky from the air between
+  S = scatter1(tR, tM, dot(rd, KEY), KEYG * AIRLIT) + veil * (1.0 - T) * mix(0.35, 1.0, smoothstep(500.0, 4000.0, d));
 }
 
 /* ------------------------------------------------------------ the land */
@@ -430,7 +431,7 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   // gneiss: grey, mottled, banded across the faces, warmer where lichen
   // takes it, black where water seeps over
   float k1 = noise3(p * 0.012) * 0.6 + noise3(p * 0.047 + 3.0) * 0.4;
-  vec3 alb = vec3(0.09, 0.09, 0.084) * (0.55 + 0.8 * k1);
+  vec3 alb = vec3(0.066, 0.067, 0.062) * (0.5 + 0.9 * k1);
   alb *= 0.8 + 0.4 * noise(vec2(y * 0.028 + 2.5 * noise3(p * 0.003), sd * 4.0));
   alb = mix(alb, alb * vec3(1.06, 1.04, 0.94), noise3(p * 0.007 + 1.0));
   float ws = noise3(vec3(p.x * 0.03, y * 0.002, p.z * 0.03) + 11.0);
@@ -442,19 +443,23 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   float stx = ang0.x / (6.0 * PXA) + 2.5 * noise(vec2(u * 0.012, y * 0.002 + sd));
   float sty = ang0.y / (70.0 * PXA);
   float steep = smoothstep(0.72, 0.45, slope);
-  alb *= 1.0 - 0.6 * smoothstep(0.55, 0.8, noise(vec2(stx, sty + sd * 5.0))) * steep;
+  alb = mix(alb, vec3(0.016, 0.022, 0.016), 0.75 * smoothstep(0.52, 0.8, noise(vec2(stx, sty + sd * 5.0))) * steep);
   alb *= 1.0 + 0.35 * smoothstep(0.6, 0.85, noise(vec2(stx * 1.7 + 9.0, sty * 1.3))) * steep;
 
   // ledges: grass and heath catch on every step of the rock
+  vec2 fq0 = vec2(u, y * 1.25);
   float led = smoothstep(0.42, 0.62, noise(vec2(y * 0.045 + 3.0 * noise(p.xz * 0.004), u * 0.004 + sd))) * smoothstep(0.35, 0.6, noise(vec2(u * 0.03, y * 0.02) + 5.0));
-  float ledge = max(smoothstep(0.4, 0.58, slope), led * smoothstep(0.16, 0.3, slope));
-  vec3 heath = mix(vec3(0.045, 0.07, 0.025), vec3(0.07, 0.078, 0.038), m2);
+  // the green climbs nearly to the rim, in patches broken by the rock
+  float rag = noise(fq0 * 0.012 + 3.0) * 0.55 + noise(fq0 * 0.04 + 9.0) * 0.3 + noise(fq0 * 0.12) * 0.15;
+  float ledge = max(smoothstep(0.3, 0.46, slope + 0.4 * (rag - 0.5)), max(led, smoothstep(0.4, 0.62, rag)) * smoothstep(0.08, 0.2, slope));
+  vec3 heath = mix(vec3(0.022, 0.048, 0.013), vec3(0.042, 0.06, 0.022), m2);
+  heath *= 0.55 + 0.9 * noise(fq0 * 0.35 + 2.0) * noise(fq0 * 0.11 + 6.0) * 1.6;
   alb = mix(alb, heath, ledge * smoothstep(1300.0, 1100.0, y));
 
   // the forest: birch and pine up to the tree line, on all but the
   // steepest steps, and not down the gullies, which avalanches keep open
-  float tl = 720.0 + 260.0 * noise(p.xz * 0.0011) - 130.0;
-  float steepOk = smoothstep(0.36, 0.48, slope + 0.14 * (m2 - 0.5) + 0.08 * (m3 - 0.5));
+  float tl = 880.0 + 280.0 * noise(p.xz * 0.0011) - 140.0 + 160.0 * (rag - 0.5);
+  float steepOk = smoothstep(0.29, 0.42, slope + 0.3 * (rag - 0.5) + 0.08 * (m3 - 0.5));
   float aval = smoothstep(0.3, 0.7, gg.x) * smoothstep(30.0, 160.0, y);
   float fo = fallOff(u, s, sd);
   float forest = steepOk * (1.0 - smoothstep(tl - 160.0, tl + 30.0, y + 120.0 * (m3 - 0.5))) * (1.0 - 0.9 * aval) * smoothstep(0.8, 2.5, y)
@@ -464,7 +469,7 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   vec2 fq = vec2(u, y * 1.25);
   float bp = noise(fq * 0.007 + 11.0) * 0.6 + noise(fq * 0.019 + 4.0) * 0.4;
   float bf = sat(smoothstep(0.42, 0.64, bp) * 0.85 + 0.3 * (1.0 - smoothstep(60.0, 400.0, y)) + 0.35 * gg.y - 0.3 * smoothstep(350.0, 650.0, y));
-  vec3 pine = vec3(0.0085, 0.017, 0.009), birch = vec3(0.027, 0.045, 0.016);
+  vec3 pine = vec3(0.0065, 0.0155, 0.0065), birch = vec3(0.021, 0.044, 0.011);
   vec3 trees = mix(pine, birch, bf);
   // clumps a few tens of metres across, and the runnels between them in
   // shade
@@ -547,12 +552,12 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
     ao = mix(1.0, clamp(1.0 - lap * 0.0055, 0.35, 1.25), smoothstep(9000.0, 5000.0, t));
   }
   float open = mix(0.28, 0.9, smoothstep(0.0, 1200.0, y)) * ao;
-  E += mix(SKYH, SKYZ, 0.5 + 0.5 * n.y) * PI * (0.5 + 0.5 * n.y) * open * look3(vec3(1.0), vec3(1.7, 2.1, 2.9), vec3(1.8));
+  E += mix(SKYH, SKYZ, 0.5 + 0.5 * n.y) * PI * (0.5 + 0.5 * n.y) * open * look3(vec3(0.75), vec3(1.4, 1.7, 2.4), vec3(1.8));
   vec2 kh = normalize(KEY.xz + vec2(1e-4, 0.0));
   float away = sat(0.35 - 0.65 * dot(n.xz, kh));
   float litw = look3(1.0, 0.12, 0.6);
   E += KEYG * vec3(0.045, 0.085, 0.03) * away * litw * (1.0 - 0.5 * n.y) * ao * (1.2 - open);
-  float wfr = mix(0.3, 0.05, smoothstep(0.0, 400.0, y));
+  float wfr = mix(0.14, 0.03, smoothstep(0.0, 400.0, y));
   E += (SKYH * 0.6 + SKYZ * 0.4 + KEYG * 0.02 * litw) * PI * 0.5 * wfr * (1.0 - 0.7 * n.y);
   E += GLOWA * (0.6 + 0.4 * n.y);
   return alb / PI * E;
@@ -717,17 +722,18 @@ float cloudD(vec2 q) {
   q += 0.3 * vec2(noise(q * 0.4 + 5.0), noise(q * 0.4 + 9.0));
   // where the clouds stand, and the billows on them: rounded puffs with
   // creases between
-  float b = 0.65 * noise(q * 0.7) + 0.35 * noise(q * 1.5 + 2.3);
+  float b = 0.72 * noise(q * 0.55) + 0.28 * noise(q * 1.3 + 2.3);
   float d = 0.5 * abs(2.0 * noise(q * 3.1 + 1.7) - 1.0) + 0.32 * abs(2.0 * noise(q * 6.5 + 3.1) - 1.0) + 0.18 * abs(2.0 * noise(q * 13.0 + 4.4) - 1.0);
   return b + (d - 0.45) * 0.3;
 }
 vec4 clouds(vec3 rd) {
   if (rd.y < 0.012) return vec4(0.0);
   float t0 = 2100.0 / (rd.y + 0.015);
-  vec2 q = (rd.xz * t0 + vec2(TT * 4.0, TT * 1.5)) * 0.00085;
-  float cov = look3(0.63, 0.62, 0.95) + 0.1 * (1.0 - smoothstep(0.08, 0.35, rd.y));
+  vec2 q = (rd.xz * t0 + vec2(TT * 4.0, TT * 1.5)) * 0.00042 + vec2(6.1, 2.2);
+  float cov = look3(0.6, 0.59, 0.95) + 0.08 * (1.0 - smoothstep(0.08, 0.35, rd.y));
   float f = cloudD(q);
-  float a = smoothstep(cov - 0.015, cov + 0.09, f);
+  float fray = noise(q * 30.0 + 1.3) * 0.6 + noise(q * 70.0 + 7.1) * 0.4;
+  float a = smoothstep(cov - 0.03, cov + 0.11, f + (fray - 0.5) * 0.09);
   if (a <= 0.0) return vec4(0.0);
   // further along the sight line is higher up the cloud: where it thins
   // beyond, the sight line meets its rounded, sunlit top; where it thickens
@@ -736,15 +742,15 @@ vec4 clouds(vec3 rd) {
   vec2 lk = normalize(KEY.xz + vec2(1e-4, 0.0));
   float fv = REFL ? f - 0.02 : cloudD(q + vd * 0.05);
   float fs = REFL ? f - 0.01 : cloudD(q + lk * 0.025);
-  float thick = smoothstep(cov, cov + 0.22, f);
+  float thick = smoothstep(cov + 0.02, cov + 0.13, f);
   float top = sat(0.5 + 7.0 * (f - fv));
   float sun = sat(0.45 + 12.0 * (f - fs));
   float base = sat(6.0 * (fv - f)) * thick;
-  float lit = sat(0.05 + 0.75 * sun + 0.5 * top - 0.55 * base);
+  float lit = sat(0.1 + 0.75 * sun + 0.55 * top - 0.6 * base + 0.3 * (fray - 0.5));
   lit *= lit * (3.0 - 2.0 * lit);
   float c = dot(rd, KEY);
-  vec3 sunc = KEYC * (0.015 + 0.21 * lit + 0.6 * phaseM(c, 0.6) * (1.0 - 0.8 * thick)) * look3(0.85, 0.65, 0.5);
-  vec3 amb = (SKYZ * 0.7 + SKYH * 0.3) * PI * mix(0.4, 0.15, max(thick * 0.8, base)) * look3(1.0, 0.65, 1.0);
+  vec3 sunc = KEYC * (0.012 + 0.26 * lit + 0.6 * phaseM(c, 0.6) * (1.0 - 0.8 * thick)) * look3(0.85, 0.65, 0.5);
+  vec3 amb = (SKYZ * 0.7 + SKYH * 0.3) * PI * mix(0.38, 0.11, max(thick * 0.8, base)) * look3(1.0, 0.65, 1.0);
   float fade = smoothstep(0.015, 0.1, rd.y) * exp(-t0 * 0.00003);
   return vec4((sunc + amb) * a * fade, a * fade);
 }
@@ -900,7 +906,7 @@ vec3 sky(vec3 rd) {
 vec2 ripples(vec2 p, float t, out float gust) {
   gust = smoothstep(0.62, 0.85, noise(p * vec2(0.0011, 0.003) + vec2(TT * 0.0035, 0.0)));
   float fp = (t * t + t) * PXA;
-  float amp = mix(1.0, 0.25, smoothstep(4.0, 150.0, t)) * (0.6 + 2.2 * gust) * look3(1.0, 0.6, 0.7);
+  float amp = mix(1.0, 0.3, smoothstep(4.0, 150.0, t)) * (0.7 + 0.8 * gust) * look3(1.0, 0.6, 0.7);
   vec2 g = vec2(0.0);
   float f = 0.6, a = 0.0045;
   vec2 q = p;
@@ -915,7 +921,7 @@ vec2 ripples(vec2 p, float t, out float gust) {
   }
   // a long, slow swell under them
   vec3 sw = noised(p * vec2(0.04, 0.1) + vec2(0.0, TT * 0.05));
-  g += sw.yz * vec2(0.04, 0.1) * 0.04;
+  g += sw.yz * vec2(0.04, 0.1) * 0.006;
   return g * amp;
 }
 
@@ -940,7 +946,8 @@ vec4 lowCloud(vec3 ro, vec3 rd, float tmax, float jit, int n) {
   // it lies close along the slopes: the last stretch before the land
   ta = max(ta, tb - 700.0);
   if (tb <= ta) return vec4(0.0, 0.0, 0.0, 1.0);
-  float amt = look3(1.0, 0.8, 0.45);
+  float amt = look3(0.0, 0.0, 0.25);
+  if (amt < 0.01) return vec4(0.0, 0.0, 0.0, 1.0);
   float T = 1.0;
   vec3 L = vec3(0.0);
   float dt = (tb - ta) / float(n);
@@ -1074,11 +1081,11 @@ vec3 scene(vec2 fc) {
     vec2 g = ripples(p.xz, tw, gust);
     vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
     vec3 r = reflect(d, n);
-    r.y = max(r.y, 0.0015) + gust * 0.02 * smoothstep(40.0, 400.0, tw);
+    r.y = max(r.y, 0.0015);
     r = normalize(r);
     float F = 0.02 + 0.98 * pow(1.0 - max(dot(-d, n), 0.0), 5.0);
     acc += thr * waterBody() * (1.0 - F);
-    thr *= F;
+    thr *= F * 0.72;
     o = p + vec3(0.0, 0.05, 0.0);
     d = r;
     tl = tw;
