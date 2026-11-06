@@ -20,7 +20,7 @@ window.CONCEPT_LIST = [
     id: 'summit',
     title: 'Above the clouds',
     place: 'Mount Fuji from the Southern Alps, Japan',
-    blurb: 'From an alpine ridge in the Akaishi Mountains, Fuji rising out of a sea of cloud. At dusk it glows red under the Belt of Venus.'
+    blurb: 'From an alpine ridge in the Akaishi Mountains, Fuji rising beyond ridge after ridge and the bands of cloud between them. At dusk it glows red under the Belt of Venus.'
   },
   {
     id: 'headland',
