@@ -58,6 +58,17 @@ window.CONCEPT = {
   id: 'fjord',
   theme: { day: '#6192c5', dusk: '#8f99ba', night: '#2e4b7e' },
   t0: 40,
+  /* the meadow's lens and grade; by night more of the colour is kept, so
+     the aurora stays green, and it and the moon bloom more */
+  camera: {
+    expo: [1.0, 1.05, 1.15],
+    bloom: [0.05, 0.08, 0.13],
+    thresh: 0.9,
+    sat: [0.95, 0.93, 0.9],
+    vig: [0.14, 0.16, 0.2],
+    grain: 0.022,
+    blur: 0.012
+  },
   frag: `
 /* ------------------------------------------------------------ state */
 /* metres; x east (right), y up, z north (down the fjord). Set once a pixel. */
@@ -149,7 +160,9 @@ void air(vec3 ro, vec3 rd, float d, out vec3 T, out vec3 S) {
   vec3 tR = BR * densInt(ro.y, rd.y, d, 8000.0);
   float tM = MIE * densInt(ro.y, rd.y, d, 1200.0) + HAZE * densInt(ro.y, rd.y, max(d - 1600.0, 0.0), 900.0);
   T = exp(-(tR + tM * 1.11));
-  vec3 veil = (skyMS(0.0) * 0.35 + (SKYH * 0.6 + SKYZ * 0.4) * look3(0.72, 0.62, 0.5)) * vec3(1.0, 0.98, 0.9) + twilight(0.0);
+  float tws = dot(normalize(rd.xz + vec2(1e-4, 0.0)), normalize(KEY.xz + vec2(1e-4, 0.0)));
+  vec3 warm = mix(vec3(0.9, 0.96, 1.1), look3(vec3(1.14, 1.02, 0.86), vec3(1.3, 0.98, 0.78), vec3(1.0)), smoothstep(-0.6, 0.9, tws));
+  vec3 veil = (skyMS(0.0) * 0.35 + (SKYH * 0.6 + SKYZ * 0.4) * look3(0.72, 0.62, 0.5)) * vec3(1.0, 0.98, 0.9) * warm + twilight(0.0);
   // close to, the walls hide most of the sky from the air between
   S = scatter1(tR, tM, dot(rd, KEY), KEYG * AIRLIT) + veil * (1.0 - T) * mix(0.35, 1.0, smoothstep(500.0, 4000.0, d));
 }
@@ -384,6 +397,8 @@ vec3 landNormal(vec3 p, float t, int det, out float h0) {
 
 /* ------------------------------------------------------------ the land's skin */
 
+float cloudShade(vec3 p);   // the deck's shadow, from the sky below
+
 /* the crowns of the trees, one to a cell of a jittered grid laid on the
    wall (q, in crowns), of many sizes and with gaps between, each a soft
    dome lit on its side toward the light (l, in the same plane) with the
@@ -430,7 +445,7 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
 
   // gneiss: grey, mottled, banded across the faces, warmer where lichen
   // takes it, black where water seeps over
-  float k1 = noise3(p * 0.012) * 0.6 + noise3(p * 0.047 + 3.0) * 0.4;
+  float k1 = noise3(p * 0.012) * 0.5 + noise3(p * 0.047 + 3.0) * 0.3 + noise3(p * 0.16 + 1.0) * 0.2 * sat(1.0 - fp / 3.0) + 0.1 * (1.0 - sat(1.0 - fp / 3.0));
   vec3 alb = vec3(0.066, 0.067, 0.062) * (0.5 + 0.9 * k1);
   alb *= 0.8 + 0.4 * noise(vec2(y * 0.028 + 2.5 * noise3(p * 0.003), sd * 4.0));
   alb = mix(alb, alb * vec3(1.06, 1.04, 0.94), noise3(p * 0.007 + 1.0));
@@ -453,7 +468,7 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   float rag = noise(fq0 * 0.012 + 3.0) * 0.55 + noise(fq0 * 0.04 + 9.0) * 0.3 + noise(fq0 * 0.12) * 0.15;
   float ledge = max(smoothstep(0.3, 0.46, slope + 0.4 * (rag - 0.5)), max(led, smoothstep(0.4, 0.62, rag)) * smoothstep(0.08, 0.2, slope));
   vec3 heath = mix(vec3(0.022, 0.048, 0.013), vec3(0.042, 0.06, 0.022), m2);
-  heath *= 0.55 + 0.9 * noise(fq0 * 0.35 + 2.0) * noise(fq0 * 0.11 + 6.0) * 1.6;
+  heath *= (0.55 + 0.9 * noise(fq0 * 0.35 + 2.0) * noise(fq0 * 0.11 + 6.0) * 1.6) * (0.75 + 0.5 * noise(fq0 * 0.9 + 4.0) * sat(1.0 - fp / 3.0));
   alb = mix(alb, heath, ledge * smoothstep(1300.0, 1100.0, y));
 
   // the forest: birch and pine up to the tree line, on all but the
@@ -539,7 +554,7 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   float nl = dot(n, KEY);
   float wrap = forest * 0.25;
   float nlw = (nl + wrap) / (1.0 + wrap);
-  vec3 E = KEYG * max(nlw, 0.0) * sh;
+  vec3 E = KEYG * max(nlw, 0.0) * sh * (REFL ? 1.0 : cloudShade(p));
   // hollows see less of the sky than ribs: the height against its
   // neighbours' mean
   float ao = 1.0;
@@ -718,41 +733,77 @@ vec3 shadeBuilding(vec3 p, vec3 n, vec3 alb, float sh) {
    crisp, billowed edges, grey where they are thick, bright on the edges
    toward the sun and silvered when it is behind them. Fewer and thinner
    low over the horizon, so the gap down the fjord keeps its blue */
-float cloudD(vec2 q) {
-  q += 0.3 * vec2(noise(q * 0.4 + 5.0), noise(q * 0.4 + 9.0));
-  // where the clouds stand, and the billows on them: rounded puffs with
-  // creases between
-  float b = 0.72 * noise(q * 0.55) + 0.28 * noise(q * 1.3 + 2.3);
-  float d = 0.5 * abs(2.0 * noise(q * 3.1 + 1.7) - 1.0) + 0.32 * abs(2.0 * noise(q * 6.5 + 3.1) - 1.0) + 0.18 * abs(2.0 * noise(q * 13.0 + 4.4) - 1.0);
-  return b + (d - 0.45) * 0.3;
+/* the deck's field at q: x the masses where clouds stand, y the puffs
+   and creases on them, z the two together, the cloud itself */
+vec2 cloudWarp(vec2 q) { return q + 0.3 * vec2(noise(q * 0.4 + 5.0), noise(q * 0.4 + 9.0)); }
+float cloudBig(vec2 p) { return 0.72 * noise(p * 0.55) + 0.28 * noise(p * 1.3 + 2.3); }
+float cloudPuffs(vec2 p) {
+  return 0.5 * abs(2.0 * noise(p * 3.1 + 1.7) - 1.0) + 0.32 * abs(2.0 * noise(p * 6.5 + 3.1) - 1.0) + 0.18 * abs(2.0 * noise(p * 13.0 + 4.4) - 1.0);
 }
+float cloudD(vec2 q) { vec2 p = cloudWarp(q); return cloudBig(p) + (cloudPuffs(p) - 0.45) * 0.3; }
+
+/* the deck's shadows on the land: the clouds a point would see looking
+   up at the light. Those over the east wall stand three kilometres west,
+   over the uplands and out of sight, so they are a field of their own,
+   cumulus-sized and drifting with the same wind, soft at the edges */
+vec2 cloudQ(vec2 xz) { return (xz - CAM.xz + vec2(TT * 4.0, TT * 1.5)) * 0.00042 + vec2(6.1, 2.2); }
+float cloudShade(vec3 p) {
+  float up = smoothstep(0.05, 0.16, KEY.y) * (1.0 - KEYS);
+  if (up <= 0.0) return 1.0;
+  vec2 c = p.xz + KEY.xz / max(KEY.y, 0.05) * (2100.0 - p.y);
+  vec2 q = (c + vec2(TT * 4.0, TT * 1.5)) * 0.0011 + vec2(3.3, 8.1);
+  q += 0.35 * vec2(noise(q * 0.5 + 2.0), noise(q * 0.5 + 7.0));
+  float f = 0.6 * noise(q) + 0.28 * noise(q * 2.3 + 4.0) + 0.12 * noise(q * 5.1 + 1.0);
+  return 1.0 - 0.7 * up * smoothstep(0.6, 0.7, f);
+}
+
+/* the deck seen from beneath, shaded as the meadow's is: each mass and
+   each puff on it lit on the side toward the light and shadowed on the
+   side away, at both scales; the flat grey base where more of the cloud
+   stands beyond the sight line (above it on the screen); creases between
+   the puffs; and a bright lining on the thin edges facing the light.
+   Fewer and thinner low over the horizon, so the gap keeps its blue */
 vec4 clouds(vec3 rd) {
   if (rd.y < 0.012) return vec4(0.0);
   float t0 = 2100.0 / (rd.y + 0.015);
-  vec2 q = (rd.xz * t0 + vec2(TT * 4.0, TT * 1.5)) * 0.00042 + vec2(6.1, 2.2);
+  vec2 q = cloudQ(CAM.xz + rd.xz * t0);
   float cov = look3(0.6, 0.59, 0.95) + 0.08 * (1.0 - smoothstep(0.08, 0.35, rd.y));
-  float f = cloudD(q);
+  vec2 p = cloudWarp(q);
+  float big = cloudBig(p);
+  if (big < cov - 0.2) return vec4(0.0);
+  float puffs = cloudPuffs(p);
+  float f = big + (puffs - 0.45) * 0.3;
   float fray = noise(q * 30.0 + 1.3) * 0.6 + noise(q * 70.0 + 7.1) * 0.4;
-  float a = smoothstep(cov - 0.03, cov + 0.11, f + (fray - 0.5) * 0.09);
+  float e = f + (fray - 0.5) * 0.09 - cov;
+  float a = smoothstep(-0.03, 0.11, e);
   if (a <= 0.0) return vec4(0.0);
-  // further along the sight line is higher up the cloud: where it thins
-  // beyond, the sight line meets its rounded, sunlit top; where it thickens
-  // beyond, its flatter, greyer base
+  float fade = smoothstep(0.015, 0.1, rd.y) * exp(-t0 * 0.00003);
+  vec3 lit = KEYC * look3(0.85, 0.75, 0.5) * 0.17 + SKYZ * PI * 0.1;
+  vec3 sk = SKYZ * PI;
+  vec3 shd = mix(vec3(luma(sk)), sk, 0.35) * look3(0.72, 0.5, 0.7) + KEYC * look3(0.012, 0.02, 0.01);
+  if (REFL) {
+    float k = 0.55 - 0.3 * smoothstep(0.0, 0.2, e);
+    return vec4(mix(shd, lit, k) * a * fade, a * fade);
+  }
   vec2 vd = normalize(rd.xz + vec2(1e-4, 0.0));
   vec2 lk = normalize(KEY.xz + vec2(1e-4, 0.0));
-  float fv = REFL ? f - 0.02 : cloudD(q + vd * 0.05);
-  float fs = REFL ? f - 0.01 : cloudD(q + lk * 0.025);
-  float thick = smoothstep(cov + 0.02, cov + 0.13, f);
-  float top = sat(0.5 + 7.0 * (f - fv));
-  float sun = sat(0.45 + 12.0 * (f - fs));
-  float base = sat(6.0 * (fv - f)) * thick;
-  float lit = sat(0.1 + 0.75 * sun + 0.55 * top - 0.6 * base + 0.3 * (fray - 0.5));
-  lit *= lit * (3.0 - 2.0 * lit);
+  float bigShade = smoothstep(0.06, -0.06, cloudBig(p + lk * 0.12) - big);
+  float lobeShade = smoothstep(0.08, -0.08, cloudPuffs(p + lk * 0.025) - puffs);
+  // into the cloud from its edge it is thicker, and seen from below its
+  // flat base; only where it thins beyond the sight line (its upper edge
+  // on the screen) does the sight line meet its sunlit, billowed top
+  float dpt = smoothstep(0.0, 0.07, e);
+  float top = smoothstep(0.03, -0.05, cloudBig(p + vd * 0.09) + (puffs - 0.45) * 0.3 - cov);
+  float thick = dpt;
+  float lam = 0.1 + 0.9 * (0.4 * bigShade + 0.6 * lobeShade);
+  float belly = mix(1.0, 0.2, dpt * (1.0 - 0.85 * top));
+  float crease = smoothstep(0.5, 0.15, puffs);
+  float lk2 = sat(lam * belly * (1.0 - 0.3 * crease));
+  float facing = smoothstep(0.2, 0.8, 0.5 * bigShade + 0.5 * lobeShade);
+  float lining = (1.0 - smoothstep(0.0, 0.08, e)) * (0.25 + 0.75 * facing);
   float c = dot(rd, KEY);
-  vec3 sunc = KEYC * (0.012 + 0.26 * lit + 0.6 * phaseM(c, 0.6) * (1.0 - 0.8 * thick)) * look3(0.85, 0.65, 0.5);
-  vec3 amb = (SKYZ * 0.7 + SKYH * 0.3) * PI * mix(0.38, 0.11, max(thick * 0.8, base)) * look3(1.0, 0.65, 1.0);
-  float fade = smoothstep(0.015, 0.1, rd.y) * exp(-t0 * 0.00003);
-  return vec4((sunc + amb) * a * fade, a * fade);
+  vec3 col = mix(shd, lit, lk2) + KEYC * look3(0.85, 0.75, 0.5) * (0.06 * lining + 0.5 * phaseM(c, 0.6) * (1.0 - 0.8 * thick));
+  return vec4(col * a * fade, a * fade);
 }
 
 vec3 moonDisc(vec3 rd) {
@@ -888,14 +939,21 @@ vec3 sky(vec3 rd) {
   vec3 c = skyRad(rd);
   vec4 cl = clouds(rd);
   float sd = dot(rd, KEY);
-  c += keyLight(KEY.y, 1.0) * smoothstep(0.999986, 0.999992, sd) * 40000.0 * (1.0 - KEYS);
+  vec3 sunL = keyLight(KEY.y, 1.0) * (1.0 - KEYS);
+  c += sunL * smoothstep(0.999986, 0.999992, sd) * 40000.0;
+  // a wide, layered glow about the sun, as a lens and the haze make it,
+  // there even when the sun stands just out of the frame
+  float s1 = max(sd, 0.0);
+  vec3 halo = sunL * (0.016 * s1 * s1 * s1 + 0.05 * pow(s1, 16.0) + 0.6 * pow(s1, 400.0));
   if (uLook.z > 0.001) {
     float mu = max(rd.y, 0.0);
     vec3 T = exp(-(BR * 8000.0 * airmass(mu, 35.0)));
-    vec3 n = stars(rd) * T + moonDisc(rd) * T + aurora(rd);
+    float m1 = max(dot(rd, MOOND), 0.0);
+    vec3 n = stars(rd) * T + moonDisc(rd) * T + aurora(rd)
+           + vec3(0.55, 0.62, 0.8) * (0.006 * pow(m1, 12.0) + 0.05 * pow(m1, 300.0)) * (0.4 + 1.2 * uMoon);
     c += n * uLook.z;
   }
-  return c * (1.0 - cl.a) + cl.rgb;
+  return (c + halo) * (1.0 - cl.a) + cl.rgb + halo * cl.a * 0.6;
 }
 
 /* ------------------------------------------------------------ the water */
@@ -974,7 +1032,7 @@ vec4 lowCloud(vec3 ro, vec3 rd, float tmax, float jit, int n) {
 }
 
 vec4 mist(vec3 ro, vec3 rd, float d) {
-  float amt = look3(0.1, 0.9, 0.7);
+  float amt = look3(0.45, 0.9, 0.7);
   float dd = min(d, 14000.0);
   float tau = 0.0, s0 = 0.0;
   for (int i = ZERO; i < 5; i++) {
@@ -987,7 +1045,7 @@ vec4 mist(vec3 ro, vec3 rd, float d) {
     s0 = s1;
   }
   tau *= 0.00012 * amt;
-  vec3 mc = (SKYZ * 0.6 + SKYH * 0.4) * PI * 0.22 + KEYG * AIRLIT * 0.015 + GLOWA * 0.25;
+  vec3 mc = (SKYZ * 0.6 + SKYH * 0.4) * PI * 0.22 + KEYG * (AIRLIT * 0.015 + 0.25 * phaseM(dot(rd, KEY), 0.7) * (1.0 - KEYS)) + GLOWA * 0.25;
   float T = exp(-tau);
   return vec4(mc * (1.0 - T), T);
 }
@@ -1047,6 +1105,12 @@ vec3 scene(vec2 fc) {
   vec3 acc = vec3(0.0), thr = vec3(1.0);
   vec3 o = ro, d = rd;
   float tend0 = 1e9;
+  /* the lens is focused on the walls a few hundred metres off, with a
+     small stop, so that only the water within a few tens of metres goes
+     soft; the water's pixels lie at the water's own distance, so the near
+     ripples blur and the far mirror stays sharp */
+  gFocus = mix(480.0, 700.0, fk);
+  gAperture = 1.3e-4;
   int kind = 0;            // what the last ray met: 0 sky, 1 land, 2 a building
   float th = 0.0, tl = 0.0;
   vec3 bn = vec3(0.0, 1.0, 0.0), ba = vec3(0.0);
@@ -1060,7 +1124,7 @@ vec3 scene(vec2 fc) {
     kind = tbl > 0.0 ? 2 : t > 0.0 ? 1 : 0;
     if (kind == 2) { tend = tbl; bn = nb; ba = ab; }
     th = tend;
-    if (!refl) tend0 = tend;
+    if (!refl) { tend0 = tend; gDepth = kind > 0 ? tend : tw < 1e8 ? tw : 1e6; }
     bool water = kind == 0 && tw < 1e8;
     // the air, the low cloud and the mist along the way; the sky holds
     // its own air

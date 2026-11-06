@@ -39,6 +39,18 @@ window.CONCEPT = {
   id: 'headland',
   theme: { day: '#c3ceda', dusk: '#ead6b9', night: '#2f384d' },
   t0: 12,
+  /* the lens: focused on the prow and the light, a step of turf at the
+     lens far out of it; the low sun and its path on the sea bloom freely,
+     the beam softly */
+  camera: {
+    expo: [1.0, 1.0, 1.08],
+    bloom: [0.045, 0.13, 0.11],
+    thresh: 0.85,
+    sat: [0.9, 0.9, 0.74],
+    vig: [0.16, 0.2, 0.22],
+    grain: 0.022,
+    blur: 0.016
+  },
   frag: `
 /* ------------------------------------------------------------ the world
    metres; x east, z north, y up. The peninsula is laid out in its own
@@ -346,7 +358,9 @@ vec3 aerial(vec3 col, vec3 ro, vec3 rd, float t) {
   float od = HAZE * t * exp(-ro.y / H) * (abs(k) > 1e-3 ? (1.0 - exp(-k)) / k : 1.0);
   vec3 ext = exp(-od * vec3(0.85, 0.95, 1.1));
   vec3 hd = normalize(vec3(rd.x, max(rd.y, 0.0) * 0.35 + 0.006, rd.z));
-  return col * ext + sky(hd) * (1.0 - ext);
+  /* the haze scatters the light forward, so it warms toward the sun */
+  vec3 ins = sky(hd) + GLOW * hg(dot(rd, SUN), 0.7) * look3(0.12, 0.22, 0.1);
+  return col * ext + ins * (1.0 - ext);
 }
 
 /* stratocumulus: a broken sheet about 1.6 km up, its cells drawn out
@@ -381,11 +395,13 @@ vec4 clouds(vec3 ro, vec3 rd) {
   return vec4(c, a * smoothstep(0.003, 0.02, rd.y));
 }
 
+/* the shadows of the clouds overhead, drifting over land and sea in soft
+   patches some hundreds of metres across */
 float cloudShade(vec3 p) {
   float t = (CLH - p.y) / max(SUN.y, 0.06);
-  vec2 q = p.xz + SUN.xz * t;
-  float cv = clCov();
-  return 1.0 - 0.65 * smoothstep(cv, cv + 0.2, clN(q, 2)) * (1.0 - NIGHT);
+  vec2 q = (p.xz + SUN.xz * t) / 950.0 + vec2(uTime * 0.0042, uTime * 0.0016) + vec2(0.35, 0.8);
+  float n = fbm(q, 2);
+  return 1.0 - 0.62 * smoothstep(0.5, 0.64, n) * look3(1.0, 0.45, 0.0);
 }
 
 vec3 stars(vec3 rd, float pa) {
@@ -650,6 +666,11 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa, float d0) {
        them hold shadow and seep */
     float g2 = 1.0 - abs(2.0 * noise(vec2(s / 19.0, p.y / 160.0 + 5.0)) - 1.0);
     rock *= mix(1.0, (1.25 - 0.3 * g2 * g2) * (1.0 - 0.55 * pow(g2, 6.0)), rg);
+    /* the face is broken into small blocks, each a shade apart */
+    vec2 bc = floor(vec2(s / 1.5 + 0.6 * vs, p.y / 1.1 + 0.5 * floor(s / 1.5) + 1.3 * vs));
+    rock *= mix(1.0, 0.84 + 0.32 * hash12(bc + fi * 7.0), sat(1.5 - fp));
+    /* and streaked dark below the seeps */
+    rock *= 1.0 - 0.45 * smoothstep(0.66, 0.88, noise(vec2(s / 2.2, p.y / 110.0) + 11.0));
     /* broad tones down the face: dark where it seeps, lighter where dry */
     float zone = noise(vec2(s / 30.0, p.y / 120.0) + 2.0);
     rock *= 0.55 + 0.9 * zone;
@@ -676,10 +697,10 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa, float d0) {
   if (gw > 0.001) {
     /* grass on the tops and the ledges: bright where it is grazed short,
        olive and browner where it is long or steep, broken by outcrops */
-    grass = vec3(0.072, 0.086, 0.034);
+    grass = vec3(0.08, 0.086, 0.036);
     float gn = noise(p.xz / 25.0) * 0.35 + noise(p.xz / 5.0) * 0.4 + noise(p.xz / 1.6) * 0.25;
     grass *= 0.55 + 0.9 * gn;
-    grass = mix(grass, vec3(0.1, 0.092, 0.048), 0.55 * smoothstep(0.38, 0.75, noise(p.xz / 45.0 + 3.0)));
+    grass = mix(grass, vec3(0.11, 0.096, 0.05), 0.65 * smoothstep(0.35, 0.72, noise(p.xz / 45.0 + 3.0)));
     /* rush and long grass in darker patches */
     grass = mix(grass, vec3(0.036, 0.044, 0.022), 0.55 * smoothstep(0.55, 0.8, noise(p.xz / 11.0 + 8.0)));
     grass = mix(grass, vec3(0.1, 0.09, 0.05), smoothstep(0.92, 0.6, n.y) * 0.7);
@@ -712,6 +733,9 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa, float d0) {
     vec2 gg = b1.yz / vec2(4.0, 9.0) * 0.7 + b2.yz / vec2(1.2, 2.6) * 0.32;
     vec3 tq = normalize(vec3(n.z, 0.0, -n.x) + 1e-5);
     vec3 yq = normalize(vec3(0.0, 1.0, 0.0) - n * n.y);
+    /* each broken block tilts its own way */
+    vec2 bt = hash22(floor(vec2(s / 1.5 + 0.3 * b1.x, p.y / 1.1 + 0.5 * floor(s / 1.5) + 0.6 * b1.x)) + 3.0) - 0.5;
+    gg += bt * 0.5 * (1.0 - gw);
     n = normalize(n - bfade * (gg.x * tq + gg.y * yq));
     /* the hollows of the rough rock hold shadow, and the joints between
        the columns run down the face as dark seams */
@@ -734,6 +758,8 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa, float d0) {
      little more, so the stone still reads */
   float moonlit = 1.0 + 2.5 * NIGHT;
   vec3 col = alb * cav * (SUNC * dif * moonlit + amb * ao * (1.0 + 2.5 * NIGHT) + BNC * sat(-n.y + 0.3) * ao * (1.0 + 3.0 * NIGHT));
+  /* at dusk the light just grazing a face warms it a little */
+  col += alb * SUNC * uLook.y * 0.35 * (sat((ndl + 0.3) / 1.3) - max(ndl, 0.0));
   /* grass lit from behind glows a little */
   col += alb * SUNC * gw * 0.5 * pow(sat(dot(rd, SUN)), 4.0) * sh * csh;
   return col;
@@ -910,6 +936,53 @@ vec3 lampGlow(vec3 ro, vec3 rd, float tEnd, vec3 L, float pa) {
 
 /* ------------------------------------------------------------ the eye */
 
+/* the clifftop at the lens: tussock grass, rush and the pink of thrift a
+   step or two away, in three planes, far out of focus. They are drawn in
+   the frame's own measure, low along its bottom edge, so they sit alike
+   in a wide frame and a tall one; depth says how far off the nearest is */
+vec4 nearGrass(vec2 fc, vec3 fw, out float depth) {
+  vec2 q = vec2((fc.x - 0.5 * uRes.x) / uRes.y, fc.y / uRes.y);
+  vec4 res = vec4(0.0);
+  depth = 1e6;
+  if (q.y > 0.13) return res;
+  float back = pow(sat(dot(fw, SUN)), 2.0);
+  for (int k = 2; k >= 0; k--) {
+    float fk = float(k);
+    float dz = 1.6 + 1.2 * fk;
+    float tall = 0.1 - 0.022 * fk, wdt = 0.009 - 0.002 * fk;
+    vec2 p = q + vec2(uPoint.x * 0.01 / dz + fk * 3.7, 0.0);
+    /* the tussocks' own mass, and the blades over it */
+    float mass = 0.03 * (0.4 + noise(vec2(p.x * 7.0, fk * 3.0))) - 0.008 * fk;
+    float cov = smoothstep(0.003, 0.0, p.y - mass);
+    float flower = 0.0;
+    float ci = floor(p.x / wdt);
+    for (int j = -1; j <= 1; j++) {
+      float c = ci + float(j);
+      vec3 h = hash33(vec3(c, fk, 3.0));
+      float bh = tall * (0.2 + 0.8 * h.y * h.y) * (0.55 + 0.45 * sin(c * 0.37 + fk * 2.0));
+      float v = p.y / bh;
+      if (v > 0.0 && v < 1.0) {
+        float cx = (c + h.x) * wdt + (h.z - 0.5) * 0.7 * bh * v * v;
+        float w = wdt * 0.3 * (1.0 - v) + 0.0006;
+        cov = max(cov, smoothstep(w + 0.0012, w, abs(p.x - cx)));
+      }
+      /* now and then a head of thrift on its stalk */
+      if (k == 1 && h.z > 0.86) {
+        vec2 fd = (p - vec2((c + h.x) * wdt, bh * 0.9)) / vec2(1.0, 1.2);
+        flower = max(flower, smoothstep(0.006, 0.003, length(fd)));
+      }
+    }
+    vec3 lit = SKYI * 0.55 + SUNC * (0.12 + 0.55 * back) + GNDI;
+    vec3 gc = mix(vec3(0.055, 0.06, 0.026), vec3(0.075, 0.07, 0.035), fk * 0.5) * lit * (0.7 + 0.15 * fk);
+    gc = mix(gc, vec3(0.42, 0.2, 0.28) * lit, flower);
+    cov = max(cov, flower);
+    res.rgb = mix(res.rgb, gc, cov);
+    res.a = max(res.a, cov);
+    if (cov > 0.3) depth = dz;
+  }
+  return res;
+}
+
 vec3 scene(vec2 fc) {
   setup();
   float asp = uRes.x / uRes.y;
@@ -951,6 +1024,10 @@ vec3 scene(vec2 fc) {
     tEnd = tSea;
   } else {
     col = sky(rd);
+    /* a halo in layers close about the light, as a lens and damp air give
+       it: wide and soft, then tighter, then the aureole at the disc */
+    float hs = max(dot(rd, SUN), 0.0), h2 = hs * hs, h4 = h2 * h2, h16 = h4 * h4 * h4 * h4;
+    col += GLOW * (0.03 * h2 * hs + 0.12 * h16 * h4 + look3(0.6, 0.9, 0.4) * pow(hs, 320.0));
     col += sunDisc(rd, pa);
     col += (moonDisc(rd, pa) + stars(rd, pa) * (1.0 - smoothstep(0.0, 0.03, dot(rd, MOON) - 0.99))) * NIGHT;
     vec4 cl = clouds(ro, rd);
@@ -992,6 +1069,18 @@ vec3 scene(vec2 fc) {
   if (LAMP > 0.001) {
     vec3 L = vec3(lw.x, base + 17.3, lw.y);
     col += LAMP * (beams(ro, rd, tEnd, L) * uLook.z + lampGlow(ro, rd, tEnd, L, pa));
+  }
+
+  /* the lens is focused between the prow and the light; the turf at its
+     feet is a blur */
+  gFocus = 470.0;
+  gAperture = 7.0e-5;
+  gDepth = min(tEnd, 1e6);
+  float gd;
+  vec4 ng = nearGrass(fc, fw, gd);
+  if (ng.a > 0.0) {
+    col = mix(col, ng.rgb, ng.a);
+    if (ng.a > 0.3) gDepth = gd;
   }
   return col;
 }

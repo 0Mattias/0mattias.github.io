@@ -38,6 +38,10 @@ window.CONCEPT = {
   id: 'dunes',
   theme: { day: '#275fa0', dusk: '#24447e', night: '#0c0e14' },
   t0: 20,
+  /* a normal lens on the pan: the near clay soft, the dune crisp; the
+     white clay and the lit sand roll off without much glow, the moon
+     blooms; the Milky Way keeps its colour */
+  camera: { expo: [0.96, 1.0, 1.05], bloom: [0.035, 0.055, 0.12], thresh: 1.15, sat: [0.94, 0.92, 0.88], vig: [0.12, 0.16, 0.2], grain: 0.022, blur: 0.012 },
   frag: `
 const float EYE = 1.7;
 
@@ -134,7 +138,7 @@ float dunes(vec2 p) {
 /* --------------------------------------------------------------- trees */
 
 /* the dead camelthorns: x, z, height (negative for a fallen one), seed */
-const int NT = 23;
+const int NT = 24;
 const vec4 TREES[NT] = vec4[NT](
   vec4(-12.0, 25.0, 6.6, 1.0),
   vec4(9.5, 41.0, 5.4, 2.0),
@@ -157,6 +161,7 @@ const vec4 TREES[NT] = vec4[NT](
   vec4(75.0, 350.0, 4.8, 21.0),
   vec4(-40.0, 335.0, 6.0, 22.0),
   vec4(-6.0, 105.0, 5.0, 23.0),
+  vec4(3.1, 4.9, 2.2, 24.0),
   vec4(16.0, 33.0, -5.2, 17.0),
   vec4(-46.0, 140.0, -6.0, 18.0)
 );
@@ -173,6 +178,10 @@ vec4 cA[NC], cB[NC];
 vec4 limbB[4];
 int nLimb;
 float gTrunkR;
+/* how gnarled the wood is drawn: the nearest tree and the logs in full,
+   the rest left smooth, as they are too far for it to show */
+float gGnarl;
+float gSeed;
 
 float capD(vec3 p, vec4 a, vec4 b) {
   vec3 pa = p - a.xyz, ba = b.xyz - a.xyz;
@@ -228,11 +237,12 @@ void buildLimb(int i, vec3 p, vec3 dir, float len, float r0, float s, float up, 
     lo = min(lo, min(q1, q2));
     hi = max(hi, max(q1, q2));
   }
-  /* a snag off the third joint */
+  /* the tip frays: a snag forks off the last length near its end */
   vec3 g = hash33(vec3(s, float(i), 6.6)) - 0.5;
+  vec3 so = mix(jp[3], jp[4], 0.45 + 0.25 * g.x);
   vec3 sdir = normalize(jd[3] + normalize(cross(jd[3], vec3(0.3, 1.0, g.x))) * (g.y > 0.0 ? 0.9 : -0.9) + vec3(0.0, 0.3, 0.0));
-  vec3 sq = jp[3] + normalize(sdir + jd[3]) * len * (0.2 + 0.14 * abs(g.z));
-  cA[j + 8] = vec4(jp[3], jr[3] * 0.75);
+  vec3 sq = so + normalize(sdir + jd[3]) * len * (0.14 + 0.12 * abs(g.z));
+  cA[j + 8] = vec4(so, mix(jr[3], jr[4], 0.5) * 0.8);
   cB[j + 8] = vec4(sq, 0.012);
   lo = min(lo, sq);
   hi = max(hi, sq);
@@ -241,6 +251,8 @@ void buildLimb(int i, vec3 p, vec3 dir, float len, float r0, float s, float up, 
 
 void buildTree(vec4 T) {
   float H = abs(T.z), s = T.w;
+  gSeed = s;
+  gGnarl = s < 1.5 || T.z < 0.0 ? 1.0 : 0.0;
   vec3 r0 = hash33(vec3(s * 7.13, s * 1.71 + 3.0, 5.3));
   vec3 r1 = hash33(vec3(s * 3.7, 9.2, s * 0.61));
   float a0 = r0.x * TAU;
@@ -293,6 +305,23 @@ void buildTree(vec4 T) {
   }
   /* the habit: 0 a vase, 1 split near the ground, 2 one dominant limb,
      3 low and wide */
+  if (s > 23.5) {
+    /* a stump broken off a little above head height, close to the lens:
+       one limb carrying on up, one arm reaching out away from the pan */
+    nLimb = 2;
+    vec3 fk = vec3(0.06, H * 0.5, 0.04);
+    float rb = 0.16;
+    cA[0] = vec4(0.0, -0.3, 0.0, rb * 1.5);
+    cB[0] = vec4(fk, rb);
+    gTrunkR = rb * 1.5 + 0.3;
+    cA[1] = vec4(0.0, 0.15, 0.0, rb * 0.6);
+    cB[1] = vec4(0.35, 0.0, -0.2, 0.04);
+    cA[2] = vec4(0.0, 0.15, 0.0, rb * 0.6);
+    cB[2] = vec4(-0.3, 0.0, 0.25, 0.04);
+    buildLimb(0, fk, normalize(vec3(-0.2, 1.0, 0.2)), H * 0.5, rb * 0.75, s, 0.1, 0.7);
+    buildLimb(1, fk * 0.8, normalize(vec3(0.9, 0.6, 0.1)), H * 0.55, rb * 0.5, s, 0.12, 0.7);
+    return;
+  }
   int hab = int(r1.x * 3.99);
   if (s < 1.5) hab = 1;
   float hf = H * (hab == 0 ? 0.26 + 0.12 * r0.z : (hab == 1 ? 0.04 + 0.06 * r0.z : (hab == 2 ? 0.16 + 0.12 * r0.z : 0.1 + 0.08 * r0.z)));
@@ -340,6 +369,8 @@ float treeD(vec3 p) {
     for (int k = 1; k < 9; k++) l = min(l, capD(p, cA[j + k], cB[j + k]));
     d = smin(d, l, 0.1);
   }
+  /* burls and swellings along the old wood */
+  if (gGnarl > 0.0 && d < 0.3) d += 0.045 * (noise3(p * vec3(2.4, 0.9, 2.4) + gSeed * 7.0) - 0.5) * smoothstep(2.4, 0.6, p.y);
   return d;
 }
 
@@ -570,10 +601,12 @@ vec3 moonDisc(vec3 rd, vec3 M, vec3 S, float pix) {
    horizon a little below the middle; a tall one narrows, and turns left
    so the summit and its crest stay in the picture. The pointer turns the
    head a little and steps it sideways, so the trees slide over the dune */
+float gTanV;
 vec3 camRay(vec2 fc, out vec3 ro, out float pix) {
   float asp = uRes.x / uRes.y;
   float wide = smoothstep(0.7, 1.5, asp);
   float tanV = mix(0.41, max(0.62 / asp, 0.30), wide);
+  gTanV = tanV;
   float hor = mix(0.61, 0.625, wide);
   float yaw = radians(mix(-6.5, 0.0, wide)) + uPoint.x * 0.012;
   vec2 q = (fc - 0.5 * uRes) / (0.5 * uRes.y);
@@ -774,6 +807,16 @@ vec3 panAlbedo(vec3 p, float fp, float near) {
   return alb;
 }
 
+/* the air between the eye and t: dry and very clear, a little blue
+   scattered in over the far dunes, warmer toward the sun */
+vec3 airTo(vec3 rd, float t, vec3 col) {
+  vec3 ext = exp(-t * vec3(0.6, 0.8, 1.2) * 1.5e-5);
+  vec3 hd = normalize(vec3(rd.x, 0.035, rd.z));
+  float fw = pow(max(dot(hd, gL), 0.0), 2.0);
+  vec3 ins = skyBase(hd) * mix(vec3(1.0), vec3(1.35, 1.05, 0.72), fw * gWS);
+  return col * ext + ins * (1.0 - ext);
+}
+
 /* the clay or the sand the eye ray met at t */
 vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune) {
   vec3 p = ro + rd * t;
@@ -821,10 +864,23 @@ vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune) {
   }
   if (gWM > 0.001 && dot(n, gM) > 0.0) shM = duneShadow(p + n * 0.3, gM, fp);
   vec3 col = alb * lightAt(p, n, sh, shM, occ) / PI;
-  /* a breath of air over the far sand */
-  vec3 air = skyBase(normalize(vec3(rd.x, 0.02, rd.z)));
-  col = mix(col, air, sat(t / 60000.0));
-  return col;
+  /* light thrown back: the white clay lights the foot of a dune from
+     below, and a dune's sunlit sand lights the clay at its foot red */
+  vec3 ePan = gSunE * max(gL.y, 0.0) * vec3(0.8, 0.66, 0.5) + gSkyE * 0.7;
+  if (onDune) {
+    float foot = smoothstep(70.0, 0.0, p.y);
+    col += alb * ePan * (0.5 - 0.5 * n.y + 0.06) * foot * 0.9 / PI;
+  } else {
+    float near = smoothstep(-110.0, -1.0, f);
+    near *= near;
+    if (near > 0.0) {
+      vec2 gd = normalize(vec2(dunes(p.xz + vec2(6.0, 0.0)) - f, dunes(p.xz + vec2(0.0, 6.0)) - f) + 1e-5);
+      vec3 nf = normalize(vec3(-gd.x, 0.84, -gd.y));
+      float lit = max(dot(nf, gL), 0.0);
+      col += alb * vec3(0.62, 0.2, 0.09) * gSunE * lit * near * 0.09 / PI;
+    }
+  }
+  return airTo(rd, t, col);
 }
 
 /* the dead wood: blackened charcoal in shade, sun-bleached to a silvery
@@ -848,12 +904,22 @@ vec3 shadeTree(vec3 ro, vec3 rd, float t, float pix, int i) {
   float fine = smoothstep(0.06, 0.006, t * pix);
   float fis = noise(vec2(ang * 5.0, ax.w * 1.3)) * 0.6 + noise(vec2(ang * 13.0, ax.w * 3.5)) * 0.4;
   float groove = smoothstep(0.45, 0.75, fis);
+  /* the fissures have depth: the wood turns into them */
+  if (fine > 0.0) {
+    float fa = noise(vec2((ang + 0.06) * 5.0, ax.w * 1.3)) * 0.6 + noise(vec2((ang + 0.06) * 13.0, ax.w * 3.5)) * 0.4;
+    vec3 tang = u2 * cos(ang) - u1 * sin(ang);
+    float face = smoothstep(0.15, 0.5, dot(n, -rd));
+    n = normalize(n + tang * (fa - fis) * 3.0 * fine * face * (0.5 + 0.5 * gGnarl));
+  }
+  /* hollows where limbs have rotted out, low on the old trunks */
+  float hol = gGnarl * (1.0 - step(T.z, 0.0) * 0.5) * smoothstep(0.7, 0.8, noise(vec2(ang * 1.6 + T.w, lp.y * 1.4 + 3.0))) * smoothstep(2.6, 1.0, lp.y) * smoothstep(0.1, 0.4, lp.y);
   bool fallen = T.z < 0.0;
   vec3 alb = fallen ? vec3(0.21, 0.195, 0.18) : vec3(0.088, 0.081, 0.075);
   alb *= 1.0 - (0.55 * groove - 0.12) * fine;
   alb *= 0.9 + 0.2 * noise(lp.xz * 3.0 + lp.y * 2.0);
   /* near the ground the wood is darker still, and the sand has climbed it */
   alb *= mix(0.75, 1.0, smoothstep(0.0, 0.6, lp.y));
+  alb *= 1.0 - 0.8 * hol;
   float sh = 1.0;
   float dif = max(dot(n, gL), 0.0);
   if (dif > 0.0 && gWS > 0.001) sh = duneShadow(p, gL, t * pix);
@@ -863,7 +929,7 @@ vec3 shadeTree(vec3 ro, vec3 rd, float t, float pix, int i) {
   vec3 ePan = gSunE * max(gL.y, 0.0) * sh + gSkyE + gMoonE * max(gM.y, 0.0);
   vec3 gnd = vec3(0.78, 0.64, 0.5) * ePan * (0.5 - 0.5 * n.y) * 0.55;
   vec3 L = gSunE * dif * sh * sheen + sky + gnd + gMoonE * max(dot(n, gM), 0.0);
-  return alb * L / PI;
+  return alb * L * (1.0 - 0.6 * hol) / PI;
 }
 
 /* ------------------------------------------------------------ the frame */
@@ -888,6 +954,11 @@ vec3 scene(vec2 fc) {
   gLd = azel(-110.0, -12.0);
   gMoonE = vec3(0.62, 0.66, 0.72) * gWM;
 
+  /* focused on the middle trees, the aperture as a lens's opening in
+     metres: as far out of focus at any frame's height */
+  gFocus = 70.0;
+  gAperture = 0.034 / (gFocus * 2.0 * gTanV);
+
   float rmin, tr;
   float t = march(ro, rd, pix, rmin, tr);
   float tg = rd.y < 0.0 ? ro.y / -rd.y : 1e9;
@@ -897,9 +968,11 @@ vec3 scene(vec2 fc) {
   if (t > 0.0 && t < tg) {
     col = shadeGround(ro, rd, t, pix, true);
     tEnd = t;
+    gDepth = t;
   } else if (tg < 1e8) {
     col = shadeGround(ro, rd, tg, pix, false);
     tEnd = tg;
+    gDepth = tg;
   } else {
     col = skyBase(rd);
     if (gWM > 0.001) {
@@ -911,12 +984,14 @@ vec3 scene(vec2 fc) {
     vec3 md = moonDisc(rd, gM, gLd, pix);
     col += md * (gWS * 0.38 * (1.0 - gFu * 0.3) + gWM * 2.4);
     float ma = acos(clamp(dot(rd, gM), -1.0, 1.0));
-    col += vec3(0.6, 0.65, 0.75) * 0.004 * exp(-ma / 0.03) * gWM;
+    /* the aureole round the moon, in the dry air small and tight */
+    col += vec3(0.62, 0.66, 0.74) * (0.08 * exp(-ma / 0.01) + 0.012 * exp(-ma / 0.045) + 0.003 * exp(-ma / 0.2)) * gWM;
     /* a skyline the ray only just cleared is part sand */
     float cov = sat(0.5 - rmin);
     if (cov > 0.0) {
       col = mix(col, shadeGround(ro, rd, tr, pix, true), cov);
       lights *= 1.0 - cov;
+      if (cov > 0.5) gDepth = tr;
     }
     tEnd = 1e9;
   }
@@ -926,6 +1001,7 @@ vec3 scene(vec2 fc) {
   if (tt.y > 0.0) {
     col = mix(col, shadeTree(ro, rd, tt.x, pix, int(tt.z)), tt.y);
     lights *= 1.0 - tt.y;
+    if (tt.y > 0.5) gDepth = tt.x;
   }
 
   /* night: moonlight drains the colour and turns it blue */

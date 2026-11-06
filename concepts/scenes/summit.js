@@ -50,6 +50,9 @@ window.CONCEPT = {
   id: 'summit',
   theme: { day: '#5482cd', dusk: '#b89ab9', night: '#0f1223' },
   t0: 40,
+  /* a long lens from the ridge: Fuji, the bands and the ridges all in
+     focus, only the pine at the lens soft */
+  camera: { expo: [1.0, 1.0, 0.9], bloom: [0.04, 0.1, 0.08], thresh: 0.9, sat: [0.9, 0.92, 0.82], vig: [0.12, 0.15, 0.2], grain: 0.022, blur: 0.036 },
   frag: `
 #define DEG 0.0174532925
 
@@ -71,6 +74,9 @@ vec2 FDIR, FNRM;
 float FLEN;
 
 float sq(float x) { return x * x; }
+/* how far toward the sun's bearing a direction is turned, across the
+   frame: 0 on the side away from it, 1 on its side */
+#define SUNSIDE(rd) smoothstep(-0.2, 0.06, atan((rd).x, (rd).z) * sign(LD.x + 1e-4) * (LD.y > 0.1 ? 1.0 : 0.0))
 float smax(float a, float b, float k) {
   float h = sat(0.5 + 0.5 * (a - b) / k);
   return mix(b, a, h) + k * h * (1.0 - h);
@@ -169,6 +175,8 @@ vec3 aerial(vec3 col, vec3 rd, float t, float y) {
      far cone the deep blue; the air's glow is taken to build up over the
      first fifty kilometres */
   vec3 air = mix(AIRN * mix(0.35, 1.0, smoothstep(15000.0, 50000.0, t)), AIRF, smoothstep(45000.0, 115000.0, t));
+  /* on the side toward the sun the haze is lit, warmer and brighter */
+  air += LC / PI * vec3(1.0, 0.88, 0.7) * SUNSIDE(rd) * look3(0.05, 0.0, 0.004);
   return col * tr + air * (1.0 - tr);
 }
 
@@ -797,7 +805,8 @@ vec3 bq(vec2 w, float h) {
    each started at a fresh random offset, the cloud's edge found exactly,
    and fine steps inside it, each lit by two soft taps toward the light.
    Returns its colour, premultiplied, and in .a how much it covers */
-vec4 marchBand(vec3 ro, vec3 rd, float tmax, vec2 fc) {
+vec4 marchBand(vec3 ro, vec3 rd, float tmax, vec2 fc, out float tHalf) {
+  tHalf = 1e6;
   if (rd.y >= 0.0 || rd.z <= 0.0) return vec4(0.0);
   float t = max((BZ0 - 800.0 - ro.z) / rd.z, (ro.y - 2800.0) / -rd.y);
   float t1 = min(min((BZ1 + 800.0 - ro.z) / rd.z, (ro.y - 2080.0) / -rd.y), tmax);
@@ -806,12 +815,12 @@ vec4 marchBand(vec3 ro, vec3 rd, float tmax, vec2 fc) {
   float ph = 0.75 + 2.5 * hg(dot(rd, LD), 0.55);
   vec3 lc = LC / PI * CT * ph;
   vec3 hz = look3(vec3(0.16, 0.23, 0.38), vec3(0.20, 0.15, 0.25), vec3(0.008, 0.011, 0.022)) * look3(SK, SK, 1.0);
-  float lod = clamp(log2(520.0 / (t * PA / max(-rd.y, 0.012))) + 0.4, 2.0, 4.5);
+  float lod = clamp(log2(520.0 / (t * PA / max(-rd.y, 0.012))) + 1.0, 2.0, 5.0);
   t += 30.0 * hash12(fc);
   float lt = t, tr = 1.0, tw = 0.0, sti = 0.0;
   bool inside = false;
   vec3 acc = vec3(0.0);
-  for (int i = 0; i < 90; i++) {
+  for (int i = 0; i < 120; i++) {
     if (t > t1 || tr < 0.03) break;
     float rj = 0.75 + 0.5 * hash12(fc + float(i) * 1.73);
     vec3 p = ro + rd * t;
@@ -838,23 +847,25 @@ vec4 marchBand(vec3 ro, vec3 rd, float tmax, vec2 fc) {
       sti = max(5.0, t * 0.0006);
       continue;
     }
-    float den = sat(f * 1.5);
+    float den = sat(f * 3.0);
     if (den > 0.002) {
       vec3 l1 = L * 45.0, l2 = L * 190.0;
       float d1 = sat(bfield(h + l1.y, top, q + l1 / 520.0, lod - 1.0) * 1.2);
       float d2 = sat(bfield(h + l2.y, top, q + l2 / 520.0, 2.0) * 1.2);
-      float od = 0.04 * (45.0 * d1 + 145.0 * d2);
+      float od = 0.085 * (45.0 * d1 + 145.0 * d2);
       /* soft: much of the light comes on through the cloud, and the sky
          fills the folds, so they go a soft blue-grey and never dark */
-      float sun = exp(-od) + 0.3 * exp(-0.25 * od);
+      float sun = exp(-od) + 0.16 * exp(-0.25 * od);
       float hf = sat((h - 2150.0) / max(top - 2150.0, 80.0));
-      vec3 c = lc * sun * (0.6 + 0.4 * hf) + AMB * (0.45 + 0.75 * hf) * 1.35;
+      /* bright sunlit tops over grey-blue shaded bodies */
+      vec3 c = lc * sun * (0.32 + 0.68 * hf) + AMB * (0.3 + 0.9 * hf) * 1.2;
       /* the underside fades into the haze */
       c = mix(c, hz, 0.6 * smoothstep(2400.0, 2130.0, h));
       float a = 1.0 - exp(-den * 0.03 * sti);
       acc += tr * a * c;
       tw += tr * a * t;
       tr *= 1.0 - a;
+      if (tr < 0.5 && tHalf > 1e5) tHalf = t;
     }
     if (f < -0.6) { inside = false; lt = t; t += st * rj; continue; }
     t += sti;
@@ -883,8 +894,15 @@ vec3 shadePanel(vec3 rd, float D, float dd, float seed, float mist, float far) {
   vec2 f = vec2(atan(rd.x, rd.z), asin(rd.y)) * D;
   float m = 0.5 * noise(f / (D * 0.0028) + seed) + 0.3 * noise(f / (D * 0.001) + seed) + 0.2 * noise(f / (D * 0.014));
   vec3 alb = vec3(0.012, 0.021, 0.012) * (0.45 + 1.1 * m);
-  float lit = 0.3 + 0.7 * smoothstep(0.3, 0.75, noise(f / (D * 0.02) + seed * 3.0));
-  vec3 col = alb * (LC / PI * 0.32 * lit + AMB * 0.75);
+  /* spurs and gullies running down from the crest: the side of each spur
+     turned to the light catches it, the gullies between lie in shade */
+  vec2 g = vec2(f.x / (D * 0.011), dd / (D * 0.03)) + seed * 3.0;
+  g.x += 0.6 * noise(g * vec2(0.5, 1.0));
+  float r0 = ridged(g), dr = (ridged(g + vec2(0.06, 0.0)) - r0) / 0.06;
+  float rel = smoothstep(5.0, 60.0, dd);
+  float lit = mix(0.55, sat(0.45 + 0.35 * dr * sign(LD.x + 1e-4)) * (0.6 + 0.4 * r0), rel);
+  lit *= 0.5 + 0.5 * smoothstep(0.25, 0.7, noise(f / (D * 0.02) + seed * 3.0));
+  vec3 col = alb * (LC / PI * 0.45 * lit + AMB * 0.75 * (0.75 + 0.25 * r0));
   vec3 hz = look3(vec3(0.13, 0.2, 0.36), vec3(0.17, 0.13, 0.23), vec3(0.007, 0.01, 0.02)) * look3(SK, SK, 1.0);
   /* the further ridges stand in the blue of the haze */
   col = mix(col, hz, far + (1.0 - far) * mist * smoothstep(10.0, 300.0, dd));
@@ -962,11 +980,77 @@ void setup() {
   FLEN = length(FB.xz - FA.xz);
 }
 
+/* ------------------------------------------------------ the near pine */
+/* a sprig of dwarf pine on the ridge a metre and a half from the lens,
+   reaching into the lower right corner: a few branchlets from the corner,
+   each ending in a tuft of needles. The lens is focused on Fuji, so the
+   sprig is drawn as the lens sees it, already soft: each tuft a disc of
+   dark green with its needles only a faint texture, lit on the side
+   toward the light, with a few bright discs where the light catches the
+   needles; the camera softens it further. p is from the frame's lower
+   right corner, in its half height */
+float tuft(vec2 p, vec2 c, float r, float seed, out float lit) {
+  vec2 d = p - c;
+  float l = length(d), a = atan(d.y, d.x);
+  /* a brush of needles, longer up and out along its branchlet than
+     back toward it, its edge lumpy */
+  vec2 ax = normalize(c - vec2(0.06, -0.06));
+  float al = dot(d / max(l, 1e-4), ax);
+  float len = r * (0.62 + 0.38 * noise(vec2(a * 3.2, seed)) + 0.25 * al);
+  float m = 1.0 - smoothstep(len - 0.38 * r, len + 0.06 * r, l);
+  m *= 0.8 + 0.2 * noise(vec2(a * 9.0, l / r * 3.0 + seed));
+  vec2 ld = normalize(vec2(LD.x, LD.y + 0.25) + 1e-4);
+  lit = sat(0.5 + 0.6 * dot(d / max(l, 1e-4), ld)) * smoothstep(0.2 * r, 0.9 * r, l);
+  return m;
+}
+
+float twig(vec2 p, vec2 a, vec2 b, float w) {
+  vec2 ab = b - a;
+  float h = sat(dot(p - a, ab) / dot(ab, ab));
+  float r = w * (1.0 - 0.4 * h);
+  return 1.0 - smoothstep(r * 0.4, r * 1.6, length(p - a - ab * h));
+}
+
+vec4 pine(vec2 fc) {
+  vec2 uv = (fc - 0.5 * uRes) / (0.5 * uRes.y);
+  vec2 p = (uv - vec2(uRes.x / uRes.y, -1.0)) / mix(1.05, 1.28, WIDE);
+  if (p.x < -0.62 || p.y > 0.62) return vec4(0.0);
+  float m = 0.0, lit = 0.0, l, k;
+  const vec2 B = vec2(0.06, -0.06);
+  vec2 T1 = vec2(-0.36, 0.31), T2 = vec2(-0.19, 0.42), T3 = vec2(-0.07, 0.25), T4 = vec2(-0.45, 0.12), T5 = vec2(-0.25, 0.17);
+  m = max(m, twig(p, B, T1, 0.022));
+  m = max(m, twig(p, B + vec2(-0.1, 0.1), T2, 0.016));
+  m = max(m, twig(p, B, T3, 0.018));
+  m = max(m, twig(p, B + vec2(-0.15, 0.06), T4, 0.015));
+  k = tuft(p, T1, 0.12, 1.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
+  k = tuft(p, T1 + vec2(0.07, -0.06), 0.09, 6.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
+  k = tuft(p, T2, 0.1, 2.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
+  k = tuft(p, T3, 0.11, 3.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
+  k = tuft(p, T3 + vec2(-0.07, -0.08), 0.1, 7.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
+  k = tuft(p, T4, 0.09, 4.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
+  k = tuft(p, T5, 0.12, 5.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
+  k = tuft(p, vec2(-0.12, 0.05), 0.13, 8.0, l); lit = mix(lit, l, step(m, k)); m = max(m, k);
+  vec3 alb = vec3(0.016, 0.03, 0.013);
+  vec3 col = alb * (AMB * 1.2 + LC / PI * (0.15 + 1.4 * lit * lit));
+  /* the glints, spread by the lens into discs */
+  float gl = 0.0;
+  gl += 1.0 - smoothstep(0.016, 0.022, length(p - vec2(-0.29, 0.37)));
+  gl += 1.0 - smoothstep(0.012, 0.018, length(p - vec2(-0.13, 0.47)));
+  gl += 1.0 - smoothstep(0.014, 0.02, length(p - vec2(-0.02, 0.31)));
+  gl += 1.0 - smoothstep(0.01, 0.016, length(p - vec2(-0.2, 0.23)));
+  col += LC / PI * vec3(1.0, 0.95, 0.75) * 0.1 * gl * look3(1.0, 0.7, 0.35);
+  return vec4(col, m);
+}
+
 vec3 scene(vec2 fc) {
   setup();
   vec3 ro;
   float th;
   vec3 rd = camera(fc, ro, th);
+  /* the lens is focused on Fuji; at this aperture everything from the
+     spur out is sharp and only the pine at the lens is soft */
+  gFocus = FJ.y;
+  gAperture = 5e-7;
   vec2 nearR = vec2(1e9, -1.0), nearF = vec2(1e9, -1.0);
   float tR = -1.0;
   if (rd.y < -0.012 && rd.x < 0.04) tR = traceRidge(ro, rd, nearR);
@@ -998,6 +1082,7 @@ vec3 scene(vec2 fc) {
       vec3 p = ro + rd * tC;
       vec3 n = farNormal(p, tC, tC * PA / max(-rd.y, 0.008), m, cav);
       col = aerial(shadeCloud(ro, rd, tC, n, cav), rd, tC, p.y + drop(p.xz));
+      gDepth = tC;
     } else {
       col = cirrus(rd, haze(rd, sky(rd)));
       if (uLook.z > 0.0) col += uLook.z * stars(rd);
@@ -1014,21 +1099,31 @@ vec3 scene(vec2 fc) {
         vec3 n = normalize(vec3(hh.z - hh.x, e, hh.z - hh.y));
         vec3 fc2 = aerial(shadeFuji(ro, rd, tFs, n, F), rd, tFs, p.y + drop(p.xz));
         col = mix(col, fc2, aF);
+        if (aF > 0.5) gDepth = tFs;
       }
     }
     if (I2.x > 0.0 && I2.y < (tC > 0.0 ? tC : 1e9)) col = mix(col, aerial(shadeIsland(ro, rd, I2, 36000.0, 4.0), rd, I2.y, 2300.0), I2.x);
   }
   /* the hazy blue ridges, then the nearer band of cloud over them */
-  if (open && a4 > 0.0) col = mix(col, shadePanel(rd, 24000.0, d4, 9.0, 0.5, 0.62), a4);
+  if (open && a4 > 0.0) { col = mix(col, shadePanel(rd, 24000.0, d4, 9.0, 0.5, 0.62), a4); if (a4 > 0.5) gDepth = 24000.0; }
   if (open) {
-    vec4 v = marchBand(ro, rd, a4 >= 1.0 ? 24000.0 : 1e9, fc);
+    float tH;
+    vec4 v = marchBand(ro, rd, a4 >= 1.0 ? 24000.0 : 1e9, fc, tH);
     col = col * (1.0 - v.a) + v.rgb;
+    if (v.a > 0.5) gDepth = tH;
   }
+  /* a faint glow in the haze lying over the bands of cloud, brighter on
+     the side toward the sun */
+  float gl = exp(-sq((el / DEG + 1.6) / 0.75));
+  col += gl * (0.45 + 0.55 * SUNSIDE(rd)) * look3(vec3(0.07, 0.068, 0.06), vec3(0.06, 0.035, 0.045), vec3(0.003, 0.004, 0.007)) * look3(SK, SK, 1.0);
   /* the forested ridges stepping up toward the eye */
-  if (aR < 1.0 && a1 < 1.0 && a2 < 1.0 && a3 > 0.0) col = mix(col, shadePanel(rd, 8000.0, d3, 7.0, 0.5, 0.42), a3);
-  if (aR < 1.0 && a1 < 1.0 && a2 > 0.0) col = mix(col, shadePanel(rd, 4500.0, d2, 4.0, 0.35, 0.18), a2);
-  if (aR < 1.0 && a1 > 0.0) col = mix(col, shadePanel(rd, 2200.0, d1, 1.0, 0.06, 0.0), a1);
-  if (aR > 0.0) col = mix(col, aerial(shadeRidge(ro, rd, tRs), rd, tRs, EYE), aR);
+  if (aR < 1.0 && a1 < 1.0 && a2 < 1.0 && a3 > 0.0) { col = mix(col, shadePanel(rd, 8000.0, d3, 7.0, 0.5, 0.42), a3); if (a3 > 0.5) gDepth = 8000.0; }
+  if (aR < 1.0 && a1 < 1.0 && a2 > 0.0) { col = mix(col, shadePanel(rd, 4500.0, d2, 4.0, 0.35, 0.18), a2); if (a2 > 0.5) gDepth = 4500.0; }
+  if (aR < 1.0 && a1 > 0.0) { col = mix(col, shadePanel(rd, 2200.0, d1, 1.0, 0.06, 0.0), a1); if (a1 > 0.5) gDepth = 2200.0; }
+  if (aR > 0.0) { col = mix(col, aerial(shadeRidge(ro, rd, tRs), rd, tRs, EYE), aR); if (aR > 0.5) gDepth = tRs; }
+  /* the pine at the lens over all */
+  vec4 pn = pine(fc);
+  if (pn.a > 0.0) { col = mix(col, pn.rgb, pn.a); if (pn.a > 0.35) gDepth = 1.6; }
   return col;
 }
 `
