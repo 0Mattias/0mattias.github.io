@@ -442,7 +442,7 @@ html.still .looks {
     transition: opacity 0.9s ease, visibility 0s 0.9s;
 }
 
-html.sky .places { display: flex; }
+html.sky .places:not([hidden]) { display: flex; }
 
 html.live .places,
 html.still .places {

@@ -21,6 +21,8 @@ var PLACES = [
   { id: 'headland', name: 'Neist Point', where: 'Neist Point, Isle of Skye, Scotland' }
 ];
 var BASE = '/concepts/';
+/* bumped with each release, so a page never runs with another's files */
+var V = '?v=20261106b';
 
 var root = document.documentElement;
 var hero = document.querySelector('.letterhead');
@@ -28,6 +30,12 @@ var scene = hero && hero.querySelector('.scene');
 var box = document.querySelector('.places');
 if (!hero || !scene || !box) return;
 var label = box.querySelector('.place');
+
+/* the control is shown only once its styles are in: a page that met an
+   older stylesheet (a cache holding on to it) leaves it hidden rather
+   than set in the line of the name */
+if (getComputedStyle(box).position !== 'absolute') return;
+box.hidden = false;
 
 var at = 0, layers = {}, queue = Promise.resolve(), staged = null;
 
@@ -47,7 +55,7 @@ function load(src) {
 function stage() {
   if (!staged) {
     window.CONCEPT_EMBED = true;
-    staged = load(BASE + 'stage.js');
+    staged = load(BASE + 'stage.js' + V);
   }
   return staged;
 }
@@ -81,7 +89,7 @@ function layer(id) {
   else first.onload = on;
   queue = queue.then(stage).then(function () {
     window.CONCEPT = null;
-    return load(BASE + 'scenes/' + id + '.js');
+    return load(BASE + 'scenes/' + id + '.js' + V);
   }).then(function () {
     var S = window.CONCEPT;
     window.CONCEPT = null;
