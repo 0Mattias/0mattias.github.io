@@ -63,6 +63,7 @@ window.CONCEPT = {
 /* metres; x east (right), y up, z north (down the fjord). Set once a pixel. */
 
 float TT;          // the clock, wrapped
+vec3 CAM;          // the eye
 int ZERO;          // nought, which the compiler cannot know, so loops stay loops
 float PXA;         // the angle of one pixel, radians
 vec3 KEY;          // toward the light: the sun by day and dusk, the moon by night
@@ -145,7 +146,7 @@ float densInt(float y0, float mu, float d, float H) {
    walls' shadow the haze takes only the sky's light */
 void air(vec3 ro, vec3 rd, float d, out vec3 T, out vec3 S) {
   vec3 tR = BR * densInt(ro.y, rd.y, d, 8000.0);
-  float tM = MIE * densInt(ro.y, rd.y, d, 1200.0) + HAZE * densInt(ro.y, rd.y, max(d - 900.0, 0.0), 900.0);
+  float tM = MIE * densInt(ro.y, rd.y, d, 1200.0) + HAZE * densInt(ro.y, rd.y, max(d - 1600.0, 0.0), 900.0);
   T = exp(-(tR + tM * 1.11));
   vec3 veil = (skyMS(0.0) * 0.35 + (SKYH * 0.6 + SKYZ * 0.4) * look3(0.72, 0.62, 0.5)) * vec3(1.0, 0.98, 0.9) + twilight(0.0);
   S = scatter1(tR, tM, dot(rd, KEY), KEYG * AIRLIT) + veil * (1.0 - T);
@@ -386,6 +387,7 @@ vec3 landNormal(vec3 p, float t, int det, out float h0) {
    mean, and which tree it is */
 float GAPS;   // how open the canopy stands here
 vec2 crowns(vec2 q, vec2 l) {
+  q += 0.45 * vec2(noise(q * 0.8), noise(q * 0.8 + 5.3)) - 0.22;
   vec2 i = floor(q), f = fract(q);
   float d1 = 9.0, id = 0.5;
   vec2 o1 = vec2(0.0);
@@ -395,17 +397,17 @@ vec2 crowns(vec2 q, vec2 l) {
       vec3 h = hash33(vec3(i + g, 3.7));
       if (h.z < 0.08 + 0.55 * GAPS) continue;
       vec2 o = g + h.xy - f;
-      float r = 0.38 + 0.55 * fract(h.z * 7.13);
+      float r = 0.55 + 0.6 * fract(h.z * 7.13);
       vec2 e = o * vec2(1.0, 0.85) / r;
       float d = dot(e, e);
       if (d < d1) { d1 = d; o1 = e; id = fract(h.z * 17.3 + h.x * 5.1); }
     }
   }
-  float m = smoothstep(1.0, 0.55, d1);
+  float m = smoothstep(1.0, 0.45, d1);
   float dome = sqrt(max(1.0 - d1, 0.0));
   float lit = sat(0.55 + 0.55 * dot(-o1, l) + 0.25 * dome);
   float k = mix(0.14, (0.35 + 1.0 * lit) * (0.6 + 0.8 * fract(id * 31.7)), m);
-  return vec2(k * 1.55, id);
+  return vec2(k * 1.3, id);
 }
 
 /* the land's colour and light at p: n shades it, ng (the land's own
@@ -425,17 +427,20 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   // gneiss: grey, mottled, banded across the faces, warmer where lichen
   // takes it, black where water seeps over
   float k1 = noise3(p * 0.012) * 0.6 + noise3(p * 0.047 + 3.0) * 0.4;
-  vec3 alb = vec3(0.085, 0.088, 0.087) * (0.55 + 0.8 * k1);
+  vec3 alb = vec3(0.09, 0.09, 0.084) * (0.55 + 0.8 * k1);
   alb *= 0.8 + 0.4 * noise(vec2(y * 0.028 + 2.5 * noise3(p * 0.003), sd * 4.0));
   alb = mix(alb, alb * vec3(1.06, 1.04, 0.94), noise3(p * 0.007 + 1.0));
   float ws = noise3(vec3(p.x * 0.03, y * 0.002, p.z * 0.03) + 11.0);
   alb = mix(alb, vec3(0.03, 0.031, 0.03), smoothstep(0.7, 0.85, ws) * (1.0 - slope) * 0.75);
   // water stains running down the steep faces, and paler, drier rock
   // between them, in the face's own coordinates
-  float stx = u * 0.08 + 3.0 * noise(vec2(u * 0.012, y * 0.002 + sd));
+  vec3 dv0 = p - CAM;
+  vec2 ang0 = dv0.xy / max(dv0.z, 1.0);
+  float stx = ang0.x / (6.0 * PXA) + 2.5 * noise(vec2(u * 0.012, y * 0.002 + sd));
+  float sty = ang0.y / (70.0 * PXA);
   float steep = smoothstep(0.72, 0.45, slope);
-  alb *= 1.0 - 0.6 * smoothstep(0.56, 0.8, noise(vec2(stx, y * 0.004 + sd * 5.0))) * steep;
-  alb *= 1.0 + 0.35 * smoothstep(0.6, 0.85, noise(vec2(stx * 1.7 + 9.0, y * 0.006))) * steep;
+  alb *= 1.0 - 0.6 * smoothstep(0.55, 0.8, noise(vec2(stx, sty + sd * 5.0))) * steep;
+  alb *= 1.0 + 0.35 * smoothstep(0.6, 0.85, noise(vec2(stx * 1.7 + 9.0, sty * 1.3))) * steep;
 
   // ledges: grass and heath catch on every step of the rock
   float led = smoothstep(0.42, 0.62, noise(vec2(y * 0.045 + 3.0 * noise(p.xz * 0.004), u * 0.004 + sd))) * smoothstep(0.35, 0.6, noise(vec2(u * 0.03, y * 0.02) + 5.0));
@@ -456,25 +461,31 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   vec2 fq = vec2(u, y * 1.25);
   float bp = noise(fq * 0.007 + 11.0) * 0.6 + noise(fq * 0.019 + 4.0) * 0.4;
   float bf = sat(smoothstep(0.42, 0.64, bp) * 0.85 + 0.3 * (1.0 - smoothstep(60.0, 400.0, y)) + 0.35 * gg.y - 0.3 * smoothstep(350.0, 650.0, y));
-  vec3 pine = vec3(0.0095, 0.018, 0.0095), birch = vec3(0.031, 0.048, 0.019);
+  vec3 pine = vec3(0.0085, 0.017, 0.009), birch = vec3(0.027, 0.045, 0.016);
   vec3 trees = mix(pine, birch, bf);
   // clumps a few tens of metres across, and the runnels between them in
   // shade
   float cl = noise(fq * 0.03 + 7.0) * 0.65 + noise(fq * 0.09 + 2.0) * 0.35;
-  trees *= (0.72 + 0.56 * cl) * (1.0 - 0.35 * smoothstep(0.15, 0.6, gg.y));
-  // single crowns only on the nearest slopes; a fine grain where they
-  // shrink under a few pixels; beyond that the velvet they make
-  float cw = 2.5;
-  float ca = sat(1.0 - (fp - 0.25) / 0.7);
+  trees *= (0.8 + 0.4 * cl) * (1.0 - 0.35 * smoothstep(0.15, 0.6, gg.y));
+  // trees stand upright, so however steeply a slope is seen their crowns
+  // stay round: they are laid out across the view, in the angle each
+  // point makes at the eye, fixed to the land and not to the pointer, at
+  // the size a crown has a few hundred metres off. Single crowns only on
+  // the nearest slopes; a fine grain where they would shrink under a few
+  // pixels; beyond that the velvet they make
+  vec3 dv = p - CAM;
+  vec2 ang = dv.xy / max(dv.z, 1.0);
+  float ca = sat(1.0 - (fp - 0.12) / 0.4);
   if (ca > 0.0) {
-    GAPS = smoothstep(0.4, 0.75, noise(fq * 0.09 + 3.0) * 0.6 + noise(fq * 0.03 + 8.0) * 0.4);
-    vec2 l = normalize(vec2(dot(KEY.xz, tg), KEY.y + 0.25));
-    vec2 c = crowns(fq / cw, l);
+    vec2 q = ang * 250.0;
+    GAPS = smoothstep(0.4, 0.75, noise(q * 0.22 + 3.0) * 0.6 + noise(fq * 0.03 + 8.0) * 0.4);
+    vec2 c = crowns(q, normalize(KEY.xy + vec2(0.0, 0.3)));
     vec3 one = mix(pine, birch, step(1.0 - bf, c.y)) * (0.85 + 0.3 * fract(c.y * 17.0));
-    trees = mix(trees, mix(trees, one * (0.72 + 0.56 * cl), 0.8) * c.x, ca);
+    trees = mix(trees, mix(trees, one * (0.8 + 0.4 * cl), 0.8) * c.x, ca);
   }
-  float grain = sat(1.0 - fp / 3.5) * (1.0 - ca);
-  trees *= 1.0 + grain * (noise(fq / cw * 0.8) - 0.5) * 0.8;
+  float grain = sat(1.0 - fp / 4.0) * (1.0 - ca);
+  vec2 gq = ang / (2.6 * PXA);
+  trees *= 1.0 + grain * ((noise(gq) * 0.6 + noise(gq * 0.4 + 5.0) * 0.4) - 0.5) * 1.2;
   // the gullies: grass and scrub, scree low down and snow high up
   vec3 grass = mix(vec3(0.055, 0.09, 0.025), vec3(0.08, 0.1, 0.04), m2);
   alb = mix(alb, grass, aval * smoothstep(0.3, 0.45, slope) * 0.8);
@@ -698,10 +709,11 @@ vec3 shadeBuilding(vec3 p, vec3 n, vec3 alb, float sh) {
    low over the horizon, so the gap down the fjord keeps its blue */
 float cloudD(vec2 q) {
   q += 0.3 * vec2(noise(q * 0.4 + 5.0), noise(q * 0.4 + 9.0));
-  // where the clouds stand, and the billows on them
+  // where the clouds stand, and the billows on them: rounded puffs with
+  // creases between
   float b = 0.65 * noise(q * 0.7) + 0.35 * noise(q * 1.5 + 2.3);
-  float d = 0.5 * noise(q * 3.1 + 1.7) + 0.3 * noise(q * 6.3 + 3.1) + 0.2 * noise(q * 13.0 + 4.4);
-  return b + (d - 0.5) * 0.38;
+  float d = 0.5 * abs(2.0 * noise(q * 3.1 + 1.7) - 1.0) + 0.32 * abs(2.0 * noise(q * 6.5 + 3.1) - 1.0) + 0.18 * abs(2.0 * noise(q * 13.0 + 4.4) - 1.0);
+  return b + (d - 0.45) * 0.3;
 }
 vec4 clouds(vec3 rd) {
   if (rd.y < 0.012) return vec4(0.0);
@@ -717,15 +729,16 @@ vec4 clouds(vec3 rd) {
   vec2 vd = normalize(rd.xz + vec2(1e-4, 0.0));
   vec2 lk = normalize(KEY.xz + vec2(1e-4, 0.0));
   float fv = cloudD(q + vd * 0.05);
-  float fs = cloudD(q + lk * 0.05);
+  float fs = cloudD(q + lk * 0.025);
   float thick = smoothstep(cov, cov + 0.22, f);
   float top = sat(0.5 + 7.0 * (f - fv));
-  float sun = sat(0.5 + 6.0 * (f - fs));
+  float sun = sat(0.45 + 12.0 * (f - fs));
   float base = sat(6.0 * (fv - f)) * thick;
-  float lit = sat(0.15 + 0.5 * sun + 0.55 * top - 0.45 * base) * (0.75 + 0.5 * noise(q * 9.0 + 2.0));
+  float lit = sat(0.05 + 0.75 * sun + 0.5 * top - 0.55 * base);
+  lit *= lit * (3.0 - 2.0 * lit);
   float c = dot(rd, KEY);
-  vec3 sunc = KEYC * (0.03 + 0.3 * lit + 0.8 * phaseM(c, 0.6) * (1.0 - 0.8 * thick)) * look3(0.85, 0.55, 0.5);
-  vec3 amb = (SKYZ * 0.7 + SKYH * 0.3) * PI * mix(0.42, 0.2, max(thick * 0.7, base)) * look3(1.0, 0.65, 1.0);
+  vec3 sunc = KEYC * (0.015 + 0.21 * lit + 0.6 * phaseM(c, 0.6) * (1.0 - 0.8 * thick)) * look3(0.85, 0.65, 0.5);
+  vec3 amb = (SKYZ * 0.7 + SKYH * 0.3) * PI * mix(0.4, 0.15, max(thick * 0.8, base)) * look3(1.0, 0.65, 1.0);
   float fade = smoothstep(0.015, 0.1, rd.y) * exp(-t0 * 0.00003);
   return vec4((sunc + amb) * a * fade, a * fade);
 }
@@ -1008,6 +1021,7 @@ vec3 scene(vec2 fc) {
   rd.xz = rot(uPoint.x * 0.012) * rd.xz;
   PXA = 2.0 * tv / uRes.y;
   vec3 ro = vec3(mix(-150.0, 10.0, fk), 2.4 + 0.04 * sin(TT * 0.8), mix(950.0, 0.0, fk));
+  CAM = ro;
   float jit = hash12(fc + fract(TT) * 17.0);
   JIT = jit;
 
