@@ -1,47 +1,45 @@
-/* concepts/scenes/headland.js · Neist Point
+/* scenes/headland.js · Neist Point
 
    The view everyone takes at Neist Point, the westernmost point of Skye:
-   from the cliff top north of the car park, some 85 m over the sea,
-   looking south-west across a bay to the peninsula of An t-Aigeach. The
+   from the cliff top north of the path, some 85 m over the sea, looking
+   south-west across a bay to the peninsula of An t-Aigeach. The
    peninsula is a ridge of stacked lava flows, the trap of the Skye lava
    field: its north side falls sheer into the bay as a dark face of
    columnar basalt, worn into buttresses between gullies, streaked green
    with moss and pale below the birds' ledges, with a beach of fallen
    blocks at its foot; its top is grass that tilts away to the south. It
    rises west to its highest point, the prow, where it drops to a lower
-   and flatter platform of the same flows, stepped in terraces, and on
-   the far tip of that stands the lighthouse: Stevenson's white tower of
-   1909 with its ochre gallery and black lantern, the flat-roofed
-   keepers' houses beside it trimmed in ochre, and the white wall of the
-   compound about them. Beyond is the Little Minch, and some thirty
-   kilometres off, low on the horizon, the hills of South Uist.
+   and flatter platform of the same flows, stepped in terraces, out to
+   the bare tip. Beyond is the Little Minch, and some thirty kilometres
+   off, low on the horizon, the hills of South Uist.
 
    The sea is a plane given long trains of Atlantic swell and a wind sea
    over them, each fading as it shrinks under a pixel and handing its
-   slope to the glints. The bay reflects the faces about it, found by a
-   short ray. White water works at the foot of the cliffs and round the
-   fallen blocks. The sky holds a broken sheet of stratocumulus, lit
-   through from its sunward side.
+   slope to the glints. The bay reflects the faces about it. White water
+   works at the foot of the cliffs and round the fallen blocks. The sky
+   holds a broken sheet of stratocumulus, lit through from its sunward
+   side, and its shadows drift over the land and the sea.
 
    By day the Atlantic light comes from high in the south-west: the
    grass is bright, the north face stands in its own shade, and the sea
    is blue and glinting. At dusk the sun is setting into the sea just
-   right of the lighthouse, with its path of light on the water; the
-   faces are dark against it with the light raking their western edges,
-   and the sky is warm. At night the moon hangs low over the Minch with
-   its path below it, the stars are out, the cliffs are dark with the
-   moon finding their edges, and the light is lit, its beam turning
-   through the damp air. A turn from either of the sun's looks to the
-   night passes through a dim twilight, never through day.
+   right of the tip, with its path of light on the water; the faces are
+   dark against it with the light raking their western edges, and the
+   sky is warm. At night the moon hangs low over the Minch with its path
+   below it, the stars are out, and the cliffs are dark with the moon
+   finding their edges.
+
+   The land is traced once for each look, with what the sea needs of it;
+   each frame draws the sea, its glitter and white water, and the clouds
+   and their shadows.
    WebGL2, no libraries, no build step. */
 
-window.CONCEPT = {
+window.PLACE = {
   id: 'headland',
   theme: { day: '#c3ceda', dusk: '#ead6b9', night: '#2f384d' },
   t0: 12,
-  /* the lens: focused on the prow and the light, a step of turf at the
-     lens far out of it; the low sun and its path on the sea bloom freely,
-     the beam softly */
+  /* the lens: focused on the prow; the low sun and its path on the sea
+     bloom freely */
   camera: {
     expo: [1.0, 1.0, 1.08],
     bloom: [0.045, 0.13, 0.11],
@@ -68,7 +66,7 @@ vec2 fromPen(vec2 q) { return q.x * AX + q.y * NX; }
 const vec2 EYEQ = vec2(688.0, 273.0);
 const vec2 MD = vec2(-0.45480, 0.89058);
 const vec2 MN = vec2(0.89058, 0.45480);
-/* the tower, near the north edge of the tip */
+/* the tip, near its north edge */
 const vec2 LHQ = vec2(0.0, 17.0);
 
 /* bearings clockwise from north, and elevations */
@@ -83,7 +81,7 @@ vec3 dirBE(float b, float e) {
 vec3 SUN, SUNC, SUND, MOON, W3, SUNS, SUNSC, MOONC;
 vec3 ZEN, HOR, HORA, GLOW;
 vec3 AMBU, AMBH, BNC, WATER, CLC, DISC, SKYI, GNDI;
-float HAZE, LAMP, NIGHT, DIP;
+float HAZE, NIGHT, DIP;
 
 vec3 L3(vec3 d, vec3 u, vec3 n) { return d * W3.x + u * W3.y + n * W3.z; }
 
@@ -94,7 +92,7 @@ vec3 L3(vec3 d, vec3 u, vec3 n) { return d * W3.x + u * W3.y + n * W3.z; }
    horizon at the same height on the screen, so the extra view opens
    down onto the sea and the foot of the cliffs. Narrower still the lens
    widens no further, and the frame is a crop of that one, turned toward
-   the lighthouse so it keeps its place. The low sun and the moon are
+   the tip so it keeps its place. The low sun and the moon are
    moved with it, to stand where the wide frame shows them. */
 const float TV15 = 0.21661;       /* a 3:2 frame's half-height, as a tangent */
 const float HOFF = 0.72;          /* the horizon over the middle, in half-heights */
@@ -135,10 +133,10 @@ void setup() {
   SUNS = normalize(dSun * uLook.x + uSun * uLook.y + vec3(0.0, 1e-4, 0.0));
   SUNSC = L3(vec3(3.2, 3.0, 2.75), vec3(3.0, 1.45, 0.5), vec3(0.0));
   MOONC = vec3(0.17, 0.2, 0.27) * uLook.z;
-  ZEN = L3(vec3(0.10, 0.20, 0.46), vec3(0.11, 0.1, 0.17), vec3(0.004, 0.0075, 0.02));
-  HOR = L3(vec3(0.50, 0.58, 0.70), vec3(1.35, 0.72, 0.32), vec3(0.02, 0.03, 0.055));
-  HORA = L3(vec3(0.42, 0.53, 0.70), vec3(0.42, 0.26, 0.27), vec3(0.015, 0.023, 0.045));
-  GLOW = L3(vec3(0.5, 0.45, 0.35), vec3(2.4, 1.1, 0.35), vec3(0.06, 0.065, 0.075));
+  ZEN = L3(vec3(0.10, 0.20, 0.46), vec3(0.075, 0.08, 0.16), vec3(0.004, 0.0075, 0.02));
+  HOR = L3(vec3(0.50, 0.58, 0.70), vec3(0.98, 0.43, 0.16), vec3(0.02, 0.03, 0.055));
+  HORA = L3(vec3(0.42, 0.53, 0.70), vec3(0.34, 0.22, 0.25), vec3(0.015, 0.023, 0.045));
+  GLOW = L3(vec3(0.5, 0.45, 0.35), vec3(2.0, 0.74, 0.19), vec3(0.06, 0.065, 0.075));
   AMBU = L3(vec3(0.20, 0.27, 0.40), vec3(0.09, 0.09, 0.16), vec3(0.007, 0.010, 0.020));
   AMBH = L3(vec3(0.3, 0.31, 0.33), vec3(0.14, 0.10, 0.12), vec3(0.006, 0.008, 0.013));
   SKYI = L3(vec3(0.46, 0.52, 0.62), vec3(0.2, 0.16, 0.22), vec3(0.02, 0.028, 0.05));
@@ -148,7 +146,6 @@ void setup() {
   DISC = L3(vec3(60.0, 56.0, 50.0), vec3(60.0, 34.0, 12.0), vec3(0.0));
   WATER = look3(vec3(0.02, 0.026, 0.032), vec3(0.008, 0.016, 0.028), vec3(0.008, 0.024, 0.038));
   HAZE = look3(1.0 / 16000.0, 1.0 / 14000.0, 1.0 / 12000.0);
-  LAMP = uLook.z + 0.12 * uLook.y;
   NIGHT = uLook.z;
 }
 
@@ -169,8 +166,8 @@ float hg(float mu, float g) { float g2 = g * g; return (1.0 - g2) / (12.566 * po
 /* the peninsula's north edge at u: the platform's cliffs west of the
    prow, the face of An t-Aigeach east of it; and its south edge */
 float edgeN(float u) {
-  float pl = 33.0 + 9.0 * sin(u * 0.052 + 0.9) + 3.0 * sin(u * 0.13 + 2.0) - 8.0 * exp(-pow((u - 300.0) / 22.0, 2.0));
-  float rg = 56.0 + 0.03 * (u - 360.0) + 12.0 * exp(-pow((u - 390.0) / 30.0, 2.0)) + 17.0 * exp(-pow((u - 468.0) / 28.0, 2.0)) + 26.0 * exp(-pow((u - 565.0) / 42.0, 2.0)) + 2.0 * sin(u * 0.11);
+  float pl = 33.0 + 9.0 * sin(u * 0.052 + 0.9) + 3.0 * sin(u * 0.13 + 2.0) - 8.0 * exp(-sq((u - 300.0) / 22.0));
+  float rg = 56.0 + 0.03 * (u - 360.0) + 12.0 * exp(-sq((u - 390.0) / 30.0)) + 17.0 * exp(-sq((u - 468.0) / 28.0)) + 26.0 * exp(-sq((u - 565.0) / 42.0)) + 2.0 * sin(u * 0.11);
   return mix(pl, rg, smoothstep(325.0, 360.0, u));
 }
 float edgeS(float u) {
@@ -292,8 +289,8 @@ float map(vec3 p) {
       r = ridge;
     } else r = 352.0 - q.x;
     /* the shoulder under the prow's west face */
-    vec2 sq = (q - vec2(340.0, 44.0)) / vec2(17.0, 13.0);
-    float dsh = (length(sq) - 1.0) * 13.0;
+    vec2 shq = (q - vec2(340.0, 44.0)) / vec2(17.0, 13.0);
+    float dsh = (length(shq) - 1.0) * 13.0;
     if (dsh < 30.0) {
       float sht = 46.0 + 2.0 * noise(q / 9.0);
       r = min(r, smax(p.y - sht + 2.0 * exp(min(dsh, 0.0) / 5.0), dsh + lump + 1.5 * blocks(sp, 2.1, 7.7) + 2.0 * blocks(sp, 6.3, 3.1), 1.0));
@@ -331,42 +328,44 @@ float map(vec3 p) {
   return r;
 }
 
-/* the normal by forward differences from d0, the distance the march
-   already found at p */
-vec3 normalAt(vec3 p, float t, float d0) {
-  float e = max(0.04, t * 0.0009);
-  return normalize(vec3(map(p + vec3(e, 0.0, 0.0)), map(p + vec3(0.0, e, 0.0)), map(p + vec3(0.0, 0.0, e))) - d0);
-}
-
-float march(vec3 ro, vec3 rd, float tmax, float pa, out bool hit, out float d) {
-  /* the turf at the eye's own feet is never drawn: a frame that looks
-     down far enough to see it has the blurred tussocks there instead */
-  float t = 14.0;
-  d = 1e4;
+/* the march from the eye, and the normal where it meets the land by
+   forward differences from the distance it found there: one loop for
+   both, so the land is built into the program once for them */
+float march(vec3 ro, vec3 rd, float tmax, float pa, out bool hit, out vec3 nrm) {
+  /* the march starts beyond the turf at the eye's own feet, so the frame
+     looks out over the edge as one leaning out to take it would */
+  float t = 14.0, d = 1e4, d0 = 0.0, e = 0.0;
+  vec3 p = vec3(0.0);
+  int k = -1;
   hit = false;
-  for (int i = 0; i < 130; i++) {
-    d = map(ro + rd * t);
-    if (d < 0.35 * pa * t + 0.01) { hit = true; break; }
-    t += d * 0.7;
-    if (t > tmax) break;
+  nrm = vec3(0.0, 1.0, 0.0);
+  for (int i = ZERO; i < 133; i++) {
+    vec3 x = ro + rd * t;
+    if (k >= 0) { x = p; x[k] += e; }
+    float h = map(x);
+    if (k >= 0) {
+      nrm[k] = h;
+      if (++k == 3) break;
+      continue;
+    }
+    d = h;
+    if (d < 0.35 * pa * t + 0.01) hit = true;
+    else {
+      t += d * 0.7;
+      if (t > tmax) break;
+      if (i < 129) continue;
+      /* a ray still close to the land when its steps run out has met it */
+      if (d < 1.0 + 0.004 * t) hit = true;
+      else break;
+    }
+    p = ro + rd * t;
+    e = max(0.04, t * 0.0009);
+    d0 = d;
+    nrm = vec3(0.0);
+    k = 0;
   }
-  /* a ray still close to the land when its steps run out has met it */
-  if (!hit && t < tmax && d < 1.0 + 0.004 * t) hit = true;
+  if (hit) nrm = normalize(nrm - d0);
   return t;
-}
-
-float softShadow(vec3 p, vec3 l) {
-  float res = 1.0, t = 1.0;
-  for (int i = 0; i < 12; i++) {
-    vec3 q = p + l * t;
-    if (q.y > 100.0) break;
-    float h = map(q);
-    res = min(res, 8.0 * h / t);
-    if (res < 0.01) break;
-    t += clamp(h * 1.3, 2.5, 110.0);
-    if (t > 1600.0) break;
-  }
-  return smoothstep(0.0, 1.0, res);
 }
 
 /* ------------------------------------------------------------- the sky */
@@ -390,11 +389,14 @@ vec3 sky(vec3 rd) {
 
 /* haze over land and sea: an exponential atmosphere, its light taken from
    the sky low in the same direction */
-vec3 aerial(vec3 col, vec3 ro, vec3 rd, float t) {
+vec3 extinction(vec3 ro, vec3 rd, float t) {
   float H = 700.0;
   float k = rd.y * t / H;
   float od = HAZE * t * exp(-ro.y / H) * (abs(k) > 1e-3 ? (1.0 - exp(-k)) / k : 1.0);
-  vec3 ext = exp(-od * vec3(0.85, 0.95, 1.1));
+  return exp(-od * vec3(0.85, 0.95, 1.1));
+}
+vec3 aerial(vec3 col, vec3 ro, vec3 rd, float t) {
+  vec3 ext = extinction(ro, rd, t);
   vec3 hd = normalize(vec3(rd.x, max(rd.y, 0.0) * 0.35 + 0.006, rd.z));
   /* the haze scatters the light forward, so it warms toward the sun */
   vec3 ins = sky(hd) + GLOW * hg(dot(rd, SUN), 0.7) * look3(0.12, 0.22, 0.1);
@@ -412,13 +414,15 @@ float clN(vec2 p, int oct) {
   return fbm(q + vec2(w * 0.8, 0.0), oct);
 }
 float clCov() { return look3(0.565, 0.6, 0.63); }
-vec4 clouds(vec3 ro, vec3 rd) {
+/* bl blurs them, for the sea's reflection: a rough sea mirrors only
+   their broad shapes, their edges smeared */
+vec4 clouds(vec3 ro, vec3 rd, float bl) {
   if (rd.y < 0.003) return vec4(0.0);
   float t = (CLH - ro.y) / rd.y;
   vec2 p = ro.xz + rd.xz * t;
   float cv = clCov();
-  float n = clN(p, 4);
-  float d = smoothstep(cv, cv + 0.2, n);
+  float n = clN(p, bl > 0.3 ? 2 : 4);
+  float d = smoothstep(cv - 0.15 * bl, cv + 0.2 + 0.15 * bl, n);
   if (d <= 0.0) return vec4(0.0);
   float a = 1.0 - exp(-d * 5.0 / max(rd.y * 8.0, 0.25));
   vec2 sd = normalize(SUN.xz + 1e-5);
@@ -445,7 +449,7 @@ float cloudShade(vec3 p) {
 vec3 stars(vec3 rd, float pa) {
   float az = atan(rd.x, rd.z), el = asin(sat(rd.y));
   vec3 c = vec3(0.0);
-  for (int k = 0; k < 2; k++) {
+  for (int k = ZERO; k < 2; k++) {
     float sc = k == 0 ? 150.0 : 320.0;
     vec2 g = vec2(az, el) * sc;
     vec2 id = floor(g);
@@ -489,42 +493,49 @@ vec3 sunDisc(vec3 rd, float pa) {
    of the skyline over the sea horizon, in radians, by bearing */
 float hebrides(float b) {
   float h = 0.0;
-  h = max(h, 520.0 * exp(-pow((b - 242.6) / 1.5, 2.0)));
-  h = max(h, 470.0 * exp(-pow((b - 240.6) / 1.1, 2.0)));
-  h = max(h, 330.0 * exp(-pow((b - 245.3) / 1.6, 2.0)));
-  h = max(h, 260.0 * exp(-pow((b - 238.4) / 1.3, 2.0)));
+  h = max(h, 520.0 * exp(-sq((b - 242.6) / 1.5)));
+  h = max(h, 470.0 * exp(-sq((b - 240.6) / 1.1)));
+  h = max(h, 330.0 * exp(-sq((b - 245.3) / 1.6)));
+  h = max(h, 260.0 * exp(-sq((b - 238.4) / 1.3)));
   h = max(h, 150.0 * smoothstep(233.0, 237.0, b) * (1.0 - smoothstep(249.0, 256.0, b)));
   h = max(h, 60.0 * smoothstep(254.0, 260.0, b) * (1.0 - smoothstep(282.0, 286.0, b)));
-  h = max(h, 240.0 * exp(-pow((b - 290.0) / 3.0, 2.0)) + 90.0 * smoothstep(283.0, 287.0, b) * (1.0 - smoothstep(305.0, 312.0, b)));
+  h = max(h, 240.0 * exp(-sq((b - 290.0) / 3.0)) + 90.0 * smoothstep(283.0, 287.0, b) * (1.0 - smoothstep(305.0, 312.0, b)));
   h *= 0.9 + 0.15 * noise(vec2(b * 1.3, 4.0));
   return (h * 0.7 - 30.0) / 33000.0;
 }
 
 /* ------------------------------------------------------------- the sea */
 
-/* the slope of the sea and the variance of the slopes too small to draw:
-   three long trains of Atlantic swell from the west, then the wind sea as
-   drifting sheets of noise drawn out across the wind */
-vec2 seaSlope(vec2 p, float fp, out float var) {
+/* the slope of the sea and the variance of the slopes too small to draw.
+   Five trains of Atlantic swell come in from the west, each a little off
+   the others' line and its crests bent, so together they make a
+   short-crested sea; over them the wind sea, drifting sheets of noise
+   drawn out across the wind. The pixel's footprint on the water is drawn
+   out along the line of sight, fa across it and fl along it, so each
+   train fades by the footprint along its own line as its waves shrink
+   under the pixel, and hands its slope to the glints */
+vec2 seaSlope(vec2 p, vec2 vh, float fa, float fl, out float var) {
   vec2 g = vec2(0.0);
   var = 0.0;
-  for (int i = 0; i < 3; i++) {
+  for (int i = ZERO; i < 5; i++) {
     float fi = float(i);
-    float lam = 140.0 * pow(0.62, fi);
-    float an = 0.35 + 0.5 * sin(fi * 2.4 + 0.3);
+    float lam = 165.0 * pow(0.68, fi);
+    float an = 0.42 + (0.18 + 0.1 * fi) * sin(fi * 2.4 + 0.9);
     vec2 dir = vec2(cos(an), sin(an));
     float k = TAU / lam;
-    float st = 0.012 * (0.4 + 1.2 * noise(p / (lam * 2.5) + fi * 3.1));
-    float ph = k * dot(dir, p) - sqrt(9.81 * k) * uTime + fi * 1.7;
-    float fade = sat(1.5 - fp * 5.0 / lam);
+    float st = 0.0105 * (0.4 + 1.2 * noise(p / (lam * 2.5) + fi * 3.1));
+    float ph = k * dot(dir, p) - sqrt(9.81 * k) * uTime + fi * 1.7 + 2.2 * noise(p / (lam * 3.0) + fi * 5.3);
+    float fd = length(vec2(dot(dir, vh) * fl, (dir.x * vh.y - dir.y * vh.x) * fa));
+    float fade = sat(1.6 - fd * 8.0 / lam);
     g += dir * (st * cos(ph) * fade);
     var += st * st * 0.5 * (1.0 - fade * fade);
   }
+  float fw = mix(fa, fl, 0.5);
   mat2 W = rot(0.5);
-  for (int i = 0; i < 2; i++) {
+  for (int i = ZERO; i < 2; i++) {
     float fi = float(i);
     float lam = 14.0 * pow(0.5, fi);
-    float fade = sat(1.5 - fp * 4.0 / lam);
+    float fade = sat(1.5 - fw * 4.0 / lam);
     if (fade <= 0.0) { var += 0.0045; continue; }
     vec2 q = W * p / lam;
     vec3 a = noised(q * vec2(0.55, 1.0) + vec2(-uTime * 1.1 / sqrt(lam), fi * 7.3));
@@ -572,14 +583,59 @@ vec3 seaGlint(vec3 n, vec3 v, vec3 L, vec3 C, float m2, float nv, float fl, vec2
   return C * Fh * (spec * fl + smoothstep(0.9975, 1.0, al) * spot);
 }
 
-vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
+/* what the sea needs of the land, traced once for each look: the faces
+   a flat sea would mirror (.rgb, and whether there are any), how much of
+   the sun the cliffs leave it (.a), and how far it lies from the foot of
+   the rock */
+vec4 seaBake(vec3 ro, vec3 rd, float t, out float mirror, out float fd) {
   vec3 p = ro + rd * t;
   vec2 q = toPen(p.xz);
   float sp, sm;
   float d = min(penD(q, sp), mainD(q, sm));
-  float fp = t * pa / max(-rd.y, 0.04);
+  vec3 refl = vec3(0.0);
+  mirror = 0.0;
+  fd = 120.0;
+  /* three questions of the land, in one loop so it is built into the
+     program once for them: up to nine steps up the mirrored ray for the
+     faces it meets, up to three toward the light for the cliffs' shadow
+     on the water, and how far the water lies from the foot of the rock */
+  vec3 r = normalize(vec3(rd.x, abs(rd.y) + 0.004, rd.z));
+  float rt = 1.0, lt = 1.0;
+  int ph = d < 320.0 ? 0 : 1, k = 0;
+  for (int i = ZERO; i < 16; i++) {
+    if (ph == 1 && !(d < 160.0 && SUN.y > 0.0)) ph = 2;
+    if (ph == 2 && d >= 120.0) break;
+    vec3 x = ph == 0 ? p + r * rt : ph == 1 ? p + SUN * (10.0 + 45.0 * float(k)) : vec3(p.x, 0.0, p.z);
+    if (ph == 0 && x.y > 98.0) { ph = 1; k = 0; continue; }
+    if (ph == 1 && x.y > 85.0) { ph = 2; continue; }
+    float h = map(x);
+    if (ph == 0) {
+      if (h < 0.02 * rt + 0.3) { refl = landQuick(x, r) * 0.8; mirror = 1.0; ph = 1; k = 0; continue; }
+      rt += max(h * 1.3, 3.0);
+      if (rt > 500.0 || ++k >= 9) { ph = 1; k = 0; }
+    } else if (ph == 1) {
+      lt = min(lt, sat(h / 3.0 + 0.3));
+      if (++k >= 3) ph = 2;
+    } else {
+      fd = h;
+      break;
+    }
+  }
+  return vec4(refl, lt);
+}
+
+/* the sea each frame: its swell and chop, the sky and the clouds in it
+   and the faces about the bay, the glitter, the light from under it, and
+   white water working at the foot of the rock */
+vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa, vec4 sb, vec2 fc, float fd) {
+  vec3 p = ro + rd * t;
+  vec2 q = toPen(p.xz);
+  float sp, sm;
+  float d = min(penD(q, sp), mainD(q, sm));
+  float pw = t * pa, fp = pw / max(-rd.y, 0.002);
+  vec2 vh = normalize(rd.xz + 1e-6), vx = vec2(-vh.y, vh.x);
   float var;
-  vec2 g = seaSlope(p.xz, fp, var);
+  vec2 g = seaSlope(p.xz, vh, pw, fp, var);
   /* the backwash off the cliffs roughens the water at their foot */
   var += 0.01 * exp(-max(d, 0.0) / 50.0);
   vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
@@ -593,44 +649,28 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
   r.y = abs(r.y) + 0.004 + 0.7 * sig;
   r = normalize(r);
   vec3 refl = sky(r);
+  vec4 cl = clouds(p, r, sat(sig * 6.0 - 0.3));
+  refl = mix(refl, cl.rgb, cl.a);
   refl = mix(refl, vec3(luma(refl)), 0.4 * uLook.x);
-  /* the faces about the bay stand in its reflection: a short ray finds
-     them */
-  if (d < 320.0) {
-    float rt = 1.0;
-    for (int i = 0; i < 7; i++) {
-      vec3 rp = p + r * rt;
-      if (rp.y > 98.0) break;
-      float h = map(rp);
-      if (h < 0.02 * rt + 0.3) {
-        float brk = smoothstep(0.2, 0.8, noise(p.xz * vec2(0.12, 0.6) + g * 40.0));
-        refl = mix(refl, landQuick(rp, r) * 0.8, 0.55 * brk / (1.0 + var * 40.0));
-        break;
-      }
-      rt += max(h * 1.3, 3.0);
-      if (rt > 500.0) break;
+  /* the faces about the bay stand in its reflection, broken by the swell:
+     each facet shows them from a little aside, so their edges waver */
+  if (d < 340.0) {
+    vec2 off = clamp(vec2(dot(g, vx), dot(g, vh)) * 300.0 / ((t + 150.0) * pa), -24.0, 24.0);
+    if (bakeDi(fc + off).y > 2.5) {
+      float brk = smoothstep(0.2, 0.8, noise(p.xz * vec2(0.12, 0.6) + g * 40.0));
+      refl = mix(refl, bakeC(fc + off).rgb, 0.55 * brk / (1.0 + var * 40.0));
     }
   }
-  /* the cliffs' shadow on the water, found by a few steps toward the light */
-  float csh = cloudShade(p);
-  if (d < 160.0 && SUN.y > 0.0) {
-    float lt = 1.0;
-    for (int i = 0; i < 2; i++) {
-      float ts = 14.0 + 70.0 * float(i);
-      vec3 sp3 = p + SUN * ts;
-      if (sp3.y > 85.0) break;
-      lt = min(lt, sat(map(sp3) / 3.0 + 0.3));
-    }
-    csh *= lt;
-  }
+  float csh = cloudShade(p) * sb.a;
   float m2 = 0.003 + 2.0 * var;
   /* the glitter is granular: facets too small to draw catch the light in
-     flecks, drawn out across the line of sight by perspective; and near at
+     flecks a pixel or two across, measured by the pixel's own footprint
+     across and along the line of sight, coming and going; and near at
      hand single facets sparkle as they tilt to the light */
-  vec2 gq = rot(atan(rd.x, rd.z)) * p.xz;
-  float fl = noise(gq * vec2(0.9, 0.18) / (0.6 + 0.4 * t * pa) + vec2(uTime * 1.3, 0.0));
+  vec2 gq = vec2(dot(p.xz, vx) / pw, dot(p.xz, vh) / fp) * 0.55;
+  float fl = noise3(vec3(gq, uTime * 1.7));
   fl = 0.15 + 2.6 * fl * fl * fl;
-  float pw = t * pa, spot = 0.0;
+  float spot = 0.0;
   vec2 sl = vec2(0.0);
   if (pw < 0.7) {
     vec2 fq = p.xz / 1.1;
@@ -650,7 +690,6 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
   /* white water at the foot of the faces and round the blocks, flaring
      as each swell comes in, and lace drawn out from it */
   if (d < 120.0) {
-    float fd = map(vec3(p.x, 0.0, p.z));
     float ph = dot(vec2(0.94, 0.34), p.xz) * TAU / 140.0 - sqrt(9.81 * TAU / 140.0) * uTime;
     float surge = 0.5 + 0.5 * sin(ph + (sp + sm) * 0.004);
     float band = exp(-max(fd, 0.0) / (0.7 + 1.8 * surge)) * smoothstep(0.45, 0.8, noise(p.xz / 3.0 + vec2(uTime * 0.25, -uTime * 0.1)) + 0.35 * surge - 0.15);
@@ -667,9 +706,8 @@ vec3 shadeSea(vec3 ro, vec3 rd, float t, float pa) {
 
 /* ------------------------------------------------------- the land's skin */
 
-vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa, float d0) {
+vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa, vec3 n, out vec3 sun) {
   vec3 p = ro + rd * t;
-  vec3 n = normalAt(p, t, d0);
   vec2 q = toPen(p.xz);
   float sp, sm;
   float dp = penD(q, sp), dm = mainD(q, sm);
@@ -687,6 +725,31 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa, float d0) {
   float fi = floor(l), ff = l - fi;
   float colA = mix(1.0, 0.3, rg);
   vec3 rock = vec3(0.0), grass = vec3(0.0);
+  /* the beach at the foot is boulders fallen from the faces, each its
+     own shade, rounded and tipped its own way, the gaps between them in
+     shadow: the nearest one's hash, its centre, and how far inside it
+     the point lies */
+  float blk = smoothstep(10.0, 5.0, p.y) * smoothstep(-6.0, 2.0, min(dp, dm));
+  float bd = blk * sat(2.0 - fp * 2.5), gap = 1.0;
+  vec3 bh = vec3(0.5);
+  vec2 bt = vec2(0.0);
+  if (bd > 0.0) {
+    vec2 bc = p.xz / 1.7 + 0.35 * p.y + 0.6 * noise(p.xz / 7.0);
+    vec2 ib = floor(bc), fb = bc - ib;
+    float d1 = 8.0, d2 = 8.0;
+    vec2 r1 = vec2(0.0);
+    for (int k = ZERO; k < 9; k++) {
+      vec2 o = vec2(float(k % 3) - 1.0, float(k / 3) - 1.0);
+      vec2 r = o + 0.15 + 0.7 * hash22(ib + o) - fb;
+      float dd = dot(r, r);
+      if (dd < d1) { d2 = d1; d1 = dd; r1 = r; bh = hash33(vec3(ib + o, 5.0)); }
+      else d2 = min(d2, dd);
+    }
+    float e = sqrt(d2) - sqrt(d1);
+    gap = mix(1.0, 0.3 + 0.7 * smoothstep(0.0, 0.25 + 0.3 * bh.x, e), bd);
+    bt = bd * (-r1 * 1.6 + (bh.yz - 0.5) * 0.5);
+    bh = mix(vec3(0.5), bh, bd);
+  }
   if (gw < 0.999) {
     /* basalt: dark grey-brown, each flow a little different and banded
      where the flows meet, the columns' faces each a shade apart; olive moss
@@ -729,8 +792,7 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa, float d0) {
     float wet = 1.0 - smoothstep(1.5, 4.5 + 2.0 * noise(vec2(s / 18.0, 3.0)), p.y);
     rock *= 1.0 - 0.6 * wet;
     /* the fallen blocks are paler, dried and lichened */
-    float blk = smoothstep(10.0, 5.0, p.y) * smoothstep(-6.0, 2.0, min(dp, dm));
-    rock = mix(rock, vec3(0.13, 0.12, 0.105) * (0.45 + 0.9 * noise(p.xz * 0.9)), blk * 0.85);
+    rock = mix(rock, vec3(0.13, 0.12, 0.105) * (0.45 + 0.8 * bh.x) * (0.8 + 0.4 * noise(p.xz * 0.9)) * (1.0 - 0.5 * wet), blk * 0.9);
   }
   if (gw > 0.001) {
     /* grass on the tops and the ledges: bright where it is grazed short,
@@ -763,8 +825,8 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa, float d0) {
 
   /* the rock's grain, too fine for the surface itself, laid on its light:
      the columns' faces and the cracks across them */
-  float bfade = sat(1.8 - fp * 1.2) * (1.0 - gw * 0.7);
-  float cav = 1.0;
+  float bfade = sat(1.8 - fp * 1.2) * (1.0 - gw * 0.7) * (1.0 - blk);
+  float cav = gap;
   if (bfade > 0.0) {
     vec2 bq = vec2(s, p.y);
     vec3 b1 = noised(bq / vec2(4.0, 9.0) + 1.0), b2 = noised(bq / vec2(1.2, 2.6) + 7.0);
@@ -780,344 +842,142 @@ vec3 shadeLand(vec3 ro, vec3 rd, float t, float pa, float d0) {
     float hgt = b1.x * 0.6 + b2.x * 0.4;
     float jx = fract((s + 5.0 * noise(vec2(s / 23.0, fi * colA))) / 2.1);
     float jt = (1.0 - smoothstep(0.0, 0.07 + fp * 0.1, min(jx, 1.0 - jx))) * colA * (1.0 - smoothstep(0.35, 0.5, ff) * 0.7);
-    cav = mix(1.0, (0.35 + 0.65 * smoothstep(-0.7, 0.6, hgt)) * (1.0 - 0.55 * jt), bfade * (1.0 - gw));
+    cav *= mix(1.0, (0.35 + 0.65 * smoothstep(-0.7, 0.6, hgt)) * (1.0 - 0.55 * jt), bfade * (1.0 - gw));
   }
+  n = normalize(n + vec3(bt.x, 0.0, bt.y));
 
   /* light: the sun, the sky's dome and what the sea and land throw back;
      the shadow ray is cast only where the light could reach */
   float ndl = dot(n, SUN);
-  float sh = ndl > 0.0 || (gw > 0.05 && dot(rd, SUN) > 0.6) ? softShadow(p + n * 0.6, SUN) : 0.0;
-  float csh = cloudShade(p);
-  float dif = max(ndl, 0.0) * sh * csh;
-  float ao = 0.3 + 0.7 * sat(map(p + n * 6.0) / 6.0);
+  bool wsh = ndl > 0.0 || (gw > 0.05 && dot(rd, SUN) > 0.6);
+  /* how open the ground is six metres out from it, then the march
+     toward the light for its shadow: one loop for both, so the land is
+     built into the program once for them */
+  float ao = 1.0, res = 1.0, st = 1.0;
+  vec3 ps = p + n * 0.6;
+  for (int i = ZERO; i < 13; i++) {
+    vec3 x = i == 0 ? p + n * 6.0 : ps + SUN * st;
+    if (i > 0 && (!wsh || x.y > 100.0)) break;
+    float h = map(x);
+    if (i == 0) { ao = 0.3 + 0.7 * sat(h / 6.0); continue; }
+    res = min(res, 8.0 * h / st);
+    if (res < 0.01) break;
+    st += clamp(h * 1.3, 2.5, 110.0);
+    if (st > 1600.0) break;
+  }
+  float sh = wsh ? smoothstep(0.0, 1.0, res) : 0.0;
+  float dif = max(ndl, 0.0) * sh;
   vec3 amb = ambient(n);
   amb += GLOW * 0.5 * NIGHT * sat(dot(normalize(n.xz + 1e-5), normalize(SUN.xz + 1e-5))) * (1.0 - abs(n.y));
   /* by night the eye opens: the moon's light and the sky's are given a
      little more, so the stone still reads */
   float moonlit = 1.0 + 2.5 * NIGHT;
-  vec3 col = alb * cav * (SUNC * dif * moonlit + amb * ao * (1.0 + 2.5 * NIGHT) + BNC * sat(-n.y + 0.3) * ao * (1.0 + 3.0 * NIGHT));
+  /* what the sun gives, which the clouds' shadows take away as they pass */
+  sun = alb * cav * SUNC * dif * moonlit;
+  /* grass lit from behind glows a little */
+  sun += alb * SUNC * gw * 0.5 * pow(sat(dot(rd, SUN)), 4.0) * sh;
+  vec3 col = sun + alb * cav * (amb * ao * (1.0 + 2.5 * NIGHT) + BNC * sat(-n.y + 0.3) * ao * (1.0 + 3.0 * NIGHT));
   /* at dusk the light just grazing a face warms it a little */
   col += alb * SUNC * uLook.y * 0.35 * (sat((ndl + 0.3) / 1.3) - max(ndl, 0.0));
-  /* grass lit from behind glows a little */
-  col += alb * SUNC * gw * 0.5 * pow(sat(dot(rd, SUN)), 4.0) * sh * csh;
   return col;
-}
-
-/* ------------------------------------------------------- the lighthouse */
-
-/* Stevenson's tower: a white shaft, its head corbelled out in ochre
-   under the gallery, the lantern's glazing dark between its bars and its
-   dome black. Its silhouette is found from the ray's nearest pass to the
-   axis, so it is cheap and its edges are soft */
-float tower(vec3 ro, vec3 rd, float pa, vec3 base, out vec3 col, out float tl) {
-  col = vec3(0.0);
-  tl = 1e9;
-  vec2 d2 = rd.xz;
-  float dd = dot(d2, d2);
-  float tc = dot(base.xz - ro.xz, d2) / dd;
-  if (tc < 0.0) return 0.0;
-  vec2 cp = ro.xz + d2 * tc - base.xz;
-  float m = length(cp);
-  float y = ro.y + rd.y * tc - base.y;
-  float fp = tc * pa;
-  float r = 0.0;
-  int part = 0;
-  if (y < 13.6) r = mix(2.25, 1.85, sat(y / 13.6));
-  else if (y < 15.3) { r = mix(1.85, 2.35, smoothstep(13.6, 15.0, y)); part = 1; }
-  else if (y < 16.2) { r = 2.4; part = 2; }
-  else if (y < 18.3) { r = 1.5; part = 3; }
-  else if (y < 19.4) { r = 1.55 * sqrt(max(1.0 - (y - 18.3) / 1.1, 0.0)) + 0.15; part = 4; }
-  else if (y < 19.9) { r = 0.3; part = 4; }
-  float cov = sat((r - m) / fp + 0.5) * sat((19.9 - y) / fp + 0.5) * sat((y + 1.0) / fp);
-  if (cov <= 0.0) return 0.0;
-  float ins = sqrt(max(r * r - m * m, 0.0));
-  vec2 off = cp - normalize(d2) * ins;
-  vec3 n = normalize(vec3(off.x, 0.08, off.y));
-  tl = tc - ins / sqrt(dd);
-  vec3 alb = vec3(0.78, 0.77, 0.74);
-  if (part == 1) alb = vec3(0.6, 0.42, 0.2);
-  if (part == 2) alb = vec3(0.05, 0.05, 0.05);
-  if (part == 3) alb = vec3(0.03, 0.035, 0.04);
-  if (part == 4) alb = vec3(0.025);
-  /* a plinth of ochre at the foot, and the small windows up the shaft */
-  if (part == 0) {
-    alb = mix(alb, vec3(0.6, 0.42, 0.2), 1.0 - smoothstep(0.5, 0.5 + fp, y));
-    float wy = fract(y / 4.4 + 0.3);
-    float ang = atan(off.y, off.x);
-    float wx = fract(ang / TAU * 3.0 + 0.2);
-    alb = mix(alb, vec3(0.05), step(abs(wy - 0.5), 0.12) * step(abs(wx - 0.5), 0.05) * step(2.0, y) * sat(1.0 - fp));
-  }
-  float dif = max(dot(n, SUN), 0.0) * cloudShade(base);
-  vec3 amb = ambient(n);
-  col = alb * (SUNC * dif * (1.0 + 1.5 * NIGHT) + amb * (1.0 + 1.5 * NIGHT));
-  /* glass catches the sky; the lantern glows when the light is lit */
-  if (part == 3) col += 0.12 * sky(reflect(rd, n)) + LAMP * vec3(2.4, 1.9, 1.2);
-  return cov;
-}
-
-/* the station's other buildings and walls, as boxes in the peninsula's
-   frame: (u, v) centre, half extents, height */
-float boxHit(vec3 ro, vec3 rd, vec3 c, vec3 hb, out vec3 nrm) {
-  vec3 o = ro - c;
-  vec3 m = 1.0 / rd;
-  vec3 k = abs(m) * hb;
-  vec3 t1 = -m * o - k, t2 = -m * o + k;
-  float tn = max(max(t1.x, t1.y), t1.z), tf = min(min(t2.x, t2.y), t2.z);
-  if (tn > tf || tf < 0.0 || tn < 0.0) return -1.0;
-  nrm = -sign(rd) * step(t1.yzx, t1.xyz) * step(t1.zxy, t1.xyz);
-  return tn;
-}
-
-/* the keepers' houses: single storey, flat roofs behind a parapet, white
-   harl with ochre dressings round the windows, at the corners and along
-   the cornice, and ochre chimney stacks; the compound's white wall about
-   them, and the long wall that runs back along the path */
-vec4 station(vec3 ro, vec3 rd, float base, float fpx) {
-  vec2 o2 = toPen(ro.xz), d2 = toPen(rd.xz);
-  vec3 o = vec3(o2.x, ro.y - base, o2.y), d = vec3(d2.x, rd.y, d2.y);
-  float best = 1e9;
-  vec3 nb = vec3(0.0), hp = vec3(0.0);
-  int kind = 0;
-  vec3 nn;
-  for (int i = 0; i < 11; i++) {
-    vec3 c, hb;
-    int kd = 1;
-    if (i == 0) { c = vec3(25.0, 2.8, 12.0); hb = vec3(19.0, 2.8, 4.6); }
-    else if (i == 1) { c = vec3(6.5, 2.0, 17.0); hb = vec3(4.2, 2.0, 3.2); }
-    else if (i == 2) { c = vec3(33.0, 2.5, 22.0); hb = vec3(6.5, 2.5, 5.0); }
-    else if (i == 3) { c = vec3(16.0, 6.3, 12.3); hb = vec3(0.45, 0.8, 0.9); kd = 2; }
-    else if (i == 4) { c = vec3(30.0, 6.3, 12.3); hb = vec3(0.45, 0.8, 0.9); kd = 2; }
-    else if (i == 5) { c = vec3(42.0, 6.3, 11.0); hb = vec3(0.45, 0.8, 0.9); kd = 2; }
-    else if (i == 6) { c = vec3(23.0, 1.0, 30.0); hb = vec3(29.0, 1.0, 0.45); kd = 3; }
-    else if (i == 7) { c = vec3(23.0, 1.0, -1.5); hb = vec3(29.0, 1.0, 0.45); kd = 3; }
-    else if (i == 8) { c = vec3(52.0, 1.0, 14.0); hb = vec3(0.45, 1.0, 16.0); kd = 3; }
-    else if (i == 9) { c = vec3(130.0, 0.9, 4.0); hb = vec3(78.0, 0.9, 0.45); kd = 3; }
-    else { c = vec3(95.0, 1.4, 14.0); hb = vec3(3.0, 1.4, 2.2); }
-    float t = boxHit(o, d, c, hb, nn);
-    if (t > 0.0 && t < best) { best = t; nb = nn; kind = kd; hp = o + d * t - c + vec3(0.0, hb.y, 0.0); }
-  }
-  if (best > 1e8) return vec4(0.0, 0.0, 0.0, -1.0);
-  vec3 alb = vec3(0.74, 0.73, 0.7);
-  if (kind == 1) {
-    if (nb.y > 0.5) alb = vec3(0.09, 0.09, 0.1);
-    else {
-      float hx = abs(nb.x) > 0.5 ? hp.z : hp.x;
-      float y = hp.y;
-      /* the windows, every four metres, with their ochre surrounds */
-      float wx = fract(hx / 3.8 + 0.5) - 0.5;
-      float yy = y;
-      float win = step(abs(wx), 0.13) * step(abs(yy - 2.5), 0.75);
-      float sur = step(abs(wx), 0.19) * step(abs(yy - 2.5), 0.95);
-      float cor = step(yy, 0.35) + step(4.9, yy);
-      alb = mix(alb, vec3(0.6, 0.42, 0.2), sat(sur + cor) * sat(1.6 - fpx * 0.5));
-      alb = mix(alb, vec3(0.05, 0.05, 0.06), win * sat(1.6 - fpx * 0.5));
-      alb = mix(alb, vec3(0.5, 0.4, 0.25), sat(fpx * 0.5 - 0.6) * 0.25);
-    }
-  }
-  if (kind == 2) alb = vec3(0.6, 0.42, 0.2);
-  if (kind == 3 && nb.y > 0.5) alb = vec3(0.55, 0.54, 0.5);
-  vec3 nw = vec3(fromPen(nb.xz).x, nb.y, fromPen(nb.xz).y);
-  float dif = max(dot(nw, SUN), 0.0) * cloudShade(ro + rd * best);
-  vec3 col = alb * (SUNC * dif * (1.0 + 1.5 * NIGHT) + ambient(nw) * (1.0 + 1.5 * NIGHT));
-  return vec4(col, best);
-}
-
-/* --------------------------------------------------------- the lamp */
-
-/* light scattered out of the two beams on its way to the eye: each beam
-   is a cone, and the integral across it is taken at the ray's nearest
-   pass to the beam's axis */
-vec3 beams(vec3 ro, vec3 rd, float tEnd, vec3 L) {
-  float a0 = TAU * fract(uTime / 10.0) + 2.2;
-  vec3 c = vec3(0.0);
-  vec3 w0 = ro - L;
-  float dw = dot(rd, w0);
-  for (int k = 0; k < 2; k++) {
-    float a = a0 + float(k) * PI;
-    vec3 b = normalize(vec3(cos(a), -0.012, sin(a)));
-    float bd = dot(rd, b), ew = dot(b, w0);
-    float den = max(1.0 - bd * bd, 1e-5);
-    float sr = (bd * ew - dw) / den;
-    float ub = ew + sr * bd;
-    float dm = length(w0 + rd * sr - b * ub);
-    float w = 0.6 + 0.022 * max(ub, 0.0);
-    float sg = max(sqrt(den), 0.1);
-    float I = 1.772 * w * exp(-dm * dm / (w * w)) / (sg * (ub * ub + 400.0));
-    I *= smoothstep(0.0, 30.0, ub) * smoothstep(80.0, 400.0, sr) * smoothstep(-80.0, 0.0, tEnd - sr);
-    float ph = hg(dot(b, -rd), 0.4) + 0.04;
-    c += I * ph * exp(-sr / 9000.0);
-  }
-  return c * vec3(1.0, 0.88, 0.68) * 0.9e7 * HAZE;
-}
-
-vec3 lampGlow(vec3 ro, vec3 rd, float tEnd, vec3 L, float pa) {
-  vec3 tl = L - ro;
-  float dl = length(tl);
-  tl /= dl;
-  float a0 = TAU * fract(uTime / 10.0) + 2.2;
-  float face = 0.0;
-  for (int k = 0; k < 2; k++) {
-    float a = a0 + float(k) * PI;
-    vec3 b = normalize(vec3(cos(a), -0.012, sin(a)));
-    float ang = acos(clamp(dot(b, -tl), -1.0, 1.0));
-    face = max(face, exp(-ang * ang / 0.0035));
-  }
-  float s0 = dot(L - ro, rd);
-  float hh = max(length(cross(rd, L - ro)), 0.4);
-  float halo = (atan((tEnd - s0) / hh) + atan(s0 / hh)) / hh;
-  float sn = length(cross(rd, tl));
-  float vis = smoothstep(-5.0, 5.0, tEnd - dl);
-  vec3 c = vec3(1.0, 0.86, 0.62) * (halo * 2500.0 * HAZE * (0.25 + 2.5 * face));
-  c += vec3(1.0, 0.9, 0.75) * vis * (exp(-sn * sn / (pa * pa * 2.2)) * (3.0 + 60.0 * face) + 2.0e-6 * face / (sn * sn + 4e-6));
-  return c;
 }
 
 /* ------------------------------------------------------------ the eye */
 
-/* the clifftop at the lens: tussock grass, rush and the pink of thrift a
-   step or two away, in three planes, far out of focus. They are drawn in
-   the frame's own measure, low along its bottom edge, so they sit alike
-   in a wide frame and a tall one; depth says how far off the nearest is */
-vec4 nearGrass(vec2 fc, vec3 fw, out float depth) {
-  vec2 q = vec2((fc.x - 0.5 * uRes.x) / uRes.y, fc.y / uRes.y);
-  vec4 res = vec4(0.0);
-  depth = 1e6;
-  /* a narrow frame, looking further down, has a little more of it */
-  float steep = smoothstep(0.85, 0.6, uRes.x / uRes.y);
-  if (q.y > 0.13 + 0.06 * steep) return res;
-  float back = pow(sat(dot(fw, SUN)), 2.0);
-  for (int k = 2; k >= 0; k--) {
-    float fk = float(k);
-    float dz = 1.6 + 1.2 * fk;
-    float tall = 0.1 - 0.022 * fk + 0.05 * steep, wdt = 0.009 - 0.002 * fk;
-    vec2 p = q + vec2(uPoint.x * 0.01 / dz + fk * 3.7, 0.0);
-    /* the tussocks' own mass, and the blades over it */
-    float mass = (0.03 + 0.03 * steep) * (0.4 + noise(vec2(p.x * 7.0, fk * 3.0))) - 0.008 * fk;
-    float cov = smoothstep(0.003, 0.0, p.y - mass);
-    float flower = 0.0;
-    float ci = floor(p.x / wdt);
-    for (int j = -1; j <= 1; j++) {
-      float c = ci + float(j);
-      vec3 h = hash33(vec3(c, fk, 3.0));
-      float bh = tall * (0.2 + 0.8 * h.y * h.y) * (0.55 + 0.45 * sin(c * 0.37 + fk * 2.0));
-      float v = p.y / bh;
-      if (v > 0.0 && v < 1.0) {
-        float cx = (c + h.x) * wdt + (h.z - 0.5) * 0.7 * bh * v * v;
-        float w = wdt * 0.3 * (1.0 - v) + 0.0006;
-        cov = max(cov, smoothstep(w + 0.0012, w, abs(p.x - cx)));
-      }
-      /* now and then a head of thrift on its stalk */
-      if (k == 1 && h.z > 0.86) {
-        vec2 fd = (p - vec2((c + h.x) * wdt, bh * 0.9)) / vec2(1.0, 1.2);
-        flower = max(flower, smoothstep(0.006, 0.003, length(fd)));
-      }
-    }
-    vec3 lit = SKYI * 0.55 + SUNC * (0.12 + 0.55 * back) + GNDI;
-    vec3 gc = mix(vec3(0.055, 0.06, 0.026), vec3(0.075, 0.07, 0.035), fk * 0.5) * lit * (0.7 + 0.15 * fk);
-    gc = mix(gc, vec3(0.42, 0.2, 0.28) * lit, flower);
-    cov = max(cov, flower);
-    res.rgb = mix(res.rgb, gc, cov);
-    res.a = max(res.a, cov);
-    if (cov > 0.3) depth = dz;
-  }
-  return res;
-}
-
-vec3 scene(vec2 fc) {
-  float asp = uRes.x / uRes.y;
-  frameFor(asp);
-  setup();
+/* the camera on the cliff top */
+vec3 cam(vec2 fc, out vec3 ro, out float pa) {
+  frameFor(RES.x / RES.y);
   float k = 2.0 * FTV;
-  float yaw = radians(FYAW + uPoint.x * 0.6);
-  float pitch = FPITCH + radians(uPoint.y * 0.4);
+  float yaw = radians(FYAW);
+  float pitch = FPITCH;
   vec3 fw = vec3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch));
   vec3 rt = normalize(vec3(fw.z, 0.0, -fw.x));
   vec3 up = cross(fw, rt);
-  vec2 uv = (fc - 0.5 * uRes) / uRes.y;
-  vec3 rd = normalize(fw + k * (uv.x * rt + uv.y * up));
-  float pa = k / uRes.y;
-
-  vec2 eq = EYEQ + uPoint.x * vec2(-1.5, 3.0);
-  vec3 ro = vec3(fromPen(eq).x, 0.0, fromPen(eq).y);
+  vec2 uv = (fc - 0.5 * RES) / RES.y;
+  pa = k / RES.y;
+  vec2 eq = EYEQ;
+  ro = vec3(fromPen(eq).x, 0.0, fromPen(eq).y);
   float s0;
   float de = mainD(eq, s0);
-  ro.y = mainTop(eq, -de) - 3.0 * exp(de / 5.0) + 1.7 + uPoint.y * 0.8;
+  ro.y = mainTop(eq, -de) - 3.0 * exp(de / 5.0) + 1.7;
+  return normalize(fw + k * (uv.x * rt + uv.y * up));
+}
 
+/* one look's trace. The land's light, and in .a the share of it the
+   clouds' shadows take; for the sea, the faces it mirrors and the cliffs'
+   shadow on it; for the sky, its light without the clouds. D: how far the
+   ray went, what it met (0 sky, 1 land, 2 sea, 3 sea mirroring the
+   land), and how far the sea lies from the rock, or how much of the sky
+   the Hebrides cover */
+void bake(vec2 fc, out vec4 C, out vec4 D) {
+  vec3 ro;
+  float pa;
+  vec3 rd = cam(fc, ro, pa);
+  setup();
   float tSea = rd.y < 0.0 ? ro.y / -rd.y : 1e9;
   float tMax = min(tSea, 4000.0);
   bool hit = false;
   float t = tMax;
-  float d0 = 0.0;
-  if (rd.y < 0.0) t = march(ro, rd, tMax, pa, hit, d0);
-
-  vec3 col;
-  float tEnd;
+  vec3 n0 = vec3(0.0, 1.0, 0.0);
+  if (rd.y < 0.0) t = march(ro, rd, tMax, pa, hit, n0);
   if (hit) {
-    col = aerial(shadeLand(ro, rd, t, pa, d0), ro, rd, t);
-    tEnd = t;
+    vec3 sun;
+    vec3 col = shadeLand(ro, rd, t, pa, n0, sun);
+    vec3 a = aerial(col, ro, rd, t);
+    C = vec4(a, sat(luma(sun * extinction(ro, rd, t)) / max(luma(a), 1e-6)));
+    D = vec4(t, 1.0, 0.0, 0.0);
   } else if (rd.y < 0.0 && tSea < 33000.0) {
-    col = aerial(shadeSea(ro, rd, tSea, pa), ro, rd, tSea);
-    tEnd = tSea;
+    float mirror, fd;
+    C = seaBake(ro, rd, tSea, mirror, fd);
+    D = vec4(tSea, 2.0 + mirror, fd, 0.0);
   } else {
-    col = sky(rd);
+    vec3 col = sky(rd);
     /* a halo in layers close about the light, as a lens and damp air give
        it: wide and soft, then tighter, then the aureole at the disc */
     float hs = max(dot(rd, SUN), 0.0), h2 = hs * hs, h4 = h2 * h2, h16 = h4 * h4 * h4 * h4;
     col += GLOW * (0.03 * h2 * hs + 0.12 * h16 * h4 + look3(0.6, 0.9, 0.4) * pow(hs, 320.0));
     col += sunDisc(rd, pa);
-    col += (moonDisc(rd, pa) + stars(rd, pa) * (1.0 - smoothstep(0.0, 0.03, dot(rd, MOON) - 0.99))) * NIGHT;
-    vec4 cl = clouds(ro, rd);
-    col = mix(col, cl.rgb, cl.a);
-    tEnd = 1e6;
+    col += moonDisc(rd, pa) * NIGHT;
     /* the hills of the Outer Hebrides, standing on the horizon */
     float b = degrees(atan(rd.x, rd.z));
     b += b < 0.0 ? 360.0 : 0.0;
     float hh = hebrides(b);
     float ic = sat((hh - rd.y) / pa + 0.5);
-    if (ic > 0.0) {
+    C = vec4(col, 0.0);
+    D = vec4(1e6, 0.0, ic, 0.0);
+  }
+}
+
+/* each frame: the sea, the clouds and their shadows, and the stars */
+vec3 frame(vec2 fc) {
+  vec3 ro;
+  float pa;
+  vec3 rd = cam(fc, ro, pa);
+  setup();
+  vec4 c = bakeC(fc);
+  vec4 d = bakeDi(fc);
+  vec3 col;
+  float tEnd = d.x;
+  if (d.y > 1.5) {
+    col = aerial(shadeSea(ro, rd, d.x, pa, c, fc, d.z), ro, rd, d.x);
+  } else if (d.y > 0.5) {
+    float csh = cloudShade(ro + rd * d.x);
+    col = c.rgb * (1.0 - c.a * (1.0 - csh));
+  } else {
+    col = c.rgb;
+    if (NIGHT > 0.0) col += stars(rd, pa) * (1.0 - smoothstep(0.0, 0.03, dot(rd, MOON) - 0.99)) * NIGHT;
+    vec4 cl = clouds(ro, rd, 0.0);
+    col = mix(col, cl.rgb, cl.a);
+    if (d.z > 0.0) {
       vec3 icol = vec3(0.025, 0.032, 0.03) * (SUNC * 0.15 + SKYI);
-      col = mix(col, aerial(icol, ro, rd, 33000.0), ic);
+      col = mix(col, aerial(icol, ro, rd, 33000.0), d.z);
     }
+    tEnd = 1e6;
   }
-
-  /* the station on the tip, looked for only by rays that pass near it */
-  vec2 lq = LHQ;
-  float base = platTop(lq) - 0.3;
-  vec2 lw = fromPen(lq);
-  vec2 tw = lw - ro.xz;
-  float near = length(tw - rd.xz * max(dot(tw, rd.xz) / dot(rd.xz, rd.xz), 0.0));
-  if (near < 220.0) {
-    float fpx = length(tw) * pa;
-    vec4 st = station(ro, rd, base, fpx);
-    if (st.w > 0.0 && st.w < tEnd) {
-      col = aerial(st.rgb, ro, rd, st.w);
-      tEnd = st.w;
-    }
-    vec3 lc;
-    float tl;
-    float cov = tower(ro, rd, pa, vec3(lw.x, base, lw.y), lc, tl);
-    if (cov > 0.0 && tl < tEnd + 3.0) {
-      col = mix(col, aerial(lc, ro, rd, tl), cov);
-      tEnd = min(tEnd, tl);
-    }
-  }
-
-  if (LAMP > 0.001) {
-    vec3 L = vec3(lw.x, base + 17.3, lw.y);
-    col += LAMP * (beams(ro, rd, tEnd, L) * uLook.z + lampGlow(ro, rd, tEnd, L, pa));
-  }
-
-  /* the lens is focused between the prow and the light; the turf at its
-     feet is a blur */
+  /* the lens is focused on the prow */
   gFocus = 470.0;
   gAperture = 7.0e-5;
   gDepth = min(tEnd, 1e6);
-  float gd;
-  vec4 ng = nearGrass(fc, fw, gd);
-  if (ng.a > 0.0) {
-    col = mix(col, ng.rgb, ng.a);
-    if (ng.a > 0.3) gDepth = gd;
-  }
   return col;
 }
 `

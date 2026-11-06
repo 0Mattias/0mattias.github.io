@@ -1,4 +1,4 @@
-/* concepts/scenes/fjord.js · the fjord
+/* scenes/fjord.js · Nærøyfjord
 
    The Nærøyfjord, afloat a couple of metres above the water a kilometre
    and a half south of Bakka, looking north down the fjord. It is the
@@ -24,45 +24,45 @@
    the steepest steps show the grey gneiss, with heath on its ledges.
    Snow lies on the high ground and longest on the slopes turned from the
    sun. Two falls thread down the east wall in pitches, white over the
-   rock and lost under the trees. Bakka stands on its fan on the west
-   shore, a handful of houses and barns and the small white church with
-   its tower and spire at the water's edge, and Styvi's farm on a green
-   fan across the fjord further on; behind each fan the wall stands back,
-   at the mouth of the side valley that built it. Low cloud hangs along
-   the upper west wall.
+   rock and lost under the trees. Two side valleys have built fans of
+   gravel out into the fjord, one on either shore, under meadow grass and
+   birch; behind each the wall stands back. Low cloud hangs along the upper
+   west wall.
 
    The air is one model for sky and distance alike, sunlight scattered
    once by Rayleigh and Mie over an exponential atmosphere and a bluer
    veil of light scattered more than once, with the fjord's own haze lying
    thicker low over the water; in so narrow a trough the walls hide much
    of the sky from each other and from the air between, and throw green
-   light back across it. Fair-weather cumulus drift over the rim. The
-   water is dark green glacial water that mirrors all of it by the Fresnel
-   of water, broken by slow, faint ripples. By day it is late afternoon
-   and the sun stands in the west behind the west wall, which lays its
-   shadow across the foot of the east wall and lights the rest; at dusk
-   the sun is all but down in the north-west, the valley lies in blue
-   shade and only the high ground keeps the warm light, under peach
-   clouds; at night the moon over the west wall lights the east wall
-   faintly and the aurora folds over the north, curtains brightest and
-   sharpest at their lower edge and fading upward through tall rays, once
-   in the sky and once in the water. A phone or a tablet sees the
-   desktop's picture, framed as the meadow frames it: as wide as a 3:2
-   frame, the lens widened up into the sky, and on a phone a crop of that
-   turned toward the far end of the fjord.
+   light back across it. Fair-weather cumulus drift over the rim, and
+   their shadows slide down the walls. The water is dark green glacial
+   water that mirrors all of it by the Fresnel of water, broken by slow,
+   faint ripples. By day it is late afternoon and the sun stands in the
+   west behind the west wall, which lays its shadow across the foot of the
+   east wall and lights the rest; at dusk the sun is all but down in the
+   north-west, the valley lies in blue shade and only the high ground
+   keeps the warm light, under peach clouds; at night the moon over the
+   west wall lights the east wall faintly and the aurora folds over the
+   north, curtains brightest and sharpest at their lower edge and fading
+   upward through tall rays, once in the sky and once in the water. A
+   phone or a tablet sees the desktop's picture, framed as the meadow
+   frames it: as wide as a 3:2 frame, the lens widened up into the sky,
+   and on a phone a crop of that turned toward the far end of the fjord.
 
-   Each ray, the eye's and the one the water throws back, marches the land
-   once, and the land, the buildings and the sky are each shaded at one
-   place in the code, so the shader stays small enough to compile quickly.
+   The land, the sky and what a still mirror of them would show are
+   traced for the look on show every few seconds, the clouds, the mist
+   and the aurora moving on between, and blended; each frame draws the
+   water from them, rippled, and the clouds' shadows over the walls.
    WebGL2, no libraries, no build step. */
 
-window.CONCEPT = {
+window.PLACE = {
   id: 'fjord',
+  period: 3,
   theme: { day: '#6192c5', dusk: '#8f99ba', night: '#2e4b7e' },
   t0: 40,
   /* the meadow's lens and grade; by night more of the colour is kept, so
      the aurora stays green, and it and the moon bloom more; the blacks are
-     lifted far less than the meadow's, so the shaded walls stay near black */
+     lifted far less than the meadow's, so the shaded walls stay deep */
   camera: {
     expo: [1.0, 1.05, 1.15],
     bloom: [0.05, 0.08, 0.13],
@@ -80,7 +80,6 @@ window.CONCEPT = {
 float TT;          // the clock, wrapped
 vec3 CAM;          // the eye
 bool REFL;         // shading what the water throws back, which its ripples blur
-int ZERO;          // nought, which the compiler cannot know, so loops stay loops
 float PXA;         // the angle of one pixel, radians
 vec3 KEY;          // toward the light: the sun by day and dusk, the moon by night
 vec3 E0;           // that light above the air
@@ -101,7 +100,6 @@ vec3 MSL;          // the light that has scattered more than once, as a source
 const vec3 BR = vec3(5.8e-6, 13.5e-6, 33.1e-6);   // Rayleigh, per metre
 const vec3 BO = vec3(0.65e-6, 1.88e-6, 0.085e-6); // ozone, per metre
 
-float sq(float x) { return x * x; }
 
 vec3 dirAE(float az, float el) {
   az = radians(az); el = radians(el);
@@ -247,8 +245,8 @@ float fallOff(float u, float s, float sd) {
   return min(abs(a), abs(b));
 }
 
-/* the alluvial fans the farms stand on: Bakka on the west shore, Styvi on
-   the east, each a low cone spread out into the water */
+/* the alluvial fans the side valleys have built, one on the west shore
+   and one on the east, each a low cone spread out into the water */
 const vec3 BAKKA = vec3(-352.0, 1450.0, 190.0);   // apex x, z, radius
 const vec3 STYVI = vec3(380.0, 2950.0, 165.0);
 float FANK;   // how near a fan, at the last fanH()
@@ -266,8 +264,8 @@ float GSH;   // the gully at the last ground(), for the shading
 
 float ground(vec2 p, vec3 pl, int det) {
   float s = pl.x, u = pl.y, sd = pl.z;
-  // behind a farm's fan the wall stands back, at the mouth of the side
-  // valley that built it, and the shore is the fan's own
+  // behind a fan the wall stands back, at the mouth of the side valley
+  // that built it, and the shore is the fan's own
   float hf = fanH(p);
   float kf = FANK * FANK;
   s -= 130.0 * kf;
@@ -309,7 +307,7 @@ float ground(vec2 p, vec3 pl, int det) {
   if (up > 0.0) {
     float r = 0.0, a = 0.5;
     vec2 q = p * 0.0006;
-    for (int i = 0; i < 4; i++) {
+    for (int i = ZERO; i < 4; i++) {
       if (i > det) break;
       float n = 1.0 - abs(2.0 * noise(q) - 1.0);
       r += a * n * n;
@@ -391,10 +389,24 @@ float shadow(vec3 p, int n, float d) {
   return r * r * (3.0 - 2.0 * r);
 }
 
-vec3 landNormal(vec3 p, float t, int det, out float h0) {
+/* the land's normal from three taps; and near at hand five more, at the
+   detail the march uses far off, for how far p lies below the mean of
+   its neighbours 34 m around, which shadeLand() takes for the hollows.
+   One loop for all of them, so the land is built into the program once */
+float LAPV;
+vec3 landNormal(vec3 p, float t, int det, out float h0, bool lap) {
   float e = max(0.6, t * 0.0012);
   float h[3];
-  for (int i = ZERO; i < 3; i++) h[i] = groundAt(p.xz + (i == 1 ? vec2(e, 0.0) : i == 2 ? vec2(0.0, e) : vec2(0.0)), det);
+  LAPV = 0.0;
+  int n = lap && t < 9000.0 ? 8 : 3;
+  for (int i = ZERO; i < 8; i++) {
+    if (i >= n) break;
+    int j = i - 3;
+    vec2 o = i < 3 ? (i == 1 ? vec2(e, 0.0) : i == 2 ? vec2(0.0, e) : vec2(0.0))
+                   : vec2(j == 1 ? 34.0 : j == 2 ? -34.0 : 0.0, j == 3 ? 34.0 : j == 4 ? -34.0 : 0.0);
+    float g = groundAt(p.xz + o, i < 3 ? det : 0);
+    if (i < 3) h[i] = g; else LAPV += g * (j == 0 ? -4.0 : 1.0);
+  }
   h0 = h[0];
   return normalize(vec3(h[0] - h[1], e, h[0] - h[2]));
 }
@@ -402,6 +414,7 @@ vec3 landNormal(vec3 p, float t, int det, out float h0) {
 /* ------------------------------------------------------------ the land's skin */
 
 float cloudShade(vec3 p);   // the deck's shadow, from the sky below
+vec3 KEYPART;               // what the key light gives, at the last shadeLand()
 
 /* the crowns of the trees, one to a cell of a jittered grid laid on the
    wall (q, in crowns), of many sizes and with gaps between, each a soft
@@ -414,8 +427,8 @@ vec2 crowns(vec2 q, vec2 l) {
   vec2 i = floor(q), f = fract(q);
   float d1 = 9.0, id = 0.5;
   vec2 o1 = vec2(0.0);
-  for (int j = -1; j <= 1; j++) {
-    for (int c = -1; c <= 1; c++) {
+  for (int j = -1 + ZERO; j <= 1; j++) {
+    for (int c = -1 + ZERO; c <= 1; c++) {
       vec2 g = vec2(float(c), float(j));
       vec3 h = hash33(vec3(i + g, 3.7));
       if (h.z < 0.08 + 0.55 * GAPS) continue;
@@ -450,7 +463,7 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   // gneiss: grey, mottled, banded across the faces, warmer where lichen
   // takes it, black where water seeps over
   float k1 = noise3(p * 0.012) * 0.5 + noise3(p * 0.047 + 3.0) * 0.3 + noise3(p * 0.16 + 1.0) * 0.2 * sat(1.0 - fp / 3.0) + 0.1 * (1.0 - sat(1.0 - fp / 3.0));
-  vec3 alb = vec3(0.066, 0.067, 0.062) * (0.5 + 0.9 * k1);
+  vec3 alb = vec3(0.105, 0.106, 0.098) * (0.5 + 0.9 * k1);
   alb *= 0.8 + 0.4 * noise(vec2(y * 0.028 + 2.5 * noise3(p * 0.003), sd * 4.0));
   alb = mix(alb, alb * vec3(1.06, 1.04, 0.94), noise3(p * 0.007 + 1.0));
   float ws = noise3(vec3(p.x * 0.03, y * 0.002, p.z * 0.03) + 11.0);
@@ -471,7 +484,7 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   // the green climbs nearly to the rim, in patches broken by the rock
   float rag = noise(fq0 * 0.012 + 3.0) * 0.55 + noise(fq0 * 0.04 + 9.0) * 0.3 + noise(fq0 * 0.12) * 0.15;
   float ledge = max(smoothstep(0.3, 0.46, slope + 0.4 * (rag - 0.5)), max(led, smoothstep(0.4, 0.62, rag)) * smoothstep(0.08, 0.2, slope));
-  vec3 heath = mix(vec3(0.022, 0.048, 0.013), vec3(0.042, 0.06, 0.022), m2);
+  vec3 heath = mix(vec3(0.034, 0.068, 0.02), vec3(0.06, 0.082, 0.032), m2);
   heath *= (0.55 + 0.9 * noise(fq0 * 0.35 + 2.0) * noise(fq0 * 0.11 + 6.0) * 1.6) * (0.75 + 0.5 * noise(fq0 * 0.9 + 4.0) * sat(1.0 - fp / 3.0));
   alb = mix(alb, heath, ledge * smoothstep(1300.0, 1100.0, y));
 
@@ -488,7 +501,7 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   vec2 fq = vec2(u, y * 1.25);
   float bp = noise(fq * 0.007 + 11.0) * 0.6 + noise(fq * 0.019 + 4.0) * 0.4;
   float bf = sat(smoothstep(0.42, 0.64, bp) * 0.85 + 0.3 * (1.0 - smoothstep(60.0, 400.0, y)) + 0.35 * gg.y - 0.3 * smoothstep(350.0, 650.0, y));
-  vec3 pine = vec3(0.0065, 0.0155, 0.0065), birch = vec3(0.021, 0.044, 0.011);
+  vec3 pine = vec3(0.014, 0.03, 0.014), birch = vec3(0.034, 0.064, 0.018);
   vec3 trees = mix(pine, birch, bf);
   // clumps a few tens of metres across, and the runnels between them in
   // shade
@@ -520,9 +533,11 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   float scree = smoothstep(0.45, 0.85, gg.x) * (1.0 - smoothstep(6.0, 30.0 + 40.0 * m3, y)) * smoothstep(0.6, 0.8, noise(vec2(u * 0.006, sd)));
   alb = mix(alb, vec3(0.17, 0.168, 0.16) * (0.6 + 0.6 * noise(vec2(u, y) * 0.3)), scree * 0.8);
 
-  // the farms' fans: mown grass, a few trees
+  // the fans: meadow grass gone to seed, with birch standing in it
   float fan = smoothstep(-2.5, -0.3, fanH(p.xz) - y) * smoothstep(0.8, 0.92, slope);
-  alb = mix(alb, mix(vec3(0.09, 0.15, 0.035), vec3(0.11, 0.16, 0.05), m2), fan * 0.92);
+  vec3 meadow = mix(vec3(0.075, 0.11, 0.032), vec3(0.1, 0.11, 0.045), m2) * (0.8 + 0.4 * m3);
+  meadow = mix(meadow, birch * (0.8 + 0.4 * cl), smoothstep(0.55, 0.75, noise(p.xz * 0.05 + 2.0)) * 0.8);
+  alb = mix(alb, meadow, fan * 0.92);
 
   // snow on the high ground and in the tops of the gullies
   float sl = 1130.0 + 200.0 * noise(p.xz * 0.0024) - 100.0;
@@ -558,19 +573,15 @@ vec3 shadeLand(vec3 p, vec3 n, vec3 ng, float t, float sh, bool near) {
   float nl = dot(n, KEY);
   float wrap = forest * 0.25;
   float nlw = (nl + wrap) / (1.0 + wrap);
-  vec3 E = KEYG * max(nlw, 0.0) * sh * (REFL ? 1.0 : cloudShade(p));
+  vec3 E = KEYG * max(nlw, 0.0) * sh;
+  KEYPART = alb / PI * E;
   // hollows see less of the sky than ribs: the height against its
   // neighbours' mean
   float ao = 1.0;
   if (t < 9000.0 && near) {
-    float E2 = 34.0, lap = 0.0;
-    for (int i = ZERO; i < 5; i++) {
-      vec2 o = i == 0 ? vec2(0.0) : vec2(i == 1 ? E2 : i == 2 ? -E2 : 0.0, i == 3 ? E2 : i == 4 ? -E2 : 0.0);
-      lap += groundAt(p.xz + o, 0) * (i == 0 ? -4.0 : 1.0);
-    }
-    ao = mix(1.0, clamp(1.0 - lap * 0.0055, 0.35, 1.25), smoothstep(9000.0, 5000.0, t));
+    ao = mix(1.0, clamp(1.0 - LAPV * 0.0055, 0.35, 1.25), smoothstep(9000.0, 5000.0, t));
   }
-  float open = mix(0.28, 0.9, smoothstep(0.0, 1200.0, y)) * ao;
+  float open = mix(0.42, 0.92, smoothstep(0.0, 1200.0, y)) * ao;
   E += mix(SKYH, SKYZ, 0.5 + 0.5 * n.y) * PI * (0.5 + 0.5 * n.y) * open * look3(vec3(0.75), vec3(1.4, 1.7, 2.4), vec3(1.8));
   vec2 kh = normalize(KEY.xz + vec2(1e-4, 0.0));
   float away = sat(0.35 - 0.65 * dot(n.xz, kh));
@@ -589,7 +600,7 @@ vec3 rockBump(vec3 p, vec3 n, float t) {
   vec3 w = pow(abs(n), vec3(4.0));
   w /= w.x + w.y + w.z;
   vec3 g = vec3(0.0);
-  for (int i = 0; i < 2; i++) {
+  for (int i = ZERO; i < 2; i++) {
     float f = i == 0 ? 0.06 : 0.21;
     float A = (i == 0 ? 1.1 : 0.45) * sat(1.0 - fp * f * 1.5);
     if (A <= 0.0) break;
@@ -606,129 +617,6 @@ vec3 rockBump(vec3 p, vec3 n, float t) {
     g += hz * a.y * 0.15 * A2;
   }
   return normalize(n - g);
-}
-
-/* ------------------------------------------------------------ the buildings */
-
-/* each a box with a gable roof, ridge along its length: centre x, z,
-   heading, and kind (0 white house, 1 red barn or boathouse, 2 ochre
-   house, 3 the church) */
-const int NB = 13;
-const vec4 HOUSES[13] = vec4[](
-  // Bakka, on its fan on the west shore; the church at the water
-  vec4(-226.0, 1452.0, -1.5, 3.0),
-  vec4(-262.0, 1400.0, 0.20, 0.0),
-  vec4(-276.0, 1488.0, 1.45, 1.0),
-  vec4(-300.0, 1430.0, 0.10, 2.0),
-  vec4(-232.0, 1376.0, 1.60, 1.0),
-  vec4(-305.0, 1520.0, 0.35, 0.0),
-  vec4(-250.0, 1530.0, 1.50, 1.0),
-  vec4(-326.0, 1468.0, 1.40, 0.0),
-  // Styvi, on its fan across the fjord
-  vec4(286.0, 2930.0, -0.15, 0.0),
-  vec4(318.0, 2985.0, 1.30, 1.0),
-  vec4(262.0, 2975.0, 1.45, 1.0),
-  vec4(335.0, 2915.0, 0.05, 2.0),
-  vec4(300.0, 3030.0, 0.20, 0.0)
-);
-
-/* a ray against a convex body of planes (n, d), inside where n.x <= d */
-void clip(vec3 ro, vec3 rd, vec3 n, float d, inout float tin, inout float tout, inout vec3 nin) {
-  float dn = dot(n, rd), dist = d - dot(n, ro);
-  if (abs(dn) < 1e-7) { if (dist < 0.0) tout = -1.0; return; }
-  float t = dist / dn;
-  if (dn < 0.0) { if (t > tin) { tin = t; nin = n; } }
-  else tout = min(tout, t);
-}
-
-/* a box hx by hz by hw with a gable roof rising hr more, in its own frame */
-float house(vec3 ro, vec3 rd, vec3 sz, float hr, inout vec3 nrm) {
-  float tin = 0.0, tout = 1e9;
-  vec3 nn = vec3(0.0);
-  clip(ro, rd, vec3(1.0, 0.0, 0.0), sz.x, tin, tout, nn);
-  clip(ro, rd, vec3(-1.0, 0.0, 0.0), sz.x, tin, tout, nn);
-  clip(ro, rd, vec3(0.0, 0.0, 1.0), sz.z, tin, tout, nn);
-  clip(ro, rd, vec3(0.0, 0.0, -1.0), sz.z, tin, tout, nn);
-  clip(ro, rd, vec3(0.0, -1.0, 0.0), 0.0, tin, tout, nn);
-  vec3 r1 = normalize(vec3(hr, sz.x, 0.0)), r2 = normalize(vec3(-hr, sz.x, 0.0));
-  float dr = (sz.y + hr) * sz.x / length(vec2(hr, sz.x));
-  clip(ro, rd, r1, dr, tin, tout, nn);
-  clip(ro, rd, r2, dr, tin, tout, nn);
-  if (tout < tin || tout < 0.0) return -1.0;
-  nrm = nn;
-  return tin;
-}
-
-/* a four-sided spire over a square of half side a, its tip h up */
-float spire(vec3 ro, vec3 rd, float a, float h, inout vec3 nrm) {
-  float tin = 0.0, tout = 1e9;
-  vec3 nn = vec3(0.0);
-  float l = length(vec2(h, a));
-  clip(ro, rd, vec3(h, a, 0.0) / l, a * h / l, tin, tout, nn);
-  clip(ro, rd, vec3(-h, a, 0.0) / l, a * h / l, tin, tout, nn);
-  clip(ro, rd, vec3(0.0, a, h) / l, a * h / l, tin, tout, nn);
-  clip(ro, rd, vec3(0.0, a, -h) / l, a * h / l, tin, tout, nn);
-  clip(ro, rd, vec3(0.0, -1.0, 0.0), 0.0, tin, tout, nn);
-  if (tout < tin || tout < 0.0) return -1.0;
-  nrm = nn;
-  return tin;
-}
-
-/* the nearest building along a ray, before tmax: its distance (or -1),
-   normal and colour; the roof is dark slate, the walls by kind */
-float buildings(vec3 ro, vec3 rd, float tmax, out vec3 bn, out vec3 ba) {
-  float best = tmax;
-  bn = vec3(0.0, 1.0, 0.0);
-  ba = vec3(0.0);
-  // only near the two fans
-  vec3 c1 = vec3(-275.0, 15.0, 1450.0), c2 = vec3(300.0, 15.0, 2970.0);
-  vec3 o1 = ro - c1, o2 = ro - c2;
-  float b1 = dot(o1, rd), b2 = dot(o2, rd);
-  bool near1 = b1 * b1 - dot(o1, o1) + 120.0 * 120.0 > 0.0;
-  bool near2 = b2 * b2 - dot(o2, o2) + 110.0 * 110.0 > 0.0;
-  if (!near1 && !near2) return -1.0;
-  bool hit = false;
-  for (int i = 0; i < NB; i++) {
-    if (i < 8 ? !near1 : !near2) continue;
-    vec4 H = HOUSES[i];
-    float kind = H.w;
-    float yb = fanH(H.xy) - 0.6;
-    mat2 R = rot(H.z);
-    vec3 lo = ro - vec3(H.x, yb, H.y);
-    lo.xz = R * lo.xz;
-    vec3 ld = rd;
-    ld.xz = R * ld.xz;
-    float hs = hash11(float(i) * 7.7 + 1.0);
-    vec3 sz = kind > 2.5 ? vec3(4.6, 6.4, 8.5) : kind > 0.5 && kind < 1.5 ? vec3(3.6 + hs, 5.0, 5.0 + 2.0 * hs) : vec3(3.6 + hs, 5.6, 5.0 + 2.5 * hs);
-    float hr = kind > 2.5 ? 4.4 : 3.0;
-    vec3 nl;
-    float th = house(lo, ld, sz, hr, nl);
-    vec3 wall = kind > 2.5 ? vec3(0.78, 0.78, 0.76) : kind > 0.5 && kind < 1.5 ? vec3(0.33, 0.055, 0.04) : kind > 1.5 ? vec3(0.5, 0.38, 0.2) : vec3(0.72, 0.72, 0.7);
-    vec3 roof = vec3(0.07, 0.072, 0.075);
-    if (th > 0.0 && th < best) {
-      best = th; hit = true;
-      bn = nl; ba = nl.y > 0.2 ? roof : wall;
-      bn.xz = bn.xz * R;
-    }
-    if (kind > 2.5) {
-      // the church's tower at its west end, and the spire on it
-      vec3 lt = lo - vec3(0.0, 0.0, -10.5);
-      th = house(lt, ld, vec3(2.4, 13.0, 2.4), 0.01, nl);
-      if (th > 0.0 && th < best) { best = th; hit = true; bn = nl; ba = wall; bn.xz = bn.xz * R; }
-      th = spire(lt - vec3(0.0, 13.0, 0.0), ld, 2.6, 11.0, nl);
-      if (th > 0.0 && th < best) { best = th; hit = true; bn = nl; ba = roof; bn.xz = bn.xz * R; }
-    }
-  }
-  return hit ? best : -1.0;
-}
-
-vec3 shadeBuilding(vec3 p, vec3 n, vec3 alb, float sh) {
-  float nl = dot(n, KEY);
-  vec3 E = KEYG * max(nl, 0.0) * sh;
-  E += mix(SKYH, SKYZ, 0.5 + 0.5 * n.y) * PI * (0.45 + 0.4 * n.y) * look3(0.8, 1.2, 1.2);
-  E += KEYG * vec3(0.05, 0.075, 0.04) * look3(1.0, 0.15, 0.5) * (1.0 - 0.6 * max(n.y, 0.0));
-  E += GLOWA * 0.8;
-  return alb / PI * E;
 }
 
 /* ------------------------------------------------------------ the sky */
@@ -827,7 +715,7 @@ vec3 moonDisc(vec3 rd) {
 
 vec3 stars(vec3 rd) {
   vec3 c = vec3(0.0);
-  for (int l = 0; l < 2; l++) {
+  for (int l = ZERO; l < 2; l++) {
     float sc = l == 0 ? 160.0 : 380.0;
     vec3 q = rd * sc, id = floor(q), f = q - id;
     float h = hash13(id + float(l) * 31.7);
@@ -861,7 +749,7 @@ vec2 auroraPath(float u, float k, float Z) {
   float p1 = u * 0.045 + TT * 0.025 + k * 2.0;
   float p2 = u * 0.13 - TT * 0.05 + k * 5.0;
   return vec2(u + f1 * sin(p1) + f2 * sin(p2),
-              Z + 42.0 * sin(u * 0.0095 + TT * 0.012 + k) + f1 * 0.8 * cos(p1) + f2 * cos(p2));
+              Z + 70.0 * sin(u * 0.0095 + TT * 0.012 + k) + f1 * 0.8 * cos(p1) + f2 * cos(p2));
 }
 
 /* the light of a curtain at height h, split in two: low, the hem and the
@@ -871,23 +759,28 @@ void auroraAt(float u, float x, float xa, float h, float k, out vec3 low, out ve
   float r1 = noise(vec2(u * 0.09 + TT * 0.05, k * 13.0));
   float r2 = noise(vec2(u * 0.33 - TT * 0.12, k * 5.0 + 2.0));
   float rays = 0.2 + 0.8 * r1 * r1 * r1 + 0.45 * r2 * r2;
+  /* and finer rays among them, each of its own brightness and reach */
+  float r3 = noise(vec2(u * 0.85 - TT * 0.21, k * 7.0 + 4.0));
+  float r4 = noise(vec2(u * 0.23 + TT * 0.07, k * 9.0 + 1.0));
+  rays *= 0.45 + 0.75 * r3 * r3;
   float kn = noise(vec2(x * 0.011 - TT * 0.03, k * 3.0 + 9.0));
   kn = 0.4 + 1.5 * kn * kn;
   float reach = k < 0.5 ? smoothstep(-0.62, -0.3, xa) * (1.0 - 0.93 * smoothstep(-0.1, 0.42, xa))
               : k < 1.5 ? smoothstep(-0.45, -0.25, xa) * (1.0 - smoothstep(-0.02, 0.28, xa))
               : smoothstep(-0.7, -0.4, xa) * (1.0 - smoothstep(0.05, 0.45, xa));
-  float base = 98.0 + 6.0 * noise(vec2(x * 0.02 + TT * 0.015, k + 7.0));
+  float base = 97.0 + 16.0 * noise(vec2(x * 0.012 + TT * 0.015, k + 7.0)) + 4.0 * noise(vec2(x * 0.07 - TT * 0.04, k + 3.0));
   float y = h - base;
   float edge = smoothstep(-0.5, 0.5, y);
   float yp = max(y, 0.0);
-  float hem = edge * exp(-yp / 2.6);
-  float body = edge * (0.7 * exp(-yp / 22.0) + 0.3 * exp(-yp / 85.0));
-  float fringe = exp(-sq((y + 0.5) / 0.35)) * smoothstep(0.7, 1.6, kn);
+  float hem = edge * exp(-yp / 3.5);
+  float rh = mix(14.0, 42.0, r4);
+  float body = edge * (0.7 * exp(-yp / rh) + 0.3 * exp(-yp / (rh * 3.5)));
+  float fringe = exp(-sq((y + 0.5) / 0.35)) * smoothstep(0.9, 1.8, kn);
   float top = smoothstep(150.0, 240.0, h) * exp(-max(h - 240.0, 0.0) / 90.0);
-  vec3 c = rays * kn * (vec3(0.1, 1.0, 0.36) * body * 0.55 + vec3(0.55, 1.0, 0.7) * hem * 1.7) + vec3(1.0, 0.16, 0.6) * fringe * 0.45;
+  vec3 c = rays * kn * (vec3(0.1, 1.0, 0.36) * body * 0.6 + vec3(0.5, 1.0, 0.66) * hem * 0.9) + vec3(1.0, 0.16, 0.6) * fringe * 0.18;
   float lw = exp(-yp / 45.0);
   low = reach * c * lw;
-  high = reach * (c * (1.0 - lw) + vec3(0.6, 0.08, 0.42) * top * 0.3 * rays);
+  high = reach * (c * (1.0 - lw) + vec3(0.62, 0.1, 0.36) * top * 0.1 * rays);
 }
 
 /* each curtain's line is walked in short steps, and every point of it near
@@ -899,9 +792,9 @@ vec3 aurora(vec3 rd) {
   float mu = max(rd.y, 0.0), hl = max(length(rd.xz), 1e-3);
   vec2 hd = rd.xz / hl;
   float te = mu / hl;
-  for (int k = 0; k < 3; k++) {
+  for (int k = ZERO; k < 3; k++) {
     float fk = float(k);
-    float Z = k == 0 ? mix(205.0, 400.0, FRAMEK) : k == 1 ? mix(135.0, 255.0, FRAMEK) : mix(640.0, 800.0, FRAMEK);
+    float Z = k == 0 ? mix(180.0, 290.0, FRAMEK) : k == 1 ? mix(135.0, 230.0, FRAMEK) : mix(640.0, 800.0, FRAMEK);
     float gain = k == 0 ? 1.0 : k == 1 ? 0.45 : 0.4;
     float sg = (k == 2 ? 6.0 : 4.0) / AQ;
     float span = k == 1 ? 100.0 : 120.0;
@@ -911,7 +804,7 @@ vec3 aurora(vec3 rd) {
     vec2 Pp = auroraPath(u0, fk, Z);
     vec3 L = vec3(0.0), U = vec3(0.0);
     float W = 0.0;
-    for (int i = 1; i <= 120; i++) {
+    for (int i = 1 + ZERO; i <= 120; i++) {
       if (i > n) break;
       float u = u0 + du * float(i);
       vec2 P = auroraPath(u, fk, Z);
@@ -972,7 +865,7 @@ vec2 ripples(vec2 p, float t, out float gust) {
   vec2 g = vec2(0.0);
   float f = 0.6, a = 0.0045;
   vec2 q = p;
-  for (int i = 0; i < 6; i++) {
+  for (int i = ZERO; i < 6; i++) {
     float fade = sat(1.0 - fp * f * 2.0);
     if (fade <= 0.0) break;
     vec3 nd = noised(q * f * vec2(1.0, 2.2) + vec2(0.09, 0.3) * TT * (1.0 + 0.35 * float(i)) + float(i) * 7.1);
@@ -1014,7 +907,7 @@ vec4 lowCloud(vec3 ro, vec3 rd, float tmax, float jit, int n) {
   vec3 L = vec3(0.0);
   float dt = (tb - ta) / float(n);
   vec3 lc = KEYC * look3(0.5, 0.9, 0.35) * AIRLIT + (SKYZ * 0.6 + SKYH * 0.4) * PI * 0.35 + GLOWA * 0.6;
-  for (int i = 0; i < 8; i++) {
+  for (int i = ZERO; i < 8; i++) {
     if (i >= n) break;
     float tt = ta + dt * (float(i) + jit);
     vec3 q = ro + rd * tt;
@@ -1056,19 +949,21 @@ vec4 mist(vec3 ro, vec3 rd, float d) {
 
 /* ------------------------------------------------------------ the frame */
 
-vec3 scene(vec2 fc) {
+/* the camera and the light, set once a pixel. Every frame is the
+   desktop's picture, framed as the meadow frames it. A frame of 3:2 and
+   wider holds its width, to 1.9:1, and beyond that its height. A narrower
+   one, down to 7:10, sees exactly as wide as a 3:2 frame, its lens
+   widening up into the sky, and the horizon holds its height on the
+   screen (the lens shifts, it does not tilt), so the water is seen at the
+   same slant and the far end of the fjord stands in the same place.
+   Narrower still, the lens widens no further: the frame is a crop of the
+   7:10 one, turned toward the far end so that it keeps its place across
+   the screen */
+float TV, YAW;
+vec3 setup(vec2 fc, out vec3 ro) {
   TT = mod(uTime, 1800.0);
   AQ = 1.0;
-  /* every frame is the desktop's picture, framed as the meadow frames it.
-     A frame of 3:2 and wider holds its width, to 1.9:1, and beyond that
-     its height. A narrower one, down to 7:10, sees exactly as wide as a
-     3:2 frame, its lens widening up into the sky, and the horizon holds
-     its height on the screen (the lens shifts, it does not tilt), so the
-     water is seen at the same slant and the far end of the fjord stands
-     in the same place. Narrower still, the lens widens no further: the
-     frame is a crop of the 7:10 one, turned toward the far end so that it
-     keeps its place across the screen */
-  float asp = uRes.x / uRes.y;
+  float asp = RES.x / RES.y;
   FRAMEK = 1.0;
   const float T1 = 0.62, TV15 = 0.62 / 1.5, HZ = -0.31, YAW0 = 0.012, SUBJ = 0.025;
   float tv = T1 / clamp(asp, 0.7, 1.9);
@@ -1094,7 +989,7 @@ vec3 scene(vec2 fc) {
   TWI = 1.0 - dip;
   KEYS = smoothstep(0.3, 0.7, uLook.z);
   KEY = normalize(mix(sunD, MOONL, KEYS));
-  E0 = look3(vec3(9.0), vec3(24.0), vec3(0.5, 0.75, 1.5) * 1.5) * dip;
+  E0 = look3(vec3(9.0), vec3(24.0), vec3(0.62, 0.78, 1.12) * 1.3) * dip;
   MIE = look3(3.5e-6, 1.2e-5, 5e-6);
   HAZE = look3(4.2e-5, 4.6e-5, 1.8e-5);
   AIRLIT = look3(0.4, 0.2, 0.6);
@@ -1105,119 +1000,143 @@ vec3 scene(vec2 fc) {
   SKYH = skyRad(normalize(vec3(-KEY.x, 0.18, -KEY.z)));
   GLOWA = vec3(0.004, 0.022, 0.012) * uLook.z;
 
-  vec2 uv = (2.0 * fc - uRes) / uRes.y;
+  vec2 uv = (2.0 * fc - RES) / RES.y;
   vec3 rd = normalize(vec3(uv.x * tv, (uv.y - HZ) * tv, 1.0));
   rd.xz = rot(yaw) * rd.xz;
-  rd.yz = rot(-uPoint.y * 0.007) * rd.yz;
-  rd.xz = rot(uPoint.x * 0.012) * rd.xz;
-  PXA = 2.0 * tv / uRes.y;
-  vec3 ro = vec3(10.0, 2.4 + 0.04 * sin(TT * 0.8), 0.0);
+  PXA = 2.0 * tv / RES.y;
+  ro = vec3(10.0, 2.4, 0.0);
   CAM = ro;
   REFL = false;
-  float jit = hash12(fc + fract(TT) * 17.0);
-  JIT = jit;
-
-  ZERO = int(min(uTime, 0.0));
-
-  /* the eye's ray, and if it meets the water, the ray the water throws
-     back; what lies between along each is gathered as it goes, as light
-     added (acc) and light let through (thr) */
-  vec3 acc = vec3(0.0), thr = vec3(1.0);
-  vec3 o = ro, d = rd;
-  float tend0 = 1e9;
+  TV = tv;
+  YAW = yaw;
   /* the lens is focused on the walls a few hundred metres off, with a
      small stop, so that only the water within a few tens of metres goes
-     soft; the water's pixels lie at the water's own distance, so the near
-     ripples blur and the far mirror stays sharp */
+     soft; the same blur by angle at every aspect */
   gFocus = 700.0;
-  // the same blur by angle at every aspect: a share of the frame's height
-  // that shrinks as the lens widens
   gAperture = 1.3e-4 * 0.3483 / tv;
-  int kind = 0;            // what the last ray met: 0 sky, 1 land, 2 a building
-  float th = 0.0, tl = 0.0;
-  vec3 bn = vec3(0.0, 1.0, 0.0), ba = vec3(0.0);
-  bool refl = false;
+  return rd;
+}
+
+/* one look's trace: the eye's ray, or where it meets the water the ray
+   a still mirror would throw back, with what lies between along it,
+   gathered as light added (acc) and light let through (thr). C: that
+   light, and on the land in .a the share of it the clouds' shadows take.
+   D: how far the eye's ray went, and what it met (0 sky, 1 land, 2 water) */
+void bake(vec2 fc, out vec4 C, out vec4 D) {
+  vec3 ro;
+  vec3 rd = setup(fc, ro);
+  float jit = hash12(fc);
+  JIT = jit;
+  vec3 o = ro, d = rd;
+  float tw = d.y < 0.0 ? -o.y / d.y : 1e9;
+  /* the eye's ray, and where it meets the water the ray it mirrors: one
+     march for both, so the land is built into the program once for them */
+  float t = -1.0;
+  bool water = false;
+  float tl = 0.0;
   for (int k = ZERO; k < 2; k++) {
-    float tw = (!refl && d.y < 0.0) ? -o.y / d.y : 1e9;
-    float t = march(o, d, min(tw, 60000.0), refl ? 80 : 176, refl ? 1 : 3, refl ? 0.008 : 0.0013);
-    float tend = t > 0.0 ? t : tw < 1e8 ? tw : 30000.0;
-    vec3 nb, ab;
-    float tbl = buildings(o, d, tend, nb, ab);
-    kind = tbl > 0.0 ? 2 : t > 0.0 ? 1 : 0;
-    if (kind == 2) { tend = tbl; bn = nb; ba = ab; }
-    th = tend;
-    if (!refl) { tend0 = tend; gDepth = kind > 0 ? tend : tw < 1e8 ? tw : 1e6; }
-    bool water = kind == 0 && tw < 1e8;
-    // the air, the low cloud and the mist along the way; the sky holds
-    // its own air
-    float seg = kind > 0 || water ? tend : 20000.0;
-    vec3 T = vec3(1.0), S = vec3(0.0);
-    if (kind > 0 || water) air(o, d, seg, T, S);
-    vec4 lc = lowCloud(o, d, kind > 0 || water ? tend : 30000.0, jit, refl ? 3 : 8);
-    vec4 mi = mist(o, d, seg);
-    S = (S * lc.a + lc.rgb) * mi.a + mi.rgb;
-    T *= lc.a * mi.a;
-    acc += thr * S;
-    thr *= T;
-    if (!water) break;
-    // the water: dark green glacial water under the mirror of everything
-    // else, broken by the ripples, by the Fresnel of water
-    vec3 p = o + d * tw;
+    if (k == 1) {
+      water = t <= 0.0 && tw < 1e8;
+      if (!water) break;
+      o = o + d * tw + vec3(0.0, 0.05, 0.0);
+      d = normalize(vec3(d.x, max(-d.y, 0.0015), d.z));
+      tl = tw;
+      REFL = true;
+      AQ = 0.5;
+    }
+    t = march(o, d, k == 0 ? min(tw, 60000.0) : 60000.0, k == 0 ? 176 : 80, k == 0 ? 3 : 1, k == 0 ? 0.0013 : 0.008);
+  }
+  int kind = t > 0.0 ? 1 : 0;
+  float th = t > 0.0 ? t : 30000.0;
+  /* the air, the low cloud and the mist along the way; the sky holds its
+     own air */
+  vec3 thr = vec3(1.0), acc = vec3(0.0);
+  vec3 T = vec3(1.0), S = vec3(0.0);
+  if (kind > 0) air(o, d, th, T, S);
+  vec4 lc = lowCloud(o, d, kind > 0 ? th : 30000.0, jit, water ? 3 : 8);
+  vec4 mi = mist(o, d, kind > 0 ? th : 20000.0);
+  S = (S * lc.a + lc.rgb) * mi.a + mi.rgb;
+  T *= lc.a * mi.a;
+  acc = S;
+  thr = T;
+
+  /* what the ray met, shaded once: the land or the sky, with the land
+     drawn softly into it where a skyline passes within a pixel */
+  vec3 c = vec3(0.0);
+  float w = kind == 1 ? 1.0 : EDGEC;
+  if (kind == 0) c = sky(d);
+  vec3 key = vec3(0.0);
+  if (w > 0.0) {
+    float te = kind == 1 ? th : EDGET;
+    vec3 p = o + d * te;
+    int det = min(detAt(te + tl), water ? 1 : 3);
+    float h0;
+    vec3 ng = landNormal(p, te + tl, det, h0, !water);
+    if (kind == 0) p.y = h0;
+    vec3 n = water ? ng : rockBump(p, ng, te + tl);
+    float sh = 0.0;
+    vec3 ps = p + vec3(n.x, 0.0, n.z) * 25.0 + vec3(0.0, 4.0, 0.0);
+    if (dot(n, KEY) > -0.25) sh = shadow(ps, water ? 5 : 7, water ? 70.0 : 30.0);
+    vec3 cl = shadeLand(p, n, ng, te + tl, sh, !water);
+    key = KEYPART;
+    if (kind == 0) {
+      vec3 T2, S2;
+      air(o, d, te, T2, S2);
+      cl = cl * T2 + S2;
+      key *= T2;
+    }
+    c = mix(c, cl, w);
+    key *= w;
+  }
+  vec3 col = acc + thr * c;
+  float share = water ? 0.0 : sat(luma(thr * key) / max(luma(col), 1e-6));
+  C = vec4(col, share);
+  D = vec4(water ? tw : (kind > 0 ? th : (w > 0.5 ? EDGET : 1e6)), water ? 2.0 : float(kind), 0.0, 0.0);
+}
+
+/* each frame: the water, dark green glacial water under the mirror of
+   everything else, broken by the ripples, by the Fresnel of water, and
+   the shadows of the clouds sliding over the walls */
+vec3 frame(vec2 fc) {
+  vec3 ro;
+  vec3 rd = setup(fc, ro);
+  vec4 dd = bakeDi(fc);
+  vec3 col;
+  if (dd.y > 1.5) {
+    float tw = dd.x;
+    vec3 p = ro + rd * tw;
     float gust;
     vec2 g = ripples(p.xz, tw, gust);
     vec3 n = normalize(vec3(-g.x, 1.0, -g.y));
-    vec3 r = reflect(d, n);
+    float F = 0.02 + 0.98 * pow(1.0 - max(dot(-rd, n), 0.0), 5.0);
+    /* the rippled mirror shows what the still one shows a little way off:
+       where the still mirror would throw the ray the ripples throw */
+    vec3 r = reflect(rd, n);
     r.y = max(r.y, 0.0015);
-    r = normalize(r);
-    float F = 0.02 + 0.98 * pow(1.0 - max(dot(-d, n), 0.0), 5.0);
-    acc += thr * waterBody() * (1.0 - F);
-    thr *= F * 0.72;
-    o = p + vec3(0.0, 0.05, 0.0);
-    d = r;
-    tl = tw;
-    refl = true;
-    REFL = true;
-    AQ = 0.5;
+    vec3 rf = vec3(rd.x, -rd.y, rd.z);
+    vec3 dl = r / r.z - rf / rf.z;
+    dl.xz = rot(-YAW) * dl.xz;
+    vec2 off = vec2(dl.x, -dl.y) / PXA;
+    off = clamp(off, vec2(-40.0), vec2(40.0));
+    if (bakeDi(fc + off).y < 1.5) off *= 0.0;
+    vec3 R = bakeC(fc + off).rgb;
+    vec3 T, S;
+    air(ro, rd, tw, T, S);
+    vec4 mi = mist(ro, rd, tw);
+    S = S * mi.a + mi.rgb;
+    T *= mi.a;
+    col = S + T * (waterBody() * (1.0 - F) + F * 0.72 * R);
+    gDepth = tw;
+  } else {
+    vec4 c = bakeC(fc);
+    col = c.rgb;
+    if (c.a > 0.0) col *= 1.0 - c.a * (1.0 - cloudShade(ro + rd * dd.x));
+    gDepth = dd.x;
   }
-
-  /* what the last ray met, shaded once: a building, the land, or the sky,
-     with the land drawn softly into it where a skyline passes within a
-     pixel */
-  vec3 c = vec3(0.0);
-  float w = kind == 1 ? 1.0 : kind == 0 ? EDGEC : 0.0;
-  if (kind == 0) c = sky(d);
-  vec3 p = o + d * th, n = bn, ng = bn;
-  float te = th;
-  int det = 3;
-  if (w > 0.0) {
-    te = kind == 1 ? th : EDGET;
-    p = o + d * te;
-    det = min(detAt(te + tl), refl ? 1 : 3);
-    float h0;
-    ng = landNormal(p, te + tl, det, h0);
-    if (kind == 0) p.y = h0;
-    n = refl ? ng : rockBump(p, ng, te + tl);
-  }
-  if (kind > 0 || w > 0.0) {
-    float sh = 0.0;
-    vec3 ps = kind == 2 ? p + n * 0.5 + vec3(0.0, 1.0, 0.0) : p + vec3(n.x, 0.0, n.z) * 25.0 + vec3(0.0, 4.0, 0.0);
-    if (dot(n, KEY) > -0.25) sh = shadow(ps, refl ? 5 : 7, refl ? 70.0 : 30.0);
-    if (kind == 2) c = shadeBuilding(p, n, ba, sh);
-    else {
-      vec3 cl = shadeLand(p, n, ng, te + tl, sh, !refl);
-      if (kind == 0) {
-        vec3 T, S;
-        air(o, d, te, T, S);
-        cl = cl * T + S;
-      }
-      c = mix(c, cl, w);
-    }
-  }
-  vec3 col = acc + thr * c;
   // spray hanging where the near fall meets the fjord
   vec3 B = vec3(268.0, 9.0, 3050.0);
   float tb = dot(B - ro, rd);
-  if (tb > 0.0 && tb < tend0 + 60.0) {
+  if (tb > 0.0 && tb < gDepth + 60.0) {
     vec3 e = (ro + rd * tb - B) / vec3(38.0, 26.0, 38.0);
     float sp = exp(-dot(e, e)) * look3(0.3, 0.22, 0.1);
     vec3 spc = (SKYH * 0.6 + SKYZ * 0.4) * PI * 0.28 + KEYG * look3(0.05, 0.02, 0.01);

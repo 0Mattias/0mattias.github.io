@@ -10,10 +10,8 @@
    rays so the skylines come out clean. Over it, every frame: the sky
    of each look, two decks of cumulus lit at three scales under a veil
    of cirrus, parting about the summit, cloud shadows passing over the
-   slopes, and now and then a jet crossing the high sky, its contrail
-   widening and dissolving behind it; at night the moon at tonight's
-   real phase, stars and the Milky Way rising out of the gap, and a
-   meteor now and then. In front, the meadow itself: tussocks of grass,
+   slopes; at night the moon at tonight's real phase, stars and the
+   Milky Way rising out of the gap, and a meteor now and then. In front, the meadow itself: tussocks of grass,
    seed stalks and flowers in drifts, grown on the ground function and
    bent at every vertex by a steady breeze whose waves run across them,
    drawn in three planes of focus so the nearest blades blur to soft
@@ -165,7 +163,9 @@ var wCur = { d: 1, u: 0, n: 0 }, wFrom = wCur;
 var themeMeta = document.querySelector('meta[name="theme-color"]');
 
 function themeColor(w) {
-  if (!themeMeta) return;
+  /* another place on show keeps the colour its own (places.js) */
+  var at = root.getAttribute('data-place');
+  if (!themeMeta || (at && at !== 'meadow')) return;
   var c = [0, 1, 2].map(function (i) {
     return Math.round(255 * (THEME.day[i] * w.d + THEME.dusk[i] * w.u + THEME.night[i] * w.n));
   });
@@ -250,13 +250,23 @@ var HDR = !!gl.getExtension('EXT_color_buffer_float');
    comes: the programs, then the land traced and shaded. It fades as the
    picture comes up. */
 
-var bar = document.createElement('span'), fill = document.createElement('i'), filled = 0;
+var bar = null, fill = null, filled = 0, barred = false;
 var began = performance.now();
-bar.className = 'load';
-bar.setAttribute('aria-hidden', 'true');
-bar.appendChild(fill);
-(hero.querySelector('.words') || hero).appendChild(bar);
-progress(0.06);
+
+/* it starts with the build: at once, or, on a page opened on another
+   place (?scene=), once the meadow is first turned to */
+function startBar() {
+  if (bar || barred) return;
+  bar = document.createElement('span');
+  fill = document.createElement('i');
+  bar.className = 'load';
+  bar.setAttribute('aria-hidden', 'true');
+  bar.appendChild(fill);
+  (hero.querySelector('.words') || hero).appendChild(bar);
+  began = performance.now();
+  progress(0.06);
+}
+if ((root.getAttribute('data-place') || 'meadow') === 'meadow') startBar();
 
 function progress(p) {
   if (!fill || !(p > filled)) return;
@@ -267,6 +277,7 @@ function progress(p) {
 /* the bar runs out to its end, and fades from wherever its own fade in
    had got to */
 function ready() {
+  barred = true;
   if (!bar) return;
   progress(1);
   var b = bar;
@@ -442,7 +453,9 @@ float range(vec2 p, vec2 a, vec2 b, float ha, float hb, float w) {
 float macro(vec2 p) {
   float d = length(p);
   float az = atan(p.x, p.y);
-  float gap = exp(-pow((az + 0.035) / 0.24, 2.0));
+  /* squared by hand: pow() is undefined for a base below nought */
+  float ga = (az + 0.035) / 0.24;
+  float gap = exp(-ga * ga);
   float h = 1650.0 + smoothstep(1900.0, 7000.0, d) * (1350.0 - 850.0 * gap);
   h = max(h, range(p, vec2(-14000.0, 27000.0), vec2(11000.0, 31000.0), 3500.0, 3700.0, 4200.0));
   h = smax(h, range(p, vec2(-8175.0, 7360.0), vec2(-4120.0, 10200.0), 4150.0, 3950.0, 1900.0), 250.0);
@@ -1363,7 +1376,7 @@ void main() {
 
 /* the picture: the land shaded for each look and weighted between them,
    shadowed where the clouds pass; the sky behind it and the clouds in
-   front of it or behind by their distance; the night sky and the jet;
+   front of it or behind by their distance; the night sky;
    then the grass in three planes of focus, under an ACES grade, a
    vignette and grain */
 var COMP = HEAD + NOISE + LOOK + PACK + `
@@ -1375,8 +1388,6 @@ uniform vec3 EYE, W, MOON, GN, GC, GV;
 uniform float T, G, SCALE, GSCALE, EXPO, MOONR, PH, STARS, CLT, MILKY;
 uniform float METON, METP, METS, METL;
 uniform vec4 MET;
-uniform float CTON, CTP, CTAGE, JK;
-uniform vec4 CT;
 vec3 aces(vec3 x) {
   return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
 }
@@ -1387,29 +1398,6 @@ float cloudShade(vec3 wp, vec3 L) {
   float n = 0.7 * fbm3(q) + 0.3 * fbm3(q * 2.7 + 3.0);
   return 1.0 - smoothstep(0.54, 0.68, n);
 }
-/* the jet, seen from far below: a fuselage, swept wings and a tailplane,
-   in thousandths of a radian, a speck against the mountains; its lights
-   and contrail are drawn as wide on the screen as at a 21-degree lens
-   (JK), so they still read at this one */
-float cap(vec2 p, vec2 a, vec2 b, float r0, float r1) {
-  vec2 ab = b - a;
-  float h = clamp(dot(p - a, ab) / dot(ab, ab), 0.0, 1.0);
-  return length(p - a - ab * h) - mix(r0, r1, h);
-}
-const float JS = 1.3;
-float spot(vec2 q, vec2 c, float sig) {
-  vec2 d = q - c;
-  return exp(-dot(d, d) / (2.0 * sig * sig));
-}
-float jetSdf(vec2 q) {
-  q /= JS;
-  float d = cap(q, vec2(-1.25, 0.0), vec2(1.3, 0.0), 0.12, 0.09);
-  d = min(d, cap(q, vec2(0.25, 0.0), vec2(-0.75, 1.55), 0.17, 0.05));
-  d = min(d, cap(q, vec2(0.25, 0.0), vec2(-0.75, -1.55), 0.17, 0.05));
-  d = min(d, cap(q, vec2(-1.05, 0.0), vec2(-1.45, 0.6), 0.09, 0.04));
-  d = min(d, cap(q, vec2(-1.05, 0.0), vec2(-1.45, -0.6), 0.09, 0.04));
-  return d * JS;
-}
 vec3 milky(vec3 d) {
   float b = dot(d, GN);
   float along = atan(dot(d, GV), dot(d, GC));
@@ -1419,7 +1407,8 @@ vec3 milky(vec3 d) {
   vec2 q = vec2(along, b) * 32.0;
   float clouds = fbm5(q + 4.0);
   float knots = smoothstep(0.55, 0.8, fbm5(q * 2.3 + 9.0));
-  float rift = exp(-pow((b - 0.004 - 0.02 * (fbm3(vec2(along * 6.0, 1.0)) - 0.45)) / (0.008 + 0.01 * core), 2.0));
+  float rx = (b - 0.004 - 0.02 * (fbm3(vec2(along * 6.0, 1.0)) - 0.45)) / (0.008 + 0.01 * core);
+  float rift = exp(-rx * rx);
   float dust = rift * smoothstep(0.32, 0.58, fbm5(q * 1.6 + 17.0)) + 0.35 * smoothstep(0.55, 0.75, fbm5(q * 0.7 + 23.0));
   float glow = band * (0.15 + 0.85 * clouds * clouds * 2.0 + 0.6 * knots) * (1.0 - 0.85 * clamp(dust, 0.0, 1.0)) * (0.35 + 1.5 * core);
   return mix(vec3(0.6, 0.66, 0.88), vec3(1.0, 0.85, 0.68), core) * glow;
@@ -1448,7 +1437,8 @@ void main() {
       float rad = (0.028 + 0.035 * mag * mag) * (L == 0 ? 1.0 : 1.9);
       float dd = length(f - off * 0.7);
       float core = smoothstep(rad, rad * 0.25, dd);
-      float dens = (L == 0 ? 0.045 : 0.05) * STARS * (1.0 + 2.5 * exp(-pow(dot(dir, GN) / 0.12, 2.0)));
+      float gb = dot(dir, GN) / 0.12;
+      float dens = (L == 0 ? 0.045 : 0.05) * STARS * (1.0 + 2.5 * exp(-gb * gb));
       float star = core * step(1.0 - dens, hs);
       float tw = 0.9 + 0.1 * sin(T * (0.8 + 1.2 * hs) + hs * 80.0);
       float bright = (L == 0 ? (0.16 + 0.9 * mag * mag) : 0.12 + 0.2 * mag) * tw;
@@ -1472,49 +1462,6 @@ void main() {
     float dh = length(ae - hp);
     float glint = exp(-dh * dh / (2.0 * 0.0007 * 0.0007));
     sky += (vec3(0.85, 0.92, 1.0) * streak * 1.4 + vec3(1.0) * glint * 1.1) * fade * W.z;
-  }
-
-  /* the jet: its contrail starts a little behind the tail as two lines
-     that widen as they age and dissolve; by night only its lights show */
-  if (CTON > 0.5) {
-    vec2 ae = vec2(atan(dir.x, dir.z), asin(clamp(dir.y, -1.0, 1.0)));
-    vec2 ab = CT.zw - CT.xy;
-    float s = clamp(dot(ae - CT.xy, ab) / max(dot(ab, ab), 1e-9), 0.0, 1.0);
-    float head = min(CTP, 1.0);
-    float L = max(length(ab), 1e-6);
-    vec2 fwd = ab / L;
-    vec2 nrm = vec2(-fwd.y, fwd.x);
-    float sd = dot(ae - (CT.xy + ab * s), nrm) / JK;
-    float back = 0.0011 * JS / L;
-    if (s < head - back) {
-      float age = (CTP - s) * CTAGE;
-      float grow = clamp(age / 45.0, 0.0, 1.0);
-      float sig = 0.00025 + 0.0009 * grow;
-      float sep = 0.0006 + 0.0003 * grow;
-      float lines = exp(-(sd - sep) * (sd - sep) / (2.0 * sig * sig)) + exp(-(sd + sep) * (sd + sep) / (2.0 * sig * sig));
-      float rag = 0.7 + 0.3 * vn(vec2(s * L * 590.0 / JK, age * 0.08));
-      float fade = (1.0 - smoothstep(18.0, 50.0, age)) * smoothstep(0.0, 0.002 * JK / L, head - back - s);
-      float ct = min(lines, 1.0) * rag * fade * (0.5 - 0.25 * grow) * (1.0 - W.z);
-      sky = mix(sky, mix(vec3(1.0, 0.99, 0.97), vec3(1.0, 0.8, 0.7), W.y * 0.7) * 0.95, ct);
-    }
-    if (CTP <= 1.0) {
-      vec2 rel = ae - (CT.xy + ab * CTP);
-      vec2 q = vec2(dot(rel, fwd), dot(rel, nrm)) * 1000.0;
-      float aa = 0.12 * JK;
-      float body = 1.0 - smoothstep(-aa, aa, jetSdf(q));
-      sky = mix(sky, mix(vec3(0.72, 0.74, 0.80), vec3(1.0, 0.86, 0.76), W.y * 0.8), body * (1.0 - W.z));
-      float lk = mix(0.12, 1.0, W.z);
-      float sp = fract(T / 1.25);
-      float strobe = (sp < 0.045 || (sp > 0.11 && sp < 0.155)) ? 1.0 : 0.0;
-      float bp = fract(T / 0.92 + 0.37);
-      float beacon = smoothstep(0.0, 0.04, bp) * (1.0 - smoothstep(0.08, 0.14, bp));
-      vec2 wl = vec2(-0.5, 0.55) * JS, wr = vec2(-0.5, -0.55) * JS;
-      sky += vec3(1.0, 0.98, 0.95) * 2.6 * strobe * spot(q, vec2(-0.3 * JS, 0.0), 0.36 * JK) * lk;
-      sky += vec3(1.0, 0.12, 0.08) * 1.3 * beacon * spot(q, vec2(0.1 * JS, 0.0), 0.32 * JK) * lk;
-      sky += vec3(1.0, 0.15, 0.1) * 0.22 * spot(q, wl, 0.28 * JK) * lk;
-      sky += vec3(0.2, 1.0, 0.35) * 0.22 * spot(q, wr, 0.28 * JK) * lk;
-      sky += vec3(1.0) * 0.15 * spot(q, vec2(-1.1 * JS, 0.0), 0.28 * JK) * lk;
-    }
   }
 
   float ang = acos(clamp(dot(dir, MOON), -1.0, 1.0));
@@ -1663,7 +1610,7 @@ function initGL() {
   bladeProg = program(BLADE_FS, GU, BLADE_VS);
   headProg = program(HEAD_FS, GU.concat(['A2C']), HEAD_VS);
   partProg = program(PART_FS, GU.concat(['VIS', 'HALFW', 'DRIFT']), PART_VS);
-  compProg = program(COMP, ['LA0', 'LA1', 'LA2', 'LA3', 'SKA', 'SKB', 'GFAR', 'GMID', 'GNEAR', 'CAM', 'EYE', 'W', 'MOON', 'GN', 'GC', 'GV', 'T', 'G', 'SCALE', 'GSCALE', 'EXPO', 'MOONR', 'PH', 'STARS', 'CLT', 'MILKY', 'METON', 'METP', 'METS', 'METL', 'MET', 'CTON', 'CTP', 'CTAGE', 'CT', 'JK']);
+  compProg = program(COMP, ['LA0', 'LA1', 'LA2', 'LA3', 'SKA', 'SKB', 'GFAR', 'GMID', 'GNEAR', 'CAM', 'EYE', 'W', 'MOON', 'GN', 'GC', 'GV', 'T', 'G', 'SCALE', 'GSCALE', 'EXPO', 'MOONR', 'PH', 'STARS', 'CLT', 'MILKY', 'METON', 'METP', 'METS', 'METL', 'MET']);
   progs = [preProg, landProg, maskProg, skyProg, bokehProg, bokeh32Prog, bladeProg, headProg, partProg, compProg];
   glReady = false;
   warmed = 0;
@@ -2207,31 +2154,11 @@ function maskPass(b) {
 
 /* ----------------------------------------------------------- the events */
 
-var jet = { on: false, a: [0, 0], b: [0, 0], t0: 0, dur: 45, next: 25 };
 var meteor = { on: false, a: [0, 0], d: [0, 0], t0: 0, life: 0.7, speed: 0.3, next: 8, again: 0 };
 var evRnd = mulberry32(31);
 
-/* now and then a jet crosses the high sky, one way or the other, above
-   the words and the summit, at the same pace across the frame whatever
-   the lens; its contrail hangs on for a minute after it */
+/* now and then, at night, a meteor */
 function stepEvents(t, w) {
-  if (!jet.on && t > jet.next) {
-    var ltr = evRnd() < 0.5;
-    var el0 = Math.max(PITCH + FOVY * (0.41 - 0.08 * evRnd()), 17.5 * DEG), el1 = el0 + (evRnd() - 0.5) * 0.03;
-    var half = Math.atan(Math.tan(FOVY / 2) * canvas.width / canvas.height) / Math.cos(el0) + 0.06;
-    jet.a = [YAW0 + (ltr ? -half : half), el0];
-    jet.b = [YAW0 + (ltr ? half : -half), el1];
-    jet.t0 = t;
-    jet.dur = 2 * half / (0.013 * FOVY / (21 * DEG)) * (0.85 + 0.4 * evRnd());
-    jet.on = true;
-  }
-  if (jet.on) {
-    var age = t - jet.t0;
-    if (age > jet.dur + 60 || (w.n > 0.98 && age > jet.dur)) {
-      jet.on = false;
-      jet.next = t + 70 + 110 * evRnd();
-    }
-  }
   if (!meteor.on && w.n > 0.5 && t > meteor.next) {
     var ang = (200 + 140 * evRnd()) * Math.PI / 180;
     meteor.a = [(evRnd() - 0.5) * 0.6, 0.18 + evRnd() * 0.2];
@@ -2631,11 +2558,6 @@ function draw(now) {
   gl.uniform1f(u.METS, meteor.speed);
   gl.uniform1f(u.METL, meteor.life);
   gl.uniform4f(u.MET, meteor.a[0], meteor.a[1], meteor.d[0], meteor.d[1]);
-  gl.uniform1f(u.CTON, jet.on ? 1 : 0);
-  gl.uniform1f(u.CTP, jet.on ? (t - jet.t0) / jet.dur : 0);
-  gl.uniform1f(u.CTAGE, jet.dur);
-  gl.uniform4f(u.CT, jet.a[0], jet.a[1], jet.b[0], jet.b[1]);
-  gl.uniform1f(u.JK, FOVY / (21 * DEG));
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
 
@@ -3000,24 +2922,40 @@ hero.addEventListener('pointerleave', function () {
   wake();
 });
 
+var fallback = 0;
 document.addEventListener('place', function (ev) {
+  clearTimeout(fallback);
   var a = ev.detail !== 'meadow';
+  if (!a) themeColor(wCur);
   if (a === away) return;
   away = a;
+  if (bar) bar.style.visibility = away ? 'hidden' : '';
   if (away) {
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
     return;
   }
+  begin();
+  if (!view) startBar();
   if (staleSize) {
     staleSize = false;
     resize();
   }
   wake();
 });
-/* a page opened on another place (?scene=) may have turned to it before
-   the meadow woke */
-if ((root.getAttribute('data-place') || 'meadow') !== 'meadow') away = true;
+/* a page opened on another place (?scene=) leaves the meadow asleep,
+   not even its programs made, until it is turned to; should places.js
+   never come to show that place, the meadow after all */
+if ((root.getAttribute('data-place') || 'meadow') !== 'meadow') {
+  away = true;
+  fallback = setTimeout(function () {
+    var box = document.querySelector('.places');
+    if (box && !box.hidden) return;
+    root.setAttribute('data-place', 'meadow');
+    root.classList.remove('afar');
+    document.dispatchEvent(new CustomEvent('place', { detail: 'meadow' }));
+  }, 4000);
+}
 
 document.addEventListener('visibilitychange', function () {
   visible = !document.hidden;
@@ -3068,7 +3006,15 @@ canvas.addEventListener('webglcontextrestored', function () {
   wake();
 });
 
-initGL();
+/* the programs are made once, when the meadow is first to be drawn */
+var begun = false;
+function begin() {
+  if (begun) return;
+  begun = true;
+  initGL();
+}
+
+if (!away) begin();
 watchDensity();
 resize();
 wake();

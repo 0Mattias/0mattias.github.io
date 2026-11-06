@@ -1,4 +1,4 @@
-/* concepts/scenes/summit.js · above the clouds
+/* scenes/summit.js · Mount Fuji, above the clouds
    Mount Fuji from the main ridge of the Southern Alps, the Akaishi
    Mountains, as the photographs from Mae-Ogochi, Shiomi and Tsubakuro
    show it: the eye stands at 2,950 metres near Ogochi-dake and looks
@@ -40,16 +40,16 @@
    pink-red, the Aka-Fuji, against the blue-grey band of the earth's shadow
    with the pink belt of Venus over it and lavender above. At night the
    moon is behind the eye on the right: it lights the snow streaks and
-   silvers the cloud under the stars, and up Fuji's north flank climbers'
-   lamps make a faint zigzag to the huts and the summit (the real trails
-   lie just behind the skylines from the west). While the looks turn
-   between the sun and the moon the light dims and the sky goes to
-   twilight blue, so a turn never flashes through day. A narrower frame
-   shows the wide one's picture, framed as the meadow frames it. WebGL2, no libraries, no
-   build step. */
+   silvers the cloud under the stars. A narrower frame shows the wide
+   one's picture, framed as the meadow frames it.
+   The cloud drifts, so the stage traces it again every few seconds and
+   blends between the traces; each frame draws them back, the stars
+   twinkling over them.
+   WebGL2, no libraries, no build step. */
 
-window.CONCEPT = {
+window.PLACE = {
   id: 'summit',
+  period: 2.5,
   theme: { day: '#5482cd', dusk: '#b89ab9', night: '#0f1223' },
   t0: 40,
   /* a long lens from the ridge: Fuji, the bands and the ridges all in
@@ -75,7 +75,6 @@ vec3 FA, FB;
 vec2 FDIR, FNRM;
 float FLEN;
 
-float sq(float x) { return x * x; }
 /* how far toward the sun's bearing a direction is turned, across the
    frame: 0 on the side away from it, 1 on its side */
 #define SUNSIDE(rd) smoothstep(-0.2, 0.06, atan((rd).x, (rd).z) * sign(LD.x + 1e-4) * (LD.y > 0.1 ? 1.0 : 0.0))
@@ -116,10 +115,11 @@ vec3 sky(vec3 rd) {
   d *= 1.0 + 0.1 * sin(az + 0.3);
   /* the earth's shadow from the horizon to three degrees, the belt over
      it highest about six degrees up, then dusky lavender and blue */
-  float sh = smoothstep(2.3, 4.2, x);
-  vec3 u = mix(vec3(0.16, 0.16, 0.24), vec3(0.10, 0.11, 0.20), smoothstep(0.0, 1.6, x));
-  u = mix(u, vec3(0.60, 0.23, 0.27), sh);
-  u = mix(u, vec3(0.30, 0.19, 0.31), smoothstep(6.5, 11.0, x));
+  float sh = smoothstep(1.2, 6.5, x);
+  sh = sh * sh * (3.0 - 2.0 * sh);
+  vec3 u = mix(vec3(0.16, 0.16, 0.24), vec3(0.11, 0.115, 0.205), smoothstep(0.0, 1.8, x));
+  u = mix(u, vec3(0.50, 0.25, 0.30), sh);
+  u = mix(u, vec3(0.30, 0.20, 0.31), smoothstep(6.0, 13.0, x));
   u = mix(u, vec3(0.13, 0.13, 0.28), smoothstep(10.0, 18.0, x));
   /* the belt is brightest about the point opposite the sun, ten degrees
      to the right of Fuji */
@@ -171,7 +171,9 @@ vec3 cirrus(vec3 rd, vec3 c) {
    Fuji is still in the sun, and pink */
 vec3 aerial(vec3 col, vec3 rd, float t, float y) {
   vec3 sig = look3(vec3(11.0, 14.8, 22.0), vec3(11.0, 14.8, 22.0), vec3(15.5, 17.0, 20.0)) * 1e-6;
-  float hz = 1.0 + 0.5 * smoothstep(2930.0, 2850.0, y);
+  /* the haze thickens smoothly downward toward the cloud, so the cone
+     pales by degrees toward its foot, with no edge to the layer */
+  float hz = 1.0 + 0.65 * exp(-max(y - 2250.0, 0.0) / 650.0);
   vec3 tr = exp(-sig * t * hz);
   /* the photographs order their distances so: the near ranges dark, the
      far cone the deep blue; the air's glow is taken to build up over the
@@ -230,10 +232,14 @@ float fujiH(vec2 q, float t, out Fj F) {
   float u = a * N / TAU + 1.4 * (noise(vec2(r / 1100.0, 0.0) + vec2(cos(a), sin(a)) * 2.0) - 0.5) + 0.5 * (noise(vec2(r / 380.0, a * 7.0)) - 0.5);
   float k = floor(u), f = fract(u) - 0.5;
   k = mod(k, N);
-  float hk = hash11(k * 1.37 + 17.0);
-  float gw = 14.0 + 24.0 * hk + 0.012 * d;
+  float hk = hash11(k * 1.37 + 17.0), hw = hash11(k * 2.91 + 5.0);
+  float gw = 10.0 + 34.0 * hw + 0.012 * d;
   float gv = exp(-sq(f * TAU * r / N / gw));
-  h -= (1.0 + 3.0 * hk) * smoothstep(0.0, 250.0, d) * smoothstep(4200.0, 1800.0, d) * gv;
+  /* most of them shallow, a few cut deep, each deepest at its own
+     height and dying out on the lower slopes at its own */
+  float dk = 3.0 + 30.0 * hk * hk;
+  float lo = 2600.0 + 2200.0 * hash11(k * 0.61 + 2.0);
+  h -= dk * smoothstep(0.0, 250.0, d) * smoothstep(lo, lo * 0.45, d) * (0.6 + 0.4 * noise(vec2(k * 3.7, d / 600.0))) * gv;
   /* a little grain, where it can be seen */
   float kd = smoothstep(90000.0, 50000.0, t);
   if (kd > 0.0) h += kd * 14.0 * (fbm(q / 260.0, 3) - 0.5);
@@ -260,18 +266,21 @@ float traceFuji(vec3 ro, vec3 rd, out vec2 near) {
   vec3 pe = ro + rd * t;
   if (pe.y + drop(pe.xz) < DECK) return -1.0;
   Fj F;
-  for (int i = 0; i < 64; i++) {
-    vec3 p = ro + rd * t;
-    float c = p.y + drop(p.xz) - fujiH(p.xz - FJ, t, F);
-    if (c < 0.0) {
-      float a = lt, b = t;
-      for (int j = 0; j < 6; j++) {
-        float m = 0.5 * (a + b);
-        vec3 q = ro + rd * m;
-        if (q.y + drop(q.xz) - fujiH(q.xz - FJ, m, F) < 0.0) b = m; else a = m;
-      }
-      return b;
+  /* the bisection runs on in the march's own loop, so the mountain is
+     built into the program once for both */
+  float a = 0.0, b = 0.0;
+  int nb = -1;
+  for (int i = ZERO; i < 70; i++) {
+    if (nb < 0 && i >= 64) break;
+    float m = nb < 0 ? t : 0.5 * (a + b);
+    vec3 p = ro + rd * m;
+    float c = p.y + drop(p.xz) - fujiH(p.xz - FJ, m, F);
+    if (nb >= 0) {
+      if (c < 0.0) b = m; else a = m;
+      if (++nb == 6) return b;
+      continue;
     }
+    if (c < 0.0) { a = lt; b = t; nb = 0; continue; }
     float cn = c / (t * PA);
     if (cn < near.x) near = vec2(cn, t);
     if (p.y > 3900.0 && rd.y > 0.0) break;
@@ -309,37 +318,6 @@ float fujiSnow(Fj F, float h) {
   /* a few patches up by the rim */
   s = max(s, smoothstep(3660.0, 3720.0, h) * smoothstep(0.74, 0.84, noise(vec2(F.a * 16.0, h / 30.0))) * 0.7);
   return s;
-}
-
-/* at night, the lamps of climbers on the Yoshida trail where it climbs
-   the north-east flank, near the left skyline from here: a dotted
-   zigzag, the huts of the seventh and eighth stations steadier and
-   warmer, and the summit huts on the rim */
-vec3 trail(Fj F, float h, float t) {
-  if (h < 2300.0 || h > 3800.0) return vec3(0.0);
-  float a0 = -127.0 * DEG + 0.00002 * (F.r - 2000.0);
-  float lat = F.r * adiff(F.a, a0);
-  float leg = 70.0;
-  float zz = 75.0 * (abs(fract(h / (2.0 * leg)) * 2.0 - 1.0) * 2.0 - 1.0);
-  float fp = max(t * PA * 0.6, 3.0);
-  float dl = abs(lat - zz) * 0.6;
-  float line = exp(-sq(dl / fp));
-  float i = floor(h / 9.0);
-  float on = step(0.5, hash11(i * 0.71 + floor(T * 0.15 + hash11(i) * 3.0) * 0.37));
-  float dot_ = line * on * exp(-sq((fract(h / 9.0) - 0.5) * 9.0 / fp));
-  vec3 c = vec3(1.0, 0.86, 0.66) * dot_ * 0.5;
-  /* huts */
-  float hut = 0.0;
-  for (int j = 0; j < 7; j++) {
-    float hh = j < 4 ? 2720.0 + 80.0 * float(j) : 3130.0 + 110.0 * float(j - 4);
-    float lh = 75.0 * (abs(fract(hh / (2.0 * leg)) * 2.0 - 1.0) * 2.0 - 1.0) + 30.0;
-    hut += exp(-(sq((h - hh) / fp) + sq((lat - lh) * 0.6 / fp)));
-  }
-  c += vec3(1.0, 0.72, 0.42) * hut * 2.4;
-  /* the summit huts, on the rim behind the left top */
-  float sl = F.r * adiff(F.a, -100.0 * DEG);
-  c += vec3(1.0, 0.78, 0.5) * 1.2 * exp(-(sq((h - 3735.0) / fp) + sq(sl * 0.4 / fp))) * step(abs(F.r - RIM), 160.0);
-  return c * smoothstep(3770.0, 3700.0, h - 30.0 * step(F.r, RIM + 160.0));
 }
 
 /* ---------------------------------------------------------- the cloud */
@@ -407,7 +385,7 @@ float cloudFine(vec2 x, float fp) {
 float terrainH(vec2 x) {
   float h = 900.0;
   if (abs(x.y - GC.y) < 4500.0 && abs(x.x - GC.x) < 3000.0) {
-    for (int k = 0; k < 2; k++) {
+    for (int k = ZERO; k < 2; k++) {
       float z0 = GC.y + (k == 0 ? -1200.0 : 1600.0) + 600.0 * (noise(vec2(x.x / 2500.0, float(k) * 7.0)) - 0.5);
       float crest = (k == 0 ? 1900.0 : 2000.0) + 120.0 * (noise(vec2(x.x / 700.0, float(k) * 3.0 + 1.0)) - 0.5) + 35.0 * (ridged(vec2(x.x / 220.0, float(k))) - 0.5);
       float dz = abs(x.y - z0);
@@ -439,24 +417,28 @@ float traceFar(vec3 ro, vec3 rd, float tmin, float tmax, out float mat, out vec2
   if (t > t1) return -1.0;
   float lt = t, cav, c = 1e9;
   float fk = PA / max(-rd.y, 0.008);
-  for (int i = 0; i < 110; i++) {
-    vec3 p = ro + rd * t;
-    c = p.y - farH(p.xz, t * fk, mat, cav);
+  /* the bisection runs on in the march's own loop, so the deck is built
+     into the program once for both */
+  float a = 0.0, b = 0.0;
+  int nb = -1;
+  for (int i = ZERO; i < 115; i++) {
+    if (nb < 0 && i >= 110) break;
+    float m = nb < 0 ? t : 0.5 * (a + b);
+    vec3 p = ro + rd * m;
+    float cm = p.y - farH(p.xz, m * fk, mat, cav);
+    if (nb >= 0) {
+      if (cm < 0.0) b = m; else a = m;
+      if (++nb == 5) return b;
+      continue;
+    }
+    c = cm;
     /* how near the ray passes over an island standing out of the cloud,
        in pixels, for its skyline */
     if (mat > -40.0) {
       float cl = (c + max(-mat, 0.0)) / (t * PA);
       if (cl < nearL.x) nearL = vec2(cl, t);
     }
-    if (c < 0.0) {
-      float a = lt, b = t;
-      for (int j = 0; j < 5; j++) {
-        float m = 0.5 * (a + b);
-        vec3 q = ro + rd * m;
-        if (q.y - farH(q.xz, m * fk, mat, cav) < 0.0) b = m; else a = m;
-      }
-      return b;
-    }
+    if (c < 0.0) { a = lt; b = t; nb = 0; continue; }
     lt = t;
     /* far out, where the deck's detail has gone under a pixel, it is
        crossed in bolder steps */
@@ -540,8 +522,8 @@ float facets(vec2 f, vec2 cell, float amp) {
   vec2 i = floor(p), fr = fract(p);
   float d1 = 9.0, d2 = 9.0;
   vec2 best = vec2(0.0), bc = vec2(0.0);
-  for (int y = -1; y <= 1; y++)
-  for (int x = -1; x <= 1; x++) {
+  for (int y = -1 + ZERO; y <= 1; y++)
+  for (int x = -1 + ZERO; x <= 1; x++) {
     vec2 g = vec2(float(x), float(y));
     vec2 r = g + hash22(i + g) - fr;
     float d = dot(r, r);
@@ -559,8 +541,8 @@ float facets(vec2 f, vec2 cell, float amp) {
 float mats(vec2 p) {
   vec2 i = floor(p), f = fract(p);
   float h = 0.0;
-  for (int y = -1; y <= 1; y++)
-  for (int x = -1; x <= 1; x++) {
+  for (int y = -1 + ZERO; y <= 1; y++)
+  for (int x = -1 + ZERO; x <= 1; x++) {
     vec2 g = vec2(float(x), float(y));
     vec2 c = g + hash22(i + g) - f;
     float rr = 0.6 + 0.4 * hash12(i + g + 7.0);
@@ -604,24 +586,31 @@ float traceRidge(vec3 ro, vec3 rd, out vec2 near) {
   float kS = (FB.y - FA.y) / FLEN;
   float rate = max(-rd.y - 0.95 * ds.y + max(kS * ds.x, -0.08 * ds.x), 0.0) + 0.15;
   Rg R;
-  for (int i = 0; i < 72; i++) {
-    vec3 p = ro + rd * t;
-    float c = p.y - ridgeBase(p.xz, R) - 3.5;
-    float st = c / rate;
-    if (c < 0.3) {
-      c = p.y - ridgeH(p.xz, t, rk);
+  /* the bisection runs on in the march's own loop, so the ridge is
+     built into the program once for both */
+  float a = 0.0, b = 0.0;
+  int nb = -1;
+  for (int i = ZERO; i < 77; i++) {
+    if (nb < 0 && i >= 72) break;
+    float m = nb < 0 ? t : 0.5 * (a + b);
+    vec3 p = ro + rd * m;
+    float c = 0.0, st = 0.0;
+    if (nb < 0) {
+      c = p.y - ridgeBase(p.xz, R) - 3.5;
+      st = c / rate;
+    }
+    if (nb >= 0 || c < 0.3) {
+      float cf = p.y - ridgeH(p.xz, m, rk);
+      if (nb >= 0) {
+        if (cf < 0.0) b = m; else a = m;
+        if (++nb == 5) return b;
+        continue;
+      }
+      c = cf;
       st = c / (rate + 0.35);
       if (c < t * PA * 0.4) c = -1.0;
     }
-    if (c < 0.0) {
-      float a = lt, b = t;
-      for (int j = 0; j < 5; j++) {
-        float m = 0.5 * (a + b);
-        vec3 q = ro + rd * m;
-        if (q.y - ridgeH(q.xz, m, rk) < 0.0) b = m; else a = m;
-      }
-      return b;
-    }
+    if (c < 0.0) { a = lt; b = t; nb = 0; continue; }
     float cn = c / (t * PA);
     if (cn < near.x) near = vec2(cn, t);
     lt = t;
@@ -653,7 +642,7 @@ float cloudShadow(vec3 p, float far) {
   p.y += 10.0;
   int n = far > 20000.0 ? 5 : 8;
   vec3 l = normalize(vec3(LD.x, max(LD.y, 0.03), LD.z));
-  for (int i = 0; i < 8; i++) {
+  for (int i = ZERO; i < 8; i++) {
     vec3 q = p + l * t;
     if (q.y > CTOP || i >= n) break;
     float h = cloudH(q.xz, 1e4, cav) - drop(q.xz);
@@ -670,7 +659,7 @@ float cloudShadow(vec3 p, float far) {
 vec3 farNormal(vec3 p, float t, float fp, out float mat, out float cav) {
   float ex = max(1.5, t * PA * 1.2), ez = max(ex, fp);
   vec3 hh;
-  for (int k = 0; k < 3; k++) {
+  for (int k = ZERO; k < 3; k++) {
     vec2 x = p.xz + (k == 0 ? vec2(ex, 0.0) : (k == 1 ? vec2(0.0, ez) : vec2(0.0)));
     float h = farH(x, fp, mat, cav);
     hh[k] = h + (mat > 0.0 ? 0.0 : cloudFine(x, fp));
@@ -717,11 +706,11 @@ vec3 shadeFuji(vec3 ro, vec3 rd, float t, vec3 n, Fj F) {
   /* by moonlight the eye sees no colour in the rock */
   alb = mix(alb, vec3(luma(alb)), uLook.z);
   alb = mix(vec3(0.025, 0.035, 0.025), alb, smoothstep(2350.0, 2550.0, h));
-  float s = fujiSnow(F, h);
-  alb = mix(alb, vec3(0.8, 0.83, 0.88), s);
-  vec3 col = alb * (LC / PI * max(dot(n, LD), 0.0) + AMB * (0.55 + 0.45 * n.y) + CUP * 0.05);
-  col += uLook.z * trail(F, h, t);
-  return col;
+  /* old snow, greyed by its dust and lying in the gullies' shade, its
+     edges broken against the scoria */
+  float s = fujiSnow(F, h) * (0.55 + 0.45 * noise(p.xz / 35.0));
+  alb = mix(alb, vec3(0.5, 0.53, 0.58), s);
+  return alb * (LC / PI * max(dot(n, LD), 0.0) + AMB * (0.55 + 0.45 * n.y) + CUP * 0.05);
 }
 
 vec3 shadeRidge(vec3 ro, vec3 rd, float t) {
@@ -729,7 +718,7 @@ vec3 shadeRidge(vec3 ro, vec3 rd, float t) {
   float rk;
   float e = max(0.06, t * PA);
   vec3 hh;
-  for (int k = 0; k < 3; k++) hh[k] = ridgeH(p.xz + (k == 0 ? vec2(e, 0.0) : (k == 1 ? vec2(0.0, e) : vec2(0.0))), t, rk);
+  for (int k = ZERO; k < 3; k++) hh[k] = ridgeH(p.xz + (k == 0 ? vec2(e, 0.0) : (k == 1 ? vec2(0.0, e) : vec2(0.0))), t, rk);
   vec3 n = normalize(vec3(hh.z - hh.x, e, hh.z - hh.y));
   vec3 ng = n;
   float var = noise3(p * 0.4);
@@ -768,7 +757,7 @@ vec3 shadeRidge(vec3 ro, vec3 rd, float t) {
    rounded bulges with soft folds between */
 float vfbm(vec3 q, float lod) {
   float v = 0.0, a = 0.5;
-  for (int i = 0; i < 5; i++) {
+  for (int i = ZERO; i < 5; i++) {
     float k = sat(lod - float(i));
     if (k <= 0.0) { v += a * 0.5; break; }
     float n = noise3(q);
@@ -822,7 +811,7 @@ vec4 marchBand(vec3 ro, vec3 rd, float tmax, vec2 fc, out float tHalf) {
   float lt = t, tr = 1.0, tw = 0.0, sti = 0.0;
   bool inside = false;
   vec3 acc = vec3(0.0);
-  for (int i = 0; i < 120; i++) {
+  for (int i = ZERO; i < 120; i++) {
     if (t > t1 || tr < 0.03) break;
     float rj = 0.75 + 0.5 * hash12(fc + float(i) * 1.73);
     vec3 p = ro + rd * t;
@@ -837,7 +826,7 @@ vec4 marchBand(vec3 ro, vec3 rd, float tmax, vec2 fc, out float tHalf) {
     if (!inside) {
       if (f <= 0.0) { lt = t; t += max(st, -f * 30.0) * rj; continue; }
       float a = lt, b = t;
-      for (int k = 0; k < 4; k++) {
+      for (int k = ZERO; k < 4; k++) {
         float m = 0.5 * (a + b);
         vec3 pm = ro + rd * m;
         float hm = pm.y + drop(pm.xz);
@@ -849,21 +838,21 @@ vec4 marchBand(vec3 ro, vec3 rd, float tmax, vec2 fc, out float tHalf) {
       sti = max(5.0, t * 0.0006);
       continue;
     }
-    float den = sat(f * 3.0);
+    float den = sat(f * 8.0);
     if (den > 0.002) {
       vec3 l1 = L * 45.0, l2 = L * 190.0;
       float d1 = sat(bfield(h + l1.y, top, q + l1 / 520.0, lod - 1.0) * 1.2);
       float d2 = sat(bfield(h + l2.y, top, q + l2 / 520.0, 2.0) * 1.2);
-      float od = 0.085 * (45.0 * d1 + 145.0 * d2);
+      float od = 0.105 * (45.0 * d1 + 145.0 * d2);
       /* soft: much of the light comes on through the cloud, and the sky
          fills the folds, so they go a soft blue-grey and never dark */
       float sun = exp(-od) + 0.16 * exp(-0.25 * od);
       float hf = sat((h - 2150.0) / max(top - 2150.0, 80.0));
       /* bright sunlit tops over grey-blue shaded bodies */
-      vec3 c = lc * sun * (0.32 + 0.68 * hf) + AMB * (0.3 + 0.9 * hf) * 1.2;
+      vec3 c = lc * sun * (0.3 + 0.7 * hf) + AMB * (0.3 + 0.9 * hf) * 0.95;
       /* the underside fades into the haze */
       c = mix(c, hz, 0.6 * smoothstep(2400.0, 2130.0, h));
-      float a = 1.0 - exp(-den * 0.03 * sti);
+      float a = 1.0 - exp(-den * 0.055 * sti);
       acc += tr * a * c;
       tw += tr * a * t;
       tr *= 1.0 - a;
@@ -917,7 +906,7 @@ vec3 shadePanel(vec3 rd, float D, float dd, float seed, float mist, float far) {
 
 vec3 stars(vec3 rd) {
   vec3 acc = vec3(0.0);
-  for (int k = 0; k < 2; k++) {
+  for (int k = ZERO; k < 2; k++) {
     float sc = k == 0 ? 170.0 : 420.0;
     vec3 c = floor(rd * sc);
     vec3 h = hash33(c + float(k) * 17.0);
@@ -956,25 +945,29 @@ vec3 camera(vec2 fc, out vec3 ro, out float th) {
   if (ASP < 1.5) {
     th = t1 / max(ASP, 0.7);
     float hz = -HOR * DEG;
-    pitch = hz - atan(tan(hz - pitch0) / TV * th);
-    /* Fuji's summit is on the line of sight, at azimuth 0 */
-    if (ASP < 0.7) yaw = -atan(tan(-yaw0) / t1 * (ASP * th));
+    /* the cloud's horizon keeps its height on the screen, and a tall
+       frame lifts it toward the top, so the whole of Fuji stands above
+       the words as the horn stands above them on the meadow */
+    float yH = mix(tan(hz - pitch0) / TV, 0.24, smoothstep(1.1, 0.6, ASP));
+    pitch = hz - atan(yH * th);
+    /* Fuji's summit is on the line of sight, at azimuth 0: narrower than
+       seven to ten the frame turns to bring it in toward the middle, so
+       neither flank runs off the side */
+    if (ASP < 0.7) yaw = -atan(mix(tan(-yaw0) / t1, 0.05, smoothstep(0.7, 0.5, ASP)) * (ASP * th));
   }
-  pitch += uPoint.y * 0.06 * DEG;
-  yaw += uPoint.x * 0.12 * DEG;
-  vec2 uv = (fc - 0.5 * uRes) / (0.5 * uRes.y);
+  vec2 uv = (fc - 0.5 * RES) / (0.5 * RES.y);
   vec3 d = normalize(vec3(uv * th, 1.0));
   float cp = cos(pitch), sp = sin(pitch);
   d = vec3(d.x, d.y * cp + d.z * sp, -d.y * sp + d.z * cp);
   float cy = cos(yaw), sy = sin(yaw);
   d = vec3(d.x * cy + d.z * sy, d.y, -d.x * sy + d.z * cy);
-  ro = vec3(uPoint.x * 3.0, EYE + uPoint.y * 0.8, 0.0);
-  PA = 2.0 * th / uRes.y;
+  ro = vec3(0.0, EYE, 0.0);
+  PA = 2.0 * th / RES.y;
   return d;
 }
 
 void setup() {
-  ASP = uRes.x / uRes.y;
+  ASP = RES.x / RES.y;
   T = mod(uTime, 32768.0);
   DRIFT = vec2(-2.1, 0.8) * T;
   HOR = sqrt(2.0 * (EYE - DECK) / RE) / DEG;
@@ -989,8 +982,8 @@ void setup() {
   LC = look3(vec3(5.6, 5.35, 4.9), vec3(20.0, 7.0, 4.6) * KEY, vec3(0.8, 1.1, 1.75)) * KEY;
   AMB = look3(vec3(0.14, 0.18, 0.30), mix(vec3(0.03, 0.04, 0.08), vec3(0.075, 0.08, 0.19), KEY), vec3(0.012, 0.017, 0.034)) * look3(SK, SK, 1.0);
   CUP = look3(vec3(1.5, 1.5, 1.55), mix(vec3(0.15, 0.18, 0.3), vec3(0.6, 0.38, 0.36), KEY), vec3(0.08, 0.1, 0.15)) * (0.2 + 0.8 * KEY);
-  AIRN = look3(vec3(0.045, 0.16, 0.42), mix(vec3(0.03, 0.05, 0.12), vec3(0.16, 0.07, 0.10), KEY), vec3(0.005, 0.011, 0.03)) * look3(SK, SK, 1.0);
-  CT = look3(vec3(1.25), vec3(0.62, 0.78, 0.98), vec3(0.85));
+  AIRN = look3(vec3(0.088, 0.165, 0.32), mix(vec3(0.03, 0.05, 0.12), vec3(0.16, 0.085, 0.115), KEY), vec3(0.005, 0.011, 0.03)) * look3(SK, SK, 1.0);
+  CT = look3(vec3(1.05), vec3(0.2, 0.25, 0.36), vec3(0.36));
   AIRF = look3(vec3(0.30, 0.34, 0.47), vec3(0.14, 0.14, 0.21), vec3(0.008, 0.013, 0.033)) * look3(SK, SK, 1.0);
   /* the spur, laid into the lower left of the wide frame */
   FA = vec3(-130.4, 2934.9, 636.6);
@@ -1000,7 +993,9 @@ void setup() {
   FLEN = length(FB.xz - FA.xz);
 }
 
-vec3 scene(vec2 fc) {
+/* one look's light at the time traced, and in alpha how much of the
+   pixel is open sky, for the stars */
+vec4 scene(vec2 fc) {
   setup();
   vec3 ro;
   float th;
@@ -1025,8 +1020,9 @@ vec3 scene(vec2 fc) {
   float a1 = sat(d1 / (2200.0 * PA) + 0.5), a2 = sat(d2 / (4500.0 * PA) + 0.5);
   float a3 = sat(d3 / (8000.0 * PA) + 0.5), a4 = sat(d4 / (24000.0 * PA) + 0.5);
   vec3 col = vec3(0.0);
-  bool open = aR < 1.0 && a1 < 1.0 && a2 < 1.0 && a3 < 1.0;
-  if (open && a4 < 1.0) {
+  float open = 0.0;
+  bool clear = aR < 1.0 && a1 < 1.0 && a2 < 1.0 && a3 < 1.0;
+  if (clear && a4 < 1.0) {
     /* the sky, Fuji, and the far deck at its foot */
     float tF = traceFuji(ro, rd, nearF);
     float aF = tF > 0.0 ? 1.0 : (nearF.x < 1.0 ? 0.5 * (1.0 - nearF.x) : 0.0);
@@ -1043,31 +1039,39 @@ vec3 scene(vec2 fc) {
       gDepth = tC;
     } else {
       col = cirrus(rd, haze(rd, sky(rd)));
-      if (uLook.z > 0.0) col += uLook.z * stars(rd);
+      open = 1.0;
       if (aF > 0.0) {
         Fj F;
         vec3 p = ro + rd * tFs;
         vec2 q = p.xz - FJ;
         float e = max(4.0, tFs * PA);
+        /* the normal from three taps, in a loop so the mountain is built
+           into the program once here */
         vec3 hh;
-        Fj G;
-        hh.x = fujiH(q + vec2(e, 0.0), tFs, G);
-        hh.y = fujiH(q + vec2(0.0, e), tFs, G);
-        hh.z = fujiH(q, tFs, F);
+        for (int k = ZERO; k < 3; k++) {
+          Fj G;
+          hh[k] = fujiH(q + (k == 0 ? vec2(e, 0.0) : k == 1 ? vec2(0.0, e) : vec2(0.0)), tFs, G);
+          if (k == 2) F = G;
+        }
         vec3 n = normalize(vec3(hh.z - hh.x, e, hh.z - hh.y));
         vec3 fc2 = aerial(shadeFuji(ro, rd, tFs, n, F), rd, tFs, p.y + drop(p.xz));
         col = mix(col, fc2, aF);
+        open *= 1.0 - aF;
         if (aF > 0.5) gDepth = tFs;
       }
     }
-    if (I2.x > 0.0 && I2.y < (tC > 0.0 ? tC : 1e9)) col = mix(col, aerial(shadeIsland(ro, rd, I2, 36000.0, 4.0), rd, I2.y, 2300.0), I2.x);
+    if (I2.x > 0.0 && I2.y < (tC > 0.0 ? tC : 1e9)) {
+      col = mix(col, aerial(shadeIsland(ro, rd, I2, 36000.0, 4.0), rd, I2.y, 2300.0), I2.x);
+      open *= 1.0 - I2.x;
+    }
   }
   /* the hazy blue ridges, then the nearer band of cloud over them */
-  if (open && a4 > 0.0) { col = mix(col, shadePanel(rd, 24000.0, d4, 9.0, 0.5, 0.62), a4); if (a4 > 0.5) gDepth = 24000.0; }
-  if (open) {
+  if (clear && a4 > 0.0) { col = mix(col, shadePanel(rd, 24000.0, d4, 9.0, 0.5, 0.62), a4); open *= 1.0 - a4; if (a4 > 0.5) gDepth = 24000.0; }
+  if (clear) {
     float tH;
     vec4 v = marchBand(ro, rd, a4 >= 1.0 ? 24000.0 : 1e9, fc, tH);
     col = col * (1.0 - v.a) + v.rgb;
+    open *= 1.0 - v.a;
     if (v.a > 0.5) gDepth = tH;
   }
   /* a faint glow in the haze lying over the bands of cloud, brighter on
@@ -1079,6 +1083,24 @@ vec3 scene(vec2 fc) {
   if (aR < 1.0 && a1 < 1.0 && a2 > 0.0) { col = mix(col, shadePanel(rd, 4500.0, d2, 4.0, 0.35, 0.18), a2); if (a2 > 0.5) gDepth = 4500.0; }
   if (aR < 1.0 && a1 > 0.0) { col = mix(col, shadePanel(rd, 2200.0, d1, 1.0, 0.06, 0.1), a1); if (a1 > 0.5) gDepth = 2200.0; }
   if (aR > 0.0) { col = mix(col, aerial(shadeRidge(ro, rd, tRs), rd, tRs, EYE), aR); if (aR > 0.5) gDepth = tRs; }
+  open *= (1.0 - a3) * (1.0 - a2) * (1.0 - a1) * (1.0 - aR);
+  return vec4(col, open);
+}
+
+void bake(vec2 fc, out vec4 C, out vec4 D) {
+  C = scene(fc);
+  D = vec4(0.0);
+}
+
+/* each frame: what was traced, and the stars over the open sky */
+vec3 frame(vec2 fc) {
+  setup();
+  vec3 ro;
+  float th;
+  vec3 rd = camera(fc, ro, th);
+  vec4 c = bakeC(fc);
+  vec3 col = c.rgb;
+  if (uLook.z > 0.0 && c.a > 0.0) col += uLook.z * c.a * stars(rd);
   return col;
 }
 `

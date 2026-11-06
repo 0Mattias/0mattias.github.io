@@ -1,4 +1,4 @@
-/* concepts/scenes/dunes.js · Erg
+/* scenes/dunes.js · Deadvlei
    Deadvlei, in the Namib at Sossusvlei: standing on the white clay pan at
    eye height, looking north across it at Big Daddy, the great red dune
    that walls it, with dead camelthorns standing in the clay between.
@@ -40,15 +40,18 @@
    split by one feathered rift, a halo round the moon, and the moon
    lighting the sand faintly. No haze lies on the pan, no shimmer at the
    foot.
+   All of it is traced once for each look; each frame draws it back, the
+   stars twinkling over it.
    WebGL2, no libraries, no build step. */
 
-window.CONCEPT = {
+window.PLACE = {
   id: 'dunes',
   theme: { day: '#3469ad', dusk: '#2d4684', night: '#101115' },
   t0: 20,
-  /* a normal lens on the pan: the near clay soft, the dune crisp; the
-     white clay and the lit sand roll off without much glow, the moon
-     blooms; the Milky Way keeps its colour */
+  /* a normal lens on the pan, stopped down: the cracked clay at the feet
+     only just soft, the trees and the dune crisp; the white clay and the
+     lit sand roll off without much glow, the moon blooms; the Milky Way
+     keeps its colour */
   camera: { expo: [0.96, 1.0, 1.05], bloom: [0.035, 0.055, 0.12], thresh: 1.15, sat: [0.94, 0.92, 0.88], vig: [0.12, 0.16, 0.2], lift: [0.003, 0.004, 0.0015], grain: 0.022, blur: 0.012 },
   frag: `
 const float EYE = 1.7;
@@ -119,7 +122,7 @@ float farDunes(vec2 p) {
   if (r < 1900.0) return -300.0;
   vec2 g = floor(p / 1500.0);
   float h = -300.0;
-  for (int j = 0; j < 4; j++) {
+  for (int j = ZERO; j < 4; j++) {
     vec2 c = g + vec2(float(j & 1), float(j >> 1));
     vec3 k = hash33(vec3(c, 4.2));
     vec2 cc = (c + 0.2 + 0.6 * k.xy) * 1500.0;
@@ -207,7 +210,7 @@ void buildLimb(int i, vec3 p, vec3 dir, float len, float r0, float s, float up, 
   float jr[5];
   jp[0] = p; jd[0] = dir; jr[0] = r0;
   float run = 0.0;
-  for (int k = 0; k < 4; k++) {
+  for (int k = ZERO; k < 4; k++) {
     vec3 g = hash33(vec3(s + float(i) * 3.1, float(k), 8.7)) - 0.5;
     /* each joint kinks the limb, swinging it to one side then the other */
     vec3 sw = normalize(cross(dir, vec3(0.0, 1.0, 0.0)) + 1e-4) * ((k & 1) == 0 ? 1.0 : -1.0) * (0.25 + g.x);
@@ -225,7 +228,7 @@ void buildLimb(int i, vec3 p, vec3 dir, float len, float r0, float s, float up, 
   }
   /* side branches off the first and second joints, leaving at a slant
      and climbing, each kinked once */
-  for (int m = 0; m < 2; m++) {
+  for (int m = ZERO; m < 2; m++) {
     vec3 g = hash33(vec3(s * 1.3 + float(i), float(m), 4.1)) - 0.5;
     vec3 o = jp[m + 1];
     vec3 pd = jd[m + 1];
@@ -280,7 +283,7 @@ void buildTree(vec4 T) {
     vec3 p = cB[0].xyz;
     float r = rb * 1.05;
     vec3 lo = vec3(-1.0, 0.0, -1.0) - 1.0, hi = p + 1.0;
-    for (int k = 0; k < 4; k++) {
+    for (int k = ZERO; k < 4; k++) {
       vec3 g = hash33(vec3(s, float(k), 1.9)) - 0.5;
       vec3 q = p + d * H * 0.22 + dz * g.x * 0.7;
       float r2 = mix(rb, 0.07, float(k + 1) / 4.0);
@@ -293,7 +296,7 @@ void buildTree(vec4 T) {
       r = r2;
     }
     /* snapped limbs: short, blunt, one propping the trunk */
-    for (int m = 0; m < 2; m++) {
+    for (int m = ZERO; m < 2; m++) {
       vec3 g = hash33(vec3(s, float(m), 5.5)) - 0.5;
       vec3 o = cB[3 + m * 2].xyz;
       vec3 bd = normalize(d * 0.6 + dz * (m == 0 ? 1.0 : -1.0) * 0.7 + vec3(0.0, m == 0 ? 0.9 : -0.4, 0.0));
@@ -331,13 +334,13 @@ void buildTree(vec4 T) {
   cA[0] = vec4(0.0, -0.4, 0.0, rb * 1.4);
   cB[0] = vec4(fk, rb * 0.95);
   gTrunkR = max(rb * 1.4, H * 0.13 + 0.05);
-  for (int k = 0; k < 2; k++) {
+  for (int k = ZERO; k < 2; k++) {
     float ra = a0 + 1.3 + float(k) * 2.4 + r0.z;
     cA[1 + k] = vec4(0.0, 0.2, 0.0, rb * 0.55);
     cB[1 + k] = vec4(cos(ra) * H * 0.13, 0.0, sin(ra) * H * 0.13, 0.04);
   }
   float kink = 0.85 + 0.5 * r1.z;
-  for (int i = 0; i < 4; i++) {
+  for (int i = ZERO; i < 4; i++) {
     if (i >= nLimb) break;
     vec3 h = hash33(vec3(s, float(i) + 0.5, 2.9));
     float az = a0 + (float(i) + 0.6 * (h.x - 0.5)) * TAU / float(nLimb);
@@ -367,12 +370,12 @@ int gMask = 15;
 float treeD(vec3 p) {
   float d = capD(p, cA[0], cB[0]);
   d = smin(d, min(capD(p, cA[1], cB[1]), capD(p, cA[2], cB[2])), 0.15);
-  for (int i = 0; i < 4; i++) {
+  for (int i = ZERO; i < 4; i++) {
     if (i >= nLimb) break;
     if ((gMask & (1 << i)) == 0 || length(p - limbB[i].xyz) - limbB[i].w > d) continue;
     int j = 3 + i * 9;
     float l = capD(p, cA[j], cB[j]);
-    for (int k = 1; k < 9; k++) l = min(l, capD(p, cA[j + k], cB[j + k]));
+    for (int k = 1 + ZERO; k < 9; k++) l = min(l, capD(p, cA[j + k], cB[j + k]));
     d = smin(d, l, 0.1);
   }
   /* burls and swellings along the old wood */
@@ -394,7 +397,7 @@ vec2 ballSpan(vec3 ro, vec3 rd, vec3 c, float r) {
 vec2 treeSpan(vec3 ro, vec3 rd) {
   vec2 sp = ballSpan(ro, rd, 0.5 * (cA[0].xyz + cB[0].xyz), 0.5 * length(cB[0].xyz - cA[0].xyz) + gTrunkR);
   gMask = 0;
-  for (int i = 0; i < 4; i++) {
+  for (int i = ZERO; i < 4; i++) {
     if (i >= nLimb) break;
     vec2 b = ballSpan(ro, rd, limbB[i].xyz, limbB[i].w);
     if (b.y > max(b.x, 0.0)) gMask |= 1 << i;
@@ -409,7 +412,7 @@ vec4 treeAxis(vec3 p) {
   float best = 1e9;
   vec4 ax = vec4(0.0, 1.0, 0.0, 0.0);
   int n = 3 + nLimb * 9;
-  for (int k = 0; k < NC; k++) {
+  for (int k = ZERO; k < NC; k++) {
     if (k >= n) break;
     vec3 pa = p - cA[k].xyz, ba = cB[k].xyz - cA[k].xyz;
     float h = sat(dot(pa, ba) / dot(ba, ba));
@@ -430,14 +433,23 @@ vec2 treeBox(vec3 ro, vec3 rd, vec4 T) {
   return vec2(max(max(tn.x, tn.y), tn.z), min(min(tf.x, tf.y), tf.z));
 }
 
-/* the nearest tree along a ray, before tmax: x its distance, y how much
-   of the pixel it covers, z which tree */
-vec3 traceTrees(vec3 ro, vec3 rd, float tmax, float pix) {
+/* the trees along a ray, in one loop for both of its uses, so a tree is
+   built into the program in one place. Traced from the eye (sh false),
+   before tmax: in .yzw the nearest tree's distance, how much of the
+   pixel it covers, and which tree it is, and a last turn of the loop
+   builds that tree again for its shading. Toward a light (sh true): in
+   .x how much of the light gets past them */
+vec4 trees(vec3 ro, vec3 rd, float tmax, float pix, bool sh) {
   vec3 best = vec3(1e9, 0.0, -1.0);
-  for (int i = 0; i < NT; i++) {
+  float res = 1.0;
+  for (int i = ZERO; i <= NT; i++) {
+    if (i == NT) {
+      if (!sh && best.z >= 0.0) buildTree(TREES[int(best.z)]);
+      break;
+    }
     vec4 T = TREES[i];
     vec2 span = treeBox(ro, rd, T);
-    span.x = max(span.x, 0.05);
+    span.x = max(span.x, sh ? 0.02 : 0.05);
     span.y = min(span.y, tmax);
     if (span.x >= span.y || span.x > best.x) continue;
     buildTree(T);
@@ -447,44 +459,27 @@ vec3 traceTrees(vec3 ro, vec3 rd, float tmax, float pix) {
     if (span.x >= span.y) continue;
     float t = span.x, mm = 1e9, tm = 0.0;
     bool hit = false;
-    for (int k = 0; k < 48; k++) {
+    for (int k = ZERO; k < 48; k++) {
       float d = treeD(ro + rd * t - base);
-      float m = d / (t * pix);
-      if (m < mm) { mm = m; tm = t; }
-      if (m < 0.2) { hit = true; break; }
-      t += max(d * 0.85, t * pix * 0.4);
+      if (sh) {
+        if (k >= 40) break;
+        float pen = 0.012 * t + 0.004;
+        res = min(res, d / pen);
+        if (res < 0.0) return vec4(0.0, best);
+        t += max(d * 0.9, 0.6 * pen);
+      } else {
+        float m = d / (t * pix);
+        if (m < mm) { mm = m; tm = t; }
+        if (m < 0.2) { hit = true; break; }
+        t += max(d * 0.85, t * pix * 0.4);
+      }
       if (t > span.y) break;
     }
+    if (sh) continue;
     float cov = hit ? 1.0 : sat(0.6 - mm) / 0.6;
     if (cov > 0.0 && (hit ? t : tm) < best.x && cov >= best.y * 0.5) best = vec3(hit ? t : tm, cov, float(i));
   }
-  return best;
-}
-
-/* how much light gets past the trees from p toward L */
-float treeShadow(vec3 p, vec3 L) {
-  float res = 1.0;
-  for (int i = 0; i < NT; i++) {
-    vec4 T = TREES[i];
-    vec2 span = treeBox(p, L, T);
-    span.x = max(span.x, 0.02);
-    if (span.x >= span.y) continue;
-    buildTree(T);
-    vec3 base = vec3(T.x, 0.0, T.y);
-    vec2 bs = treeSpan(p - base, L);
-    span = vec2(max(span.x, bs.x), min(span.y, bs.y));
-    if (span.x >= span.y) continue;
-    float t = span.x;
-    for (int k = 0; k < 40; k++) {
-      float d = treeD(p + L * t - base);
-      float pen = 0.012 * t + 0.004;
-      res = min(res, d / pen);
-      if (res < 0.0) return 0.0;
-      t += max(d * 0.9, 0.6 * pen);
-      if (t > span.y) break;
-    }
-  }
-  return smoothstep(0.0, 1.0, res);
+  return vec4(smoothstep(0.0, 1.0, res), best);
 }
 
 /* -------------------------------------------------------------- lights */
@@ -511,7 +506,7 @@ vec3 skyDusk(vec3 rd) {
   float c = dot(rd, gL);
   vec3 hor = glow < 0.4 ? mix(vec3(0.17, 0.25, 0.40), vec3(0.58, 0.44, 0.34), glow / 0.4) : mix(vec3(0.58, 0.44, 0.34), vec3(1.1, 0.6, 0.25), (glow - 0.4) / 0.6);
   vec3 col = mix(vec3(0.012, 0.050, 0.165), hor, exp(-e * mix(11.0, 4.5, glow * glow)));
-  col += vec3(0.05, 0.03, 0.035) * (1.0 - glow) * exp(-pow((e - 0.06) / 0.05, 2.0));
+  col += vec3(0.05, 0.03, 0.035) * (1.0 - glow) * exp(-sq((e - 0.06) / 0.05));
   col += vec3(1.5, 0.75, 0.3) * pow(sat(c), 16.0) + vec3(0.2, 0.1, 0.04) * pow(sat(c), 3.0);
   return col;
 }
@@ -529,7 +524,7 @@ vec3 skyBase(vec3 rd) {
 vec3 starsAt(vec3 rd, float pix, float mw) {
   vec3 col = vec3(0.0);
   float sig = max(pix, 6e-4) * 0.75;
-  for (int l = 0; l < 4; l++) {
+  for (int l = ZERO; l < 4; l++) {
     float fl = float(l);
     float sc = fl == 0.0 ? 70.0 : (fl == 1.0 ? 160.0 : (fl == 2.0 ? 360.0 : 820.0));
     vec3 cell = floor(rd * sc);
@@ -540,7 +535,11 @@ vec3 starsAt(vec3 rd, float pix, float mw) {
     float d = length(rd - sp) / sig;
     float m = hash13(cell * 2.31 + 4.0 + fl);
     float flux = fl == 0.0 ? 1.2 * pow(m, 6.0) + 0.04 : (fl == 1.0 ? 0.07 * pow(m, 3.0) + 0.01 : (fl == 2.0 ? 0.018 * m : 0.01 * m));
-    float tw = 1.0 + (0.15 + 0.4 * sat(1.0 - rd.y * 5.0)) * sin(mod(uTime, 600.0) * (1.7 + 4.0 * h.y) + h.z * TAU) * step(fl, 1.5);
+    /* the bright ones twinkle, more as they sink toward the horizon
+       through more air */
+    float ph = mod(uTime, 600.0);
+    float sw = 0.6 * sin(ph * (2.3 + 5.0 * h.y) + h.z * TAU) + 0.4 * sin(ph * (5.1 + 7.0 * h.z) + h.y * 11.0);
+    float tw = 1.0 + (0.12 + 0.45 * sat(1.0 - rd.y * 5.0)) * sw * step(fl, 1.5);
     vec3 tint = mix(vec3(1.0, 0.78, 0.55), vec3(0.72, 0.84, 1.0), smoothstep(0.2, 0.8, h.y));
     col += tint * flux * tw * exp(-0.5 * d * d);
   }
@@ -572,10 +571,10 @@ vec3 milky(vec3 rd, out float band) {
      soft at its edges, running through the bulge */
   float off = 0.016 * sin(l * 2.6 + 0.7) + 0.02 * (fbm(vec2(l * 3.0, 1.7), 3) - 0.5) + 0.004 * (noise(g * vec2(40.0, 60.0)) - 0.5);
   float rw = 0.024 + 0.01 * fbm(vec2(l * 4.0, 4.0), 2) + 0.012 * exp(-l * l * 6.0);
-  float rift = exp(-pow((b - off) / rw, 2.0)) * (0.7 + 0.3 * fbm(vec2(l * 10.0, 2.0), 2));
+  float rift = exp(-sq((b - off) / rw)) * (0.7 + 0.3 * fbm(vec2(l * 10.0, 2.0), 2));
   /* and a few thin lanes beside it, short and broken */
-  float l1 = exp(-pow((b - 0.05 - 0.02 * sin(l * 7.0)) / 0.006, 2.0)) * smoothstep(0.62, 0.78, noise(vec2(l * 11.0, 3.0)));
-  float l2 = exp(-pow((b + 0.055 + 0.02 * sin(l * 5.0 + 2.0)) / 0.007, 2.0)) * smoothstep(0.64, 0.8, noise(vec2(l * 9.0, 9.0)));
+  float l1 = exp(-sq((b - 0.05 - 0.02 * sin(l * 7.0)) / 0.006)) * smoothstep(0.62, 0.78, noise(vec2(l * 11.0, 3.0)));
+  float l2 = exp(-sq((b + 0.055 + 0.02 * sin(l * 5.0 + 2.0)) / 0.007)) * smoothstep(0.64, 0.8, noise(vec2(l * 9.0, 9.0)));
   float dust = sat(rift * 0.55 + (l1 + l2) * 0.28) * smoothstep(0.0, 0.3, band);
   float m = band * along * swell * grain * 0.9 + exp(-b * b / 0.08) * 0.05 + bulge * (1.1 + 0.4 * grain);
   vec3 col = mix(vec3(0.68, 0.77, 1.0), vec3(1.0, 0.85, 0.64), sat(bulge * 1.4 + 0.3 * band * along)) * m;
@@ -610,13 +609,12 @@ vec3 moonDisc(vec3 rd, vec3 M, vec3 S, float pix) {
    horizon keeps its height on screen; narrower still the lens widens no
    further and the frame is a crop of the seven to ten one, turned toward
    Big Daddy's summit so the summit keeps its place on screen. The
-   pointer turns the head a little and steps it sideways, so the trees
-   slide over the dune */
+   stage turns it a little with the pointer */
 const float T1 = 0.62;
 const float QH = -0.25;
 float gTanV, gTanW, gYaw;
 vec3 camRay(vec2 fc, out vec3 ro, out float pix) {
-  float asp = uRes.x / uRes.y;
+  float asp = RES.x / RES.y;
   float tanV = asp >= 1.5 ? max(T1 / asp, 0.30) : T1 / max(asp, 0.7);
   float tanW = tanV * asp;
   float yaw = 0.0;
@@ -627,19 +625,18 @@ vec3 camRay(vec2 fc, out vec3 ro, out float pix) {
   gTanV = tanV;
   gTanW = tanW;
   gYaw = yaw;
-  yaw += uPoint.x * 0.012;
-  vec2 q = (fc - 0.5 * uRes) / (0.5 * uRes.y);
-  vec3 r = normalize(vec3(q.x * tanV, (q.y - QH) * tanV + uPoint.y * 0.006, 1.0));
+  vec2 q = (fc - 0.5 * RES) / (0.5 * RES.y);
+  vec3 r = normalize(vec3(q.x * tanV, (q.y - QH) * tanV, 1.0));
   r.xz = rot(yaw) * r.xz;
-  ro = vec3(uPoint.x * 0.8, EYE, 0.0);
-  pix = 2.0 * tanV / uRes.y;
+  ro = vec3(0.0, EYE, 0.0);
+  pix = 2.0 * tanV / RES.y;
   return r;
 }
 
 /* the moon's disc where a three to two frame shows it, at the same place
    on any narrower screen; its light keeps its true direction */
 vec3 moonSeen(vec3 M) {
-  if (uRes.x / uRes.y >= 1.5) return M;
+  if (RES.x / RES.y >= 1.5) return M;
   vec2 s15 = vec2(M.x / M.z / T1, M.y / M.z / (T1 / 1.5));
   vec3 d = normalize(vec3(s15.x * gTanW, s15.y * gTanV, 1.0));
   d.xz = rot(gYaw) * d.xz;
@@ -648,7 +645,9 @@ vec3 moonSeen(vec3 M) {
 
 /* the ray over the dunes: steps by its height over the sand over the
    steepest the sand rises, refined by bisection; it keeps its closest
-   pass over a crest, in pixels, for the edge of the skyline */
+   pass over a crest, in pixels, for the edge of the skyline. The
+   bisection runs on in the march's own loop, so the dunes are built
+   into the program once for both */
 float march(vec3 ro, vec3 rd, float pix, out float rmin, out float tr) {
   float tmax = 9000.0;
   if (rd.y > 0.0) tmax = min(tmax, (340.0 - ro.y) / rd.y);
@@ -656,19 +655,21 @@ float march(vec3 ro, vec3 rd, float pix, out float rmin, out float tr) {
   else tmax = min(tmax, ro.y / max(-rd.y, 1e-6) + 1.0);
   float lip = 0.92 / (abs(rd.y) + 0.78 * length(rd.xz));
   float t = 1.0, lt = 1.0, g = 1e9;
+  float a = 0.0, b = 0.0;
+  int nb = -1;
   rmin = 1e9; tr = 0.0;
-  for (int i = 0; i < 160; i++) {
-    vec3 p = ro + rd * t;
-    g = p.y - dunes(p.xz);
-    if (g < 0.0) {
-      float a = lt, b = t;
-      for (int j = 0; j < 7; j++) {
-        float m = 0.5 * (a + b);
-        vec3 q = ro + rd * m;
-        if (q.y - dunes(q.xz) < 0.0) b = m; else a = m;
-      }
-      return 0.5 * (a + b);
+  for (int i = ZERO; i < 167; i++) {
+    if (nb < 0 && i >= 160) break;
+    float m = nb < 0 ? t : 0.5 * (a + b);
+    vec3 p = ro + rd * m;
+    float h = p.y - dunes(p.xz);
+    if (nb >= 0) {
+      if (h < 0.0) b = m; else a = m;
+      if (++nb == 7) return 0.5 * (a + b);
+      continue;
     }
+    g = h;
+    if (g < 0.0) { a = lt; b = t; nb = 0; continue; }
     float r = g / (t * pix);
     if (r < rmin && t > 50.0) { rmin = r; tr = t; }
     lt = t;
@@ -685,7 +686,7 @@ float duneShadow(vec3 p, vec3 L, float fp) {
   float lip = 0.9 / (L.y + 0.78 * length(L.xz));
   float res = 1.0;
   float t = 1.0 + fp;
-  for (int i = 0; i < 40; i++) {
+  for (int i = ZERO; i < 40; i++) {
     vec3 q = p + L * t;
     float g = q.y - dunes(q.xz);
     res = min(res, g / (t * 0.01 + fp));
@@ -693,12 +694,6 @@ float duneShadow(vec3 p, vec3 L, float fp) {
     t += clamp(g * lip, 0.5 + t * 0.02, 400.0);
   }
   return smoothstep(0.0, 1.0, res);
-}
-
-vec3 duneNormal(vec2 p, float e) {
-  float a = max(dunes(p + vec2(e, 0.0)), 0.0), b = max(dunes(p - vec2(e, 0.0)), 0.0);
-  float c = max(dunes(p + vec2(0.0, e)), 0.0), d = max(dunes(p - vec2(0.0, e)), 0.0);
-  return normalize(vec3(b - a, 2.0 * e, d - c));
 }
 
 /* ------------------------------------------------------------ shading */
@@ -752,7 +747,7 @@ vec2 cells(vec2 x) {
   vec2 i = floor(x), f = fract(x);
   float d1 = 8.0, d2 = 8.0;
   vec2 id = vec2(0.0);
-  for (int k = 0; k < 9; k++) {
+  for (int k = ZERO; k < 9; k++) {
     vec2 o = vec2(float(k % 3) - 1.0, float(k / 3) - 1.0);
     vec2 c = o + hash22(i + o) * 0.85 - f;
     float d = dot(c, c);
@@ -841,22 +836,34 @@ vec3 panAlbedo(vec3 p, float fp, float near) {
 vec3 airTo(vec3 rd, float t, vec3 col) {
   vec3 ext = exp(-t * vec3(0.6, 0.8, 1.2) * 1.5e-5);
   vec3 hd = normalize(vec3(rd.x, 0.035, rd.z));
-  float fw = pow(max(dot(hd, gL), 0.0), 2.0);
+  float fw = sq(max(dot(hd, gL), 0.0));
   vec3 ins = skyBase(hd) * mix(vec3(1.0), vec3(1.35, 1.05, 0.72), fw * gWS);
   return col * ext + ins * (1.0 - ext);
 }
 
-/* the clay or the sand the eye ray met at t */
-vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune) {
+/* the clay or the sand the eye ray met at t; tsh, how much of the sun
+   the trees leave the clay there */
+vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune, float tsh) {
   vec3 p = ro + rd * t;
   float fp = t * pix;
   vec3 n = vec3(0.0, 1.0, 0.0);
-  float f = dunes(p.xz);
+  /* the dunes' height about p, in one loop so they are built into the
+     program once here: on the sand four taps for its normal; on the
+     clay its height there and six metres east and north, for how near
+     the sand is and which way it rises */
+  float e = max(0.6, fp * 0.8);
+  vec4 fq = vec4(0.0);
+  for (int i = ZERO; i < 4; i++) {
+    if (!onDune && i == 3) break;
+    vec2 o = onDune ? ((i & 2) == 0 ? vec2(e, 0.0) : vec2(0.0, e)) * ((i & 1) == 0 ? 1.0 : -1.0) : (i == 1 ? vec2(6.0, 0.0) : i == 2 ? vec2(0.0, 6.0) : vec2(0.0));
+    fq[i] = dunes(p.xz + o);
+  }
+  float f = fq.x;
   vec3 alb;
   float occ = 1.0;
   if (onDune) {
-    float e = max(0.6, fp * 0.8);
-    n = duneNormal(p.xz, e);
+    vec4 h = max(fq, 0.0);
+    n = normalize(vec3(h.y - h.x, 2.0 * e, h.w - h.z));
     /* the backs are not turned on a lathe: broad low swells over them */
     float back = 1.0 - smoothstep(0.88, 0.82, n.y);
     vec2 wq = rot(0.6) * p.xz;
@@ -874,7 +881,9 @@ vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune) {
       vec3 l2 = noised(vec2(u * 0.22, v * 0.045) + 7.0);
       /* the tongues come and go down the face */
       float m = smoothstep(0.25, 0.7, noise(vec2(u * 0.03, v * 0.012) + 5.0));
-      float tilt = (l1.y * 0.075 * 2.8 * (0.35 + 0.65 * m) + l2.y * 0.22 * 0.3) * lob;
+      /* gently: a low moon rakes right across the face, and stronger
+         lobes would stand out in it as ribs */
+      float tilt = (l1.y * 0.075 * 1.1 * (0.15 + 0.85 * m) + l2.y * 0.22 * 0.16) * lob;
       n = normalize(n + vec3(cd.x, 0.0, cd.y) * tilt);
     }
     alb = sandAlbedo(p, n, fp);
@@ -886,12 +895,14 @@ vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune) {
     alb = panAlbedo(p, fp, near);
     occ = 0.85 + 0.15 * smoothstep(-80.0, -10.0, -f);
   }
-  float sh = 1.0, shM = 1.0;
-  if (dot(n, gL) > 0.0 && gWS > 0.001) {
-    sh = duneShadow(p + n * 0.3, gL, fp);
-    if (!onDune && sh > 0.0) sh *= treeShadow(p + vec3(0.0, 0.02, 0.0), gL);
+  /* the sun's shadow and the moon's, by one march written once */
+  vec2 shs = vec2(1.0);
+  for (int k = ZERO; k < 2; k++) {
+    vec3 L = k == 0 ? gL : gM;
+    if ((k == 0 ? gWS : gWM) > 0.001 && dot(n, L) > 0.0) shs[k] = duneShadow(p + n * 0.3, L, fp);
   }
-  if (gWM > 0.001 && dot(n, gM) > 0.0) shM = duneShadow(p + n * 0.3, gM, fp);
+  float sh = shs.x, shM = shs.y;
+  if (!onDune) sh *= tsh;
   vec3 col = alb * lightAt(p, n, sh, shM, occ) / PI;
   /* light thrown back: the white clay lights the foot of a dune from
      below, and a dune's sunlit sand lights the clay at its foot red */
@@ -903,7 +914,7 @@ vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune) {
     float near = smoothstep(-70.0, -1.0, f);
     near *= near;
     if (near > 0.0) {
-      vec2 gd = normalize(vec2(dunes(p.xz + vec2(6.0, 0.0)) - f, dunes(p.xz + vec2(0.0, 6.0)) - f) + 1e-5);
+      vec2 gd = normalize(fq.yz - f + 1e-5);
       vec3 nf = normalize(vec3(-gd.x, 0.84, -gd.y));
       float lit = max(dot(nf, gL), 0.0);
       col += alb * vec3(0.62, 0.2, 0.09) * gSunE * lit * near * 0.09 / PI;
@@ -916,15 +927,21 @@ vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune) {
    grey-brown where it faces the sun, split along its length by fissures;
    the fallen trunks bleached paler */
 vec3 shadeTree(vec3 ro, vec3 rd, float t, float pix, int i) {
+  /* trees() left this tree built */
   vec4 T = TREES[i];
-  buildTree(T);
   gMask = 15;
   vec3 base = vec3(T.x, 0.0, T.y);
   vec3 p = ro + rd * t;
   vec3 lp = p - base;
   float e = max(0.004, t * pix * 0.5);
-  vec2 k = vec2(1.0, -1.0);
-  vec3 n = normalize(k.xyy * treeD(lp + k.xyy * e) + k.yyx * treeD(lp + k.yyx * e) + k.yxy * treeD(lp + k.yxy * e) + k.xxx * treeD(lp + k.xxx * e));
+  /* the normal from four taps, in a loop so the tree's distance is
+     built into the program once */
+  vec3 n = vec3(0.0);
+  for (int j = ZERO; j < 4; j++) {
+    vec3 o = vec3(((j + 3) >> 1) & 1, (j >> 1) & 1, j & 1) * 2.0 - 1.0;
+    n += o * treeD(lp + o * e);
+  }
+  n = normalize(n);
   /* the fissures run along the wood */
   vec4 ax = treeAxis(lp);
   vec3 u1 = normalize(cross(ax.xyz, abs(ax.y) < 0.9 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0)));
@@ -963,14 +980,9 @@ vec3 shadeTree(vec3 ro, vec3 rd, float t, float pix, int i) {
 
 /* ------------------------------------------------------------ the frame */
 
-vec3 scene(vec2 fc) {
-  vec3 ro;
-  float pix;
-  vec3 rd = camRay(fc, ro, pix);
-
-  /* the sun from the west-northwest in the afternoon, low in the west at
-     dusk; while it hands over to the moon both fade, so a turn to night
-     passes through dim twilight */
+/* the sun from the west-northwest in the afternoon, low in the west at
+   dusk, the moon by night */
+void lights() {
   float ws = uLook.x + uLook.y;
   gFu = uLook.y / max(ws, 1e-4);
   gL = normalize(mix(azel(-68.0, 37.0), azel(-110.0, 6.0), gFu));
@@ -982,33 +994,62 @@ vec3 scene(vec2 fc) {
   gM = azel(26.0, 17.0);
   gLd = azel(-110.0, -12.0);
   gMoonE = vec3(0.62, 0.66, 0.72) * gWM;
+}
 
-  /* focused on the middle trees, the aperture as a lens's opening in
-     metres: as far out of focus at any frame's height */
-  gFocus = 70.0;
-  gAperture = 0.034 / (gFocus * 2.0 * gTanV);
+/* focused on the middle trees and stopped down as a landscape is shot,
+   so the cracked clay at the feet stays legible, only just soft; the
+   aperture as a lens's opening in metres, as far out of focus at any
+   frame's height */
+void lens() {
+  gFocus = 60.0;
+  gAperture = 0.009 / (gFocus * 2.0 * gTanV);
+}
+
+/* one look's light; and, the same in every look, how much of the pixel
+   is open sky for the stars, how deep it is for the lens, and how thick
+   the stars are there */
+void bake(vec2 fc, out vec4 C, out vec4 D) {
+  vec3 ro;
+  float pix;
+  vec3 rd = camRay(fc, ro, pix);
+  lights();
+  lens();
 
   float rmin, tr;
   float t = march(ro, rd, pix, rmin, tr);
   float tg = rd.y < 0.0 ? ro.y / -rd.y : 1e9;
+  /* the sand, the clay, or the sand of a skyline the ray only just
+     cleared, which is part sand: whichever it is, shaded by one call,
+     so the shading is built into the program once */
+  bool dune = t > 0.0 && t < tg, open0 = !dune && tg >= 1e8;
+  float cov = open0 ? sat(0.5 - rmin) : 1.0;
+  float ts = dune ? t : open0 ? tr : tg;
+  /* the trees, by one loop for both rays: first toward the sun from the
+     clay, for their shadows on it; then from the eye, which leaves the
+     tree it meets built for its shading */
+  float tsh = 1.0;
+  vec3 tt = vec3(1e9, 0.0, -1.0);
+  bool clay = !dune && !open0 && gWS > 0.001 && gL.y > 0.0;
+  for (int k = ZERO; k < 2; k++) {
+    if (k == 0 && !clay) continue;
+    bool s0 = k == 0;
+    vec4 r = trees(s0 ? ro + rd * ts + vec3(0.0, 0.02, 0.0) : ro, s0 ? gL : rd, s0 ? 1e9 : min(open0 ? 1e9 : ts, 700.0), pix, s0);
+    if (k == 0) tsh = r.x; else tt = r.yzw;
+  }
+  vec3 gc = cov > 0.0 ? shadeGround(ro, rd, ts, pix, dune || open0, tsh) : vec3(0.0);
   vec3 col;
-  vec3 lights = vec3(0.0);
+  vec3 glow = vec3(0.0);
+  float open = 0.0, band = 0.0;
   float tEnd;
-  if (t > 0.0 && t < tg) {
-    col = shadeGround(ro, rd, t, pix, true);
-    tEnd = t;
-    gDepth = t;
-  } else if (tg < 1e8) {
-    col = shadeGround(ro, rd, tg, pix, false);
-    tEnd = tg;
-    gDepth = tg;
+  if (!open0) {
+    col = gc;
+    tEnd = ts;
+    gDepth = ts;
   } else {
     col = skyBase(rd);
-    if (gWM > 0.001) {
-      float band;
-      vec3 mw = milky(rd, band);
-      lights = (starsAt(rd, pix, band) + mw * 0.045) * gWM * smoothstep(0.0, 0.03, rd.y);
-    }
+    vec3 mw = milky(rd, band);
+    open = smoothstep(0.0, 0.03, rd.y);
+    glow = mw * 0.045 * gWM * open;
     /* the moon, pale by day, bright by night */
     vec3 mS = moonSeen(gM);
     vec3 md = moonDisc(rd, mS, gLd, pix);
@@ -1016,27 +1057,43 @@ vec3 scene(vec2 fc) {
     float ma = acos(clamp(dot(rd, mS), -1.0, 1.0));
     /* the aureole round the moon, in the dry air small and tight */
     col += vec3(0.62, 0.66, 0.74) * (0.08 * exp(-ma / 0.01) + 0.012 * exp(-ma / 0.045) + 0.003 * exp(-ma / 0.2)) * gWM;
+    /* no star shows through the moon */
+    open *= smoothstep(0.004, 0.0062, ma);
     /* a skyline the ray only just cleared is part sand */
-    float cov = sat(0.5 - rmin);
     if (cov > 0.0) {
-      col = mix(col, shadeGround(ro, rd, tr, pix, true), cov);
-      lights *= 1.0 - cov;
+      col = mix(col, gc, cov);
+      glow *= 1.0 - cov;
+      open *= 1.0 - cov;
       if (cov > 0.5) gDepth = tr;
     }
     tEnd = 1e9;
   }
 
   /* the trees standing between the eye and what it met */
-  vec3 tt = traceTrees(ro, rd, min(tEnd, 700.0), pix);
   if (tt.y > 0.0) {
     col = mix(col, shadeTree(ro, rd, tt.x, pix, int(tt.z)), tt.y);
-    lights *= 1.0 - tt.y;
+    glow *= 1.0 - tt.y;
+    open *= 1.0 - tt.y;
     if (tt.y > 0.5) gDepth = tt.x;
   }
 
   /* night: moonlight drains the colour and turns it blue */
   col = mix(col, vec3(luma(col)) * vec3(0.6, 0.78, 1.25), 0.55 * gWM);
-  return col + lights;
+  C = vec4(col + glow, 0.0);
+  D = vec4(open, gDepth, band, 0.0);
+}
+
+/* each frame: what was traced, and the stars over it, twinkling */
+vec3 frame(vec2 fc) {
+  vec3 ro;
+  float pix;
+  vec3 rd = camRay(fc, ro, pix);
+  lens();
+  vec4 d = bakeDi(fc);
+  gDepth = d.y;
+  vec3 col = bakeC(fc).rgb;
+  if (uLook.z > 0.0 && d.x > 0.0) col += starsAt(rd, pix, d.z) * uLook.z * d.x;
+  return col;
 }
 `
 };

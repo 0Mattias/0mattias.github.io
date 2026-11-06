@@ -255,39 +255,29 @@ html:not(.live) #sky { filter: blur(var(--soft)); }
 
 .under { opacity: 0; }
 
-/* another place (places.js): a layer over the meadow, its still first
-   and its live picture over that once drawn; inside the scene, so the
-   foot of the picture dissolves into the page as the meadow's does */
 .scene .alt {
     position: absolute;
     z-index: 2;
-    inset: 0;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.7s ease, visibility 0s 0.7s;
-}
-
-.scene .alt.on {
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.7s ease, visibility 0s;
-}
-
-.alt img,
-.alt canvas {
-    position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     display: block;
     object-fit: cover;
     opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.9s cubic-bezier(0.45, 0, 0.25, 1), visibility 0s 0.9s;
 }
 
-.alt img { transition: opacity 0.5s ease; }
-.alt canvas { transition: opacity 1s ease; }
-.alt img.on,
-.alt canvas.drawn { opacity: 1; }
+.scene .alt.on {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.9s cubic-bezier(0.45, 0, 0.25, 1), visibility 0s;
+}
+
+html.afar .scene::before,
+html.afar .scene::after {
+    visibility: hidden;
+}
 
 .under.on { opacity: 1; }
 
@@ -346,6 +336,8 @@ html:not(.live) #sky { filter: blur(var(--soft)); }
     animation: glint 1.8s cubic-bezier(0.45, 0, 0.55, 1) 0.6s infinite both;
 }
 
+.load.soon { animation-duration: 0.35s; animation-delay: 0s; }
+
 @keyframes glint {
     from { transform: translateX(-100%); }
     to { transform: translateX(250%); }
@@ -386,7 +378,8 @@ html:not(.live) #sky { filter: blur(var(--soft)); }
 html.sky .looks { display: flex; }
 
 html.live .looks,
-html.still .looks {
+html.still .looks,
+html.placed .looks {
     opacity: 1;
     visibility: visible;
     transition: opacity 0.9s ease 0.5s, visibility 0s 0.5s;
@@ -427,7 +420,6 @@ html.still .looks {
     outline-offset: 4px;
 }
 
-/* the places, beside the dots: back, the place on show, on */
 .places {
     position: absolute;
     left: calc(max(22px, env(safe-area-inset-left)) + 90px);
@@ -445,7 +437,8 @@ html.still .looks {
 html.sky .places:not([hidden]) { display: flex; }
 
 html.live .places,
-html.still .places {
+html.still .places,
+html.placed .places {
     opacity: 1;
     visibility: visible;
     transition: opacity 0.9s ease 0.5s, visibility 0s 0.5s;
