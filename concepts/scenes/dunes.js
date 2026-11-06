@@ -320,12 +320,15 @@ void buildTree(vec4 T) {
   }
 }
 
+/* the limbs a ray can meet, one bit each; the rest are left out */
+int gMask = 15;
+
 float treeD(vec3 p) {
   float d = capD(p, cA[0], cB[0]);
   d = smin(d, min(capD(p, cA[1], cB[1]), capD(p, cA[2], cB[2])), 0.15);
   for (int i = 0; i < 4; i++) {
     if (i >= nLimb) break;
-    if (length(p - limbB[i].xyz) - limbB[i].w > d) continue;
+    if ((gMask & (1 << i)) == 0 || length(p - limbB[i].xyz) - limbB[i].w > d) continue;
     int j = 3 + i * 9;
     float l = capD(p, cA[j], cB[j]);
     for (int k = 1; k < 9; k++) l = min(l, capD(p, cA[j + k], cB[j + k]));
@@ -345,9 +348,11 @@ vec2 ballSpan(vec3 ro, vec3 rd, vec3 c, float r) {
 }
 vec2 treeSpan(vec3 ro, vec3 rd) {
   vec2 sp = ballSpan(ro, rd, 0.5 * (cA[0].xyz + cB[0].xyz), 0.5 * length(cB[0].xyz - cA[0].xyz) + gTrunkR);
+  gMask = 0;
   for (int i = 0; i < 4; i++) {
     if (i >= nLimb) break;
     vec2 b = ballSpan(ro, rd, limbB[i].xyz, limbB[i].w);
+    if (b.y > max(b.x, 0.0)) gMask |= 1 << i;
     sp = vec2(min(sp.x, b.x), max(sp.y, b.y));
   }
   return sp;
@@ -402,7 +407,7 @@ vec3 traceTrees(vec3 ro, vec3 rd, float tmax, float pix) {
       float m = d / (t * pix);
       if (m < mm) { mm = m; tm = t; }
       if (m < 0.2) { hit = true; break; }
-      t += max(d * 0.85, t * pix * 0.3);
+      t += max(d * 0.85, t * pix * 0.4);
       if (t > span.y) break;
     }
     float cov = hit ? 1.0 : sat(0.6 - mm) / 0.6;
@@ -425,11 +430,12 @@ float treeShadow(vec3 p, vec3 L) {
     span = vec2(max(span.x, bs.x), min(span.y, bs.y));
     if (span.x >= span.y) continue;
     float t = span.x;
-    for (int k = 0; k < 64; k++) {
+    for (int k = 0; k < 40; k++) {
       float d = treeD(p + L * t - base);
-      res = min(res, d / (0.012 * t + 0.004));
+      float pen = 0.012 * t + 0.004;
+      res = min(res, d / pen);
       if (res < 0.0) return 0.0;
-      t += max(d * 0.9, 0.004 + 0.002 * t);
+      t += max(d * 0.9, 0.6 * pen);
       if (t > span.y) break;
     }
   }
@@ -699,7 +705,6 @@ float crackAA(float e, float w, float fp) {
    their rims lifted and catching the light, each plate its own tone;
    red sand washed onto it toward the dune feet and in drifts */
 vec3 panAlbedo(vec3 p, float fp, float near) {
-  if (true) return vec3(0.8,0.65,0.5);
   vec3 alb = vec3(0.84, 0.665, 0.48);
   float big = fbm(p.xz * 0.009 + 7.0, 3);
   float mid = noise(p.xz * 0.07) * 0.6 + noise(p.xz * 0.27) * 0.4;
@@ -820,6 +825,7 @@ vec3 shadeGround(vec3 ro, vec3 rd, float t, float pix, bool onDune) {
 vec3 shadeTree(vec3 ro, vec3 rd, float t, float pix, int i) {
   vec4 T = TREES[i];
   buildTree(T);
+  gMask = 15;
   vec3 base = vec3(T.x, 0.0, T.y);
   vec3 p = ro + rd * t;
   vec3 lp = p - base;

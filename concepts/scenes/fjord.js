@@ -320,7 +320,8 @@ float march(vec3 ro, vec3 rd, float tmax, int steps, int dmax, float grow) {
     vec3 p = ro + rd * tt;
     if (bis == 0 && (t > tmax || (p.y > 2100.0 && rd.y > 0.0))) { dyl = 1e9; break; }
     vec3 pl = plan(p.xz);
-    float dy = p.y - ground(p.xz, pl, min(detAt(tt), dmax));
+    float gh = ground(p.xz, pl, min(detAt(tt), dmax));
+    float dy = p.y - gh;
     if (bis > 0) {
       if (dy < 0.0) b = tt; else a = tt;
       bis++;
@@ -328,6 +329,9 @@ float march(vec3 ro, vec3 rd, float tmax, int steps, int dmax, float grow) {
       continue;
     }
     if (dy < 0.0) { bis = 1; a = tp; b = t; continue; }
+    // over the water the stride is taken from a floor not far under it, so
+    // a ray skimming the surface cannot leap a low shore
+    dy = p.y - max(gh, -40.0);
     dyl = dy;
     float px = dy / (t * PXA);
     if (pl.x > -60.0 && px < ec) { ec = px; EDGET = t; }
@@ -1064,7 +1068,8 @@ vec3 scene(vec2 fc) {
       c = mix(c, cl, w);
     }
   }
-  return acc + thr * c;
+  if (refl) return kind == 0 ? vec3(0.0, 0.0, 0.6) : kind == 1 ? vec3(0.0, 0.25, 0.0) : vec3(0.6, 0.6, 0.0);
+  return kind == 0 ? vec3(0.8, 0.0, 0.8) : kind == 1 ? vec3(0.0, 0.08, 0.0) : vec3(0.8, 0.8, 0.0);
 }
 `
 };

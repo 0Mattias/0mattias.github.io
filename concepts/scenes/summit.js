@@ -391,13 +391,13 @@ float cloudH(vec2 x, float fp, out float ao) {
   vec2 w = x + DRIFT;
   vec3 B = deckBase(x, w);
   /* far out the deck flattens into a smooth bright band */
-  float far = mix(1.0, 0.25, smoothstep(22000.0, 52000.0, length(x)));
+  float far = mix(1.0, 0.2, smoothstep(18000.0, 42000.0, length(x)));
   /* big lobes of three to six hundred metres on the banks and towers */
   vec2 L1 = lobes(w, 400.0, vec2(170.0, 320.0), vec2(20.0, 150.0), 3.0);
   float h = B.x + B.y * far * L1.x;
   ao = L1.y;
   /* and small ones of sixty to a hundred and fifty on those */
-  float k2 = smoothstep(90.0, 35.0, fp);
+  float k2 = smoothstep(60.0, 25.0, fp);
   if (k2 > 0.0) {
     vec2 L2 = lobes(w + 37.0, 105.0, vec2(42.0, 80.0), vec2(0.0, 24.0), 7.0);
     h += k2 * B.y * far * smax(L2.x, 0.0, 6.0);
@@ -467,7 +467,7 @@ float traceFar(vec3 ro, vec3 rd, float tmax, out float mat, out vec2 nearL) {
     lt = t;
     /* far out, where the deck's detail has gone under a pixel, it is
        crossed in bolder steps */
-    t += max(c / (mix(1.0, 0.3, smoothstep(14000.0, 45000.0, t)) + max(-rd.y, 0.0)), mat > -40.0 ? t * PA * 2.0 : t * 0.0025 + 1.0);
+    t += max(c / (mix(1.0, 0.3, smoothstep(14000.0, 45000.0, t)) + max(-rd.y, 0.0)), mat > -40.0 ? t * PA * 2.0 : t * mix(0.0012, 0.0025, smoothstep(25000.0, 40000.0, t)) + 1.0);
     if (t > t1) return -1.0;
   }
   /* a ray still skimming the tops when the steps run out has found the
@@ -719,13 +719,13 @@ vec3 shadeCloud(vec3 ro, vec3 rd, float t, vec3 n, float ao) {
   float sh = mix(0.4, 1.0, cloudShadow(p, t)) * fujiShadow(p);
   vec3 l = normalize(vec3(LD.x, max(LD.y, 0.02), LD.z));
   float dif = pow(sat(dot(n, l) * 0.5 + 0.5), 1.5);
-  vec3 sun = LC / PI * dif * sh * (0.55 + 0.45 * ao);
+  vec3 sun = LC / PI * dif * sh * (0.42 + 0.58 * ao);
   /* light through a lobe's thin edge where it stands against the deck
      behind it */
   float rim = pow(1.0 - sat(dot(n, -rd)), 4.0) * smoothstep(0.8, 0.3, n.y);
   sun += LC / PI * 0.22 * rim * sh * ao;
   vec3 col = sun * CT;
-  col += AMB * (0.5 + 0.5 * n.y) * (0.45 + 0.55 * ao) * 1.15;
+  col += AMB * (0.5 + 0.5 * n.y) * (0.4 + 0.6 * ao) * 1.15;
   return col;
 }
 
