@@ -8,8 +8,22 @@
    and draws it over the whole canvas each frame.
 
    A scene's shader defines   vec3 scene(vec2 fragCoord)
-   and returns linear, unclamped radiance; the finish tone-maps it (ACES,
-   as the meadow does), encodes it and dithers it. It may read:
+   and returns linear, unclamped radiance. The camera takes it from
+   there as the meadow's does: the picture is drawn into a buffer of
+   high range, then focused (a bokeh disc as wide as each pixel is out of
+   focus), bloomed (bright light spreads into a glow), exposed, toned
+   (ACES), graded, vignetted, grained, encoded and dithered. Where the
+   browser cannot draw into such a buffer, the picture is toned and
+   graded in one pass, without focus or bloom.
+
+   For focus, a scene sets three globals at its primary hit:
+     gDepth     metres from the eye to what the pixel shows (sky: 1e6)
+     gFocus     metres to the plane in focus
+     gAperture  how far out of focus a pixel goes, as a share of the
+                frame's height per unit of (1 - gFocus / gDepth)
+   Left as they are (gAperture 0), the whole frame is sharp.
+
+   It may read:
      uRes    the canvas, in pixels
      uTime   seconds
      uLook   the weights of day, dusk and night, summing to one. They turn
@@ -26,6 +40,16 @@
      budget  (1.4e6)  most pixels drawn in all
      fps     (30)     frames a second while it moves
      t0      (0)      seconds on the clock at the start
+     camera  {        the lens and the grade; a value given per look is
+                      blended by the look weights
+       expo   [1, 1, 1]            exposure, day, dusk, night
+       bloom  [0.05, 0.07, 0.09]   how much of the bright light glows
+       thresh (1.0)                radiance, after exposure, that glows
+       sat    [0.92, 0.9, 0.72]    share of the colour kept
+       vig    [0.14, 0.16, 0.2]    darkening toward the corners
+       grain  (0.024)              film grain
+       blur   (0.012)              widest bokeh, a share of the height
+     }
    }
 
    WebGL2, no libraries, no build step. */
@@ -152,6 +176,24 @@ if (STILL && q.get('mix')) {
   if (mix.length === 3 && sum > 0) w = mix.map(function (v) { return v / sum; });
 }
 
+/* ------------------------------------------------------------ camera */
+
+var CAM = (S && S.camera) || {};
+function per(v, d) {
+  if (v === undefined) v = d;
+  return typeof v === 'number' ? [v, v, v] : v;
+}
+var CAMERA = {
+  expo: per(CAM.expo, [1, 1, 1]),
+  bloom: per(CAM.bloom, [0.05, 0.07, 0.09]),
+  thresh: CAM.thresh === undefined ? 1.0 : CAM.thresh,
+  sat: per(CAM.sat, [0.92, 0.9, 0.72]),
+  vig: per(CAM.vig, [0.14, 0.16, 0.2]),
+  grain: CAM.grain === undefined ? 0.024 : CAM.grain,
+  blur: CAM.blur === undefined ? 0.012 : CAM.blur
+};
+function lw(v) { return v[0] * w[0] + v[1] * w[1] + v[2] * w[2]; }
+
 /* ----------------------------------------------------------- shaders */
 
 var VERT = '#version 300 es\n' +
@@ -173,6 +215,11 @@ var HEAD = '#version 300 es\n' +
 var COMMON = `
 #define PI 3.14159265359
 #define TAU 6.28318530718
+/* where the primary ray ended and how the lens is focused, for the
+   camera's depth of field; a scene sets them at its hit */
+float gDepth = 1e6;
+float gFocus = 1e6;
+float gAperture = 0.0;
 float sat(float x) { return clamp(x, 0.0, 1.0); }
 vec3 sat(vec3 x) { return clamp(x, 0.0, 1.0); }
 float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
@@ -235,13 +282,132 @@ float fbm3(vec3 p, int oct) {
 }
 `;
 
-var FINISH = `
-void main() {
-  vec3 c = max(scene(gl_FragCoord.xy), 0.0);
+/* the grade the meadow wears: ACES, a little of the colour given back to
+   grey (more at night, as the eye sees it), blacks lifted and tinted by
+   the look, the corners darkened, and a grain that thins in the shadows */
+var GRADE = `
+uniform float uExpo, uSat, uVig, uGrain;
+vec3 grade(vec3 c, vec2 fc) {
+  c = max(c * uExpo, 0.0);
   c = clamp(c * (2.51 * c + 0.03) / (c * (2.43 * c + 0.59) + 0.14), 0.0, 1.0);
-  c = pow(c, vec3(1.0 / 2.2));
-  c += (hash12(gl_FragCoord.xy + fract(uTime * 7.31) * 113.0) - 0.5) / 255.0;
-  outColor = vec4(c, 1.0);
+  c = mix(vec3(dot(c, vec3(0.299, 0.587, 0.114))), c, uSat);
+  c = c * 0.96 + 0.01 + mix(vec3(0.006, 0.005, 0.004), vec3(0.0, 0.0015, 0.006), uLook.z) + uLook.y * vec3(0.006, 0.002, 0.0);
+  vec2 uv = fc / uRes;
+  c *= 1.0 - smoothstep(0.45, 0.9, distance(uv, vec2(0.5))) * uVig;
+  float g = hash12(fc * 0.913 + fract(uTime * 0.37) * 517.0) - 0.5;
+  c += g * uGrain * (1.0 - uLook.z * 0.45) * (0.15 + 0.85 * smoothstep(0.0, 0.1, dot(c, vec3(0.333))));
+  c = pow(max(c, 0.0), vec3(1.0 / 2.2));
+  c += (hash12(fc + fract(uTime * 7.31) * 113.0) - 0.5) / 255.0;
+  return c;
+}
+`;
+
+/* into the buffer: the radiance, and in alpha how far out of focus the
+   pixel is, in pixels, signed (behind the focus +, before it -) */
+var FINISH_HDR = `
+void main() {
+  vec3 c = scene(gl_FragCoord.xy);
+  if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+  c = clamp(c, 0.0, 30000.0);
+  float coc = 0.0;
+  if (gAperture > 0.0) coc = gAperture * uRes.y * (1.0 - gFocus / max(gDepth, 0.01));
+  outColor = vec4(c, clamp(coc, -512.0, 512.0));
+}
+`;
+
+/* straight to the canvas, where there is no buffer to draw into */
+var FINISH_LDR = GRADE + `
+void main() {
+  vec3 c = scene(gl_FragCoord.xy);
+  if (any(isnan(c)) || any(isinf(c))) c = vec3(0.0);
+  outColor = vec4(grade(c, gl_FragCoord.xy), 1.0);
+}
+`;
+
+var PHEAD = '#version 300 es\n' +
+  'precision highp float;\n' +
+  'precision highp sampler2D;\n' +
+  'out vec4 outColor;\n';
+
+/* the bloom: the bright light kept (softly, past a threshold) and halved
+   down a chain of ever smaller buffers, then gathered back up, each level
+   widened by a tent and laid on the one above. The first step weighs
+   each tap down by its brightness, so a lone hot pixel cannot flicker */
+var BLOOM_DOWN = PHEAD + `
+uniform sampler2D uSrc;
+uniform vec2 uTexel;
+uniform float uThresh, uExpo, uFirst;
+vec3 tap(vec2 uv) {
+  vec3 c = texture(uSrc, uv).rgb;
+  if (uFirst > 0.5) {
+    c *= uExpo;
+    float l = max(c.r, max(c.g, c.b));
+    float k = uThresh * 0.5;
+    float s = clamp(l - uThresh + k, 0.0, 2.0 * k);
+    s = s * s / (4.0 * k + 1e-4);
+    c *= max(s, l - uThresh) / max(l, 1e-4);
+    c /= 1.0 + max(c.r, max(c.g, c.b)) * 0.1;
+  }
+  return c;
+}
+void main() {
+  vec2 uv = (floor(gl_FragCoord.xy) * 2.0 + 1.0) * uTexel;
+  vec3 c = tap(uv + uTexel * vec2(-1.0, -1.0)) + tap(uv + uTexel * vec2(1.0, -1.0))
+         + tap(uv + uTexel * vec2(-1.0, 1.0)) + tap(uv + uTexel * vec2(1.0, 1.0));
+  outColor = vec4(c * 0.25, 1.0);
+}
+`;
+
+var BLOOM_UP = PHEAD + `
+uniform sampler2D uSrc, uAdd;
+uniform vec2 uTexel, uSize;
+void main() {
+  vec2 uv = gl_FragCoord.xy / uSize;
+  vec3 c = texture(uSrc, uv).rgb * 4.0;
+  c += (texture(uSrc, uv + uTexel * vec2(-1.0, 0.0)).rgb + texture(uSrc, uv + uTexel * vec2(1.0, 0.0)).rgb
+      + texture(uSrc, uv + uTexel * vec2(0.0, -1.0)).rgb + texture(uSrc, uv + uTexel * vec2(0.0, 1.0)).rgb) * 2.0;
+  c += texture(uSrc, uv + uTexel * vec2(-1.0, -1.0)).rgb + texture(uSrc, uv + uTexel * vec2(1.0, -1.0)).rgb
+     + texture(uSrc, uv + uTexel * vec2(-1.0, 1.0)).rgb + texture(uSrc, uv + uTexel * vec2(1.0, 1.0)).rgb;
+  outColor = vec4(c / 16.0 + texture(uAdd, uv).rgb, 1.0);
+}
+`;
+
+/* the picture through the lens: each pixel gathers a golden spiral of
+   taps out to the widest disc, and takes each one whose own disc reaches
+   it, as a lens spreads every point it does not focus. What lies behind a
+   pixel cannot spread over it further than the pixel itself is blurred,
+   so a sharp thing keeps its edge against a soft background. Then the
+   bloom, and the grade */
+var COMPOSITE = PHEAD + `
+uniform sampler2D uHdr, uBloomT;
+uniform vec2 uRes;
+uniform vec3 uLook;
+uniform float uTime, uMaxCoc, uBloomK;
+float hash12(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
+` + GRADE + `
+void main() {
+  vec2 fc = gl_FragCoord.xy, uv = fc / uRes;
+  vec4 c0 = texture(uHdr, uv);
+  vec3 col = c0.rgb;
+  if (uMaxCoc > 0.5) {
+    float k0 = clamp(c0.a, -uMaxCoc, uMaxCoc), s0 = abs(k0);
+    float stp = uMaxCoc * uMaxCoc / 128.0, r = max(stp, 0.5), ang = hash12(fc) * 0.6, tot = 1.0;
+    for (int i = 0; i < 72; i++) {
+      if (r >= uMaxCoc) break;
+      vec2 o = vec2(cos(ang), sin(ang)) * r;
+      vec4 s = texture(uHdr, uv + o / uRes);
+      float ks = clamp(s.a, -uMaxCoc, uMaxCoc), ss = abs(ks);
+      if (ks > k0) ss = min(ss, s0 * 2.0);
+      float m = smoothstep(r - 0.5, r + 0.5, ss);
+      col += mix(col / tot, s.rgb, m);
+      tot += 1.0;
+      ang += 2.39996323;
+      r += stp / r;
+    }
+    col /= tot;
+  }
+  col += texture(uBloomT, uv).rgb * uBloomK;
+  outColor = vec4(grade(col, fc), 1.0);
 }
 `;
 
@@ -262,31 +428,111 @@ function report(s, src) {
   window.__stillError = out || 'compile failed';
 }
 
-/* compiled on the driver's own threads where it can, so the page stays
-   free while it works; the picture starts once it is linked */
-function build(then) {
-  var src = HEAD + COMMON + S.frag + FINISH;
-  var vs = shader(gl.VERTEX_SHADER, VERT), fs = shader(gl.FRAGMENT_SHADER, src);
+function link(fragSrc) {
+  var vs = shader(gl.VERTEX_SHADER, VERT), fs = shader(gl.FRAGMENT_SHADER, fragSrc);
   var p = gl.createProgram();
   gl.attachShader(p, vs);
   gl.attachShader(p, fs);
   gl.linkProgram(p);
+  p.fs = fs;
+  p.src = fragSrc;
+  return p;
+}
+
+function uniforms(p, names) {
+  var u = {};
+  names.forEach(function (n) { u[n] = gl.getUniformLocation(p, n); });
+  return u;
+}
+
+/* --------------------------------------------------------- the buffers */
+
+/* the camera runs where the browser can draw into a buffer of half
+   floats; the picture and the bloom's chain are made to the canvas's
+   size, and made again when it changes */
+var POST = null;
+function canPost() {
+  if (q.has('flat') || !gl.getExtension('EXT_color_buffer_float')) return false;
+  var t = target(4, 4), ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.deleteFramebuffer(t.fb);
+  gl.deleteTexture(t.tex);
+  return ok;
+}
+
+function target(width, height) {
+  var tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, width, height, 0, gl.RGBA, gl.HALF_FLOAT, null);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  var fb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  return { tex: tex, fb: fb, w: width, h: height };
+}
+
+function free(t) {
+  if (!t) return;
+  gl.deleteFramebuffer(t.fb);
+  gl.deleteTexture(t.tex);
+}
+
+function buffers() {
+  if (!POST) return;
+  var W = canvas.width, H = canvas.height;
+  if (POST.hdr && POST.hdr.w === W && POST.hdr.h === H) return;
+  free(POST.hdr);
+  (POST.down || []).forEach(free);
+  (POST.up || []).forEach(free);
+  POST.hdr = target(W, H);
+  POST.down = [];
+  POST.up = [];
+  var lw0 = W, lh0 = H;
+  for (var i = 0; i < 5; i++) {
+    lw0 = Math.max(1, Math.ceil(lw0 / 2));
+    lh0 = Math.max(1, Math.ceil(lh0 / 2));
+    POST.down.push(target(lw0, lh0));
+  }
+  for (var j = 0; j < 4; j++) POST.up.push(target(POST.down[j].w, POST.down[j].h));
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+}
+
+/* compiled on the driver's own threads where it can, so the page stays
+   free while it works; the picture starts once it is linked */
+function build(then) {
+  POST = canPost() ? {} : null;
+  var src = HEAD + COMMON + S.frag + (POST ? FINISH_HDR : FINISH_LDR);
+  var p = link(src);
+  var extra = POST ? [link(BLOOM_DOWN), link(BLOOM_UP), link(COMPOSITE)] : [];
   var par = gl.getExtension('KHR_parallel_shader_compile');
   (function check() {
     if (lost) return;
-    if (par && !gl.getProgramParameter(p, par.COMPLETION_STATUS_KHR)) {
+    var all = [p].concat(extra);
+    if (par && all.some(function (x) { return !gl.getProgramParameter(x, par.COMPLETION_STATUS_KHR); })) {
       setTimeout(check, 30);
       return;
     }
-    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-      if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) report(fs, src);
-      else console.error('concept link:', gl.getProgramInfoLog(p));
-      fail();
-      return;
+    for (var i = 0; i < all.length; i++) {
+      if (!gl.getProgramParameter(all[i], gl.LINK_STATUS)) {
+        if (!gl.getShaderParameter(all[i].fs, gl.COMPILE_STATUS)) report(all[i].fs, all[i].src);
+        else console.error('concept link:', gl.getProgramInfoLog(all[i]));
+        fail();
+        return;
+      }
     }
     prog = p;
-    U = {};
-    ['uRes', 'uTime', 'uLook', 'uPoint', 'uMoon'].forEach(function (n) { U[n] = gl.getUniformLocation(p, n); });
+    U = uniforms(p, ['uRes', 'uTime', 'uLook', 'uPoint', 'uMoon', 'uExpo', 'uSat', 'uVig', 'uGrain']);
+    if (POST) {
+      POST.down_p = extra[0];
+      POST.up_p = extra[1];
+      POST.comp_p = extra[2];
+      POST.dU = uniforms(extra[0], ['uSrc', 'uTexel', 'uThresh', 'uExpo', 'uFirst']);
+      POST.uU = uniforms(extra[1], ['uSrc', 'uAdd', 'uTexel', 'uSize']);
+      POST.cU = uniforms(extra[2], ['uHdr', 'uBloomT', 'uRes', 'uLook', 'uTime', 'uMaxCoc', 'uBloomK', 'uExpo', 'uSat', 'uVig', 'uGrain']);
+    }
     vao = gl.createVertexArray();
     then();
   })();
@@ -337,6 +583,7 @@ function fit() {
     canvas.height = s[1];
     dirty = true;
   }
+  buffers();
   return true;
 }
 
@@ -350,14 +597,15 @@ function clock(now) {
   return (S.t0 || 0) + (now - clock0) / 1000;
 }
 
-function draw(now) {
+/* the scene into the buffer (or straight to the canvas without one) */
+function drawScene(now) {
   turn(now);
   var still = slow || reduced.matches || STILL;
   var l = still ? 1 : 1 - Math.exp(-Math.max(0, now - lastP) / 220);
   lastP = now;
   px += ((still ? 0 : tx) - px) * l;
   py += ((still ? 0 : ty) - py) * l;
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, POST ? POST.hdr.fb : null);
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.useProgram(prog);
   gl.bindVertexArray(vao);
@@ -366,7 +614,69 @@ function draw(now) {
   gl.uniform3f(U.uLook, w[0], w[1], w[2]);
   gl.uniform2f(U.uPoint, px, py);
   gl.uniform1f(U.uMoon, moon);
+  if (!POST) gradeUniforms(U);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+function gradeUniforms(u) {
+  gl.uniform1f(u.uExpo, lw(CAMERA.expo));
+  gl.uniform1f(u.uSat, lw(CAMERA.sat));
+  gl.uniform1f(u.uVig, lw(CAMERA.vig));
+  gl.uniform1f(u.uGrain, CAMERA.grain);
+}
+
+function pass(t, prg) {
+  gl.bindFramebuffer(gl.FRAMEBUFFER, t ? t.fb : null);
+  gl.viewport(0, 0, t ? t.w : canvas.width, t ? t.h : canvas.height);
+  gl.useProgram(prg);
+}
+
+function bind(unit, tex, loc) {
+  gl.activeTexture(gl.TEXTURE0 + unit);
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.uniform1i(loc, unit);
+}
+
+/* the buffer through the camera to the canvas */
+function develop(now) {
+  if (!POST) return;
+  var d = POST.down, u = POST.up, i, src;
+  gl.bindVertexArray(vao);
+  for (i = 0; i < d.length; i++) {
+    src = i ? d[i - 1] : POST.hdr;
+    pass(d[i], POST.down_p);
+    bind(0, src.tex, POST.dU.uSrc);
+    gl.uniform2f(POST.dU.uTexel, 1 / src.w, 1 / src.h);
+    gl.uniform1f(POST.dU.uThresh, CAMERA.thresh);
+    gl.uniform1f(POST.dU.uExpo, lw(CAMERA.expo));
+    gl.uniform1f(POST.dU.uFirst, i ? 0 : 1);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  for (i = u.length - 1; i >= 0; i--) {
+    src = i === u.length - 1 ? d[d.length - 1] : u[i + 1];
+    pass(u[i], POST.up_p);
+    bind(0, src.tex, POST.uU.uSrc);
+    bind(1, d[i].tex, POST.uU.uAdd);
+    gl.uniform2f(POST.uU.uTexel, 1 / src.w, 1 / src.h);
+    gl.uniform2f(POST.uU.uSize, u[i].w, u[i].h);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+  pass(null, POST.comp_p);
+  bind(0, POST.hdr.tex, POST.cU.uHdr);
+  bind(1, u[0].tex, POST.cU.uBloomT);
+  gl.uniform2f(POST.cU.uRes, canvas.width, canvas.height);
+  gl.uniform3f(POST.cU.uLook, w[0], w[1], w[2]);
+  gl.uniform1f(POST.cU.uTime, clock(now));
+  gl.uniform1f(POST.cU.uMaxCoc, CAMERA.blur * canvas.height);
+  gl.uniform1f(POST.cU.uBloomK, lw(CAMERA.bloom));
+  gradeUniforms(POST.cU);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.activeTexture(gl.TEXTURE0);
+}
+
+function draw(now) {
+  drawScene(now);
+  develop(now);
 }
 
 function animating() {
@@ -455,20 +765,23 @@ function poster() {
 }
 
 /* a capture draws its one frame in strips, so no single draw holds a
-   software GPU long enough to be stopped */
+   software GPU long enough to be stopped; the camera then develops the
+   whole of it at once */
 function capture() {
   var rows = +(q.get('rows') || 8), i = 0;
   gl.enable(gl.SCISSOR_TEST);
   (function strip() {
     var H = canvas.height, y0 = Math.floor(i * H / rows), y1 = Math.floor((i + 1) * H / rows);
     gl.scissor(0, y0, canvas.width, y1 - y0);
-    draw(performance.now());
-    gl.readPixels(0, y0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX);
+    drawScene(performance.now());
+    gl.readPixels(0, y0, 1, 1, gl.RGBA, POST ? gl.FLOAT : gl.UNSIGNED_BYTE, POST ? new Float32Array(4) : PX);
     if (++i < rows) {
       setTimeout(strip, 0);
       return;
     }
     gl.disable(gl.SCISSOR_TEST);
+    develop(performance.now());
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, PX);
     reveal();
     window.__still = 'done';
   })();
@@ -531,6 +844,7 @@ canvas.addEventListener('webglcontextlost', function (ev) {
   ev.preventDefault();
   lost = true;
   prog = null;
+  POST = null;
   if (raf) cancelAnimationFrame(raf);
   raf = 0;
   canvas.classList.remove('drawn');

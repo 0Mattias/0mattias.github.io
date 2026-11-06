@@ -8,10 +8,11 @@
 
    node concepts/tools/render.cjs [scene ...] [--looks day,dusk,night]
         [--sizes wide,tall,ultra] [--out DIR] [--t SECONDS] [--stills]
-        [--moon PHASE] [--mix D,U,N]
+        [--moon PHASE] [--mix D,U,N] [--q QUERY]
 
    --mix holds the look weights between day, dusk and night, as a turn
-   passes through them; the shot is named for the weights.
+   passes through them; the shot is named for the weights. --q adds to
+   the page's query (flat: the picture without the camera's buffers).
 
    Scenes default to every one in concepts/list.js. Shots go to
    concepts/.renders/ unless --out says otherwise. */
@@ -32,7 +33,7 @@ const SIZES = {
 const STILL_KIND = { wide: 'wide', ultra: 'wide', tall: 'tall' };
 
 function args() {
-  const a = process.argv.slice(2), o = { scenes: [], looks: ['day', 'dusk', 'night'], sizes: ['wide', 'tall'], out: path.join(REPO, 'concepts', '.renders'), t: null, stills: false, moon: null, mix: null };
+  const a = process.argv.slice(2), o = { scenes: [], looks: ['day', 'dusk', 'night'], sizes: ['wide', 'tall'], out: path.join(REPO, 'concepts', '.renders'), t: null, stills: false, moon: null, mix: null, q: null };
   for (let i = 0; i < a.length; i++) {
     const k = a[i];
     if (k === '--looks') o.looks = a[++i].split(',');
@@ -41,6 +42,7 @@ function args() {
     else if (k === '--t') o.t = a[++i];
     else if (k === '--moon') o.moon = a[++i];
     else if (k === '--mix') o.mix = a[++i];
+    else if (k === '--q') o.q = a[++i];
     else if (k === '--stills') o.stills = true;
     else o.scenes.push(k);
   }
@@ -94,6 +96,7 @@ async function main() {
         if (o.t !== null) url += '&t=' + o.t;
         if (o.moon !== null) url += '&moon=' + o.moon;
         if (o.mix !== null) url += '&mix=' + o.mix;
+        if (o.q !== null) url += '&' + o.q;
         await page.goto(url);
         let state;
         try {
