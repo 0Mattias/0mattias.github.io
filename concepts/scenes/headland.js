@@ -248,7 +248,7 @@ float map(vec3 p) {
     float dsh = (length(sq) - 1.0) * 13.0;
     if (dsh < 30.0) {
       float sht = 46.0 + 2.0 * noise(q / 9.0);
-      r = min(r, smax(p.y - sht + 2.0 * exp(min(dsh, 0.0) / 5.0), dsh + faceOff(p.y, sp + 77.0, 0.6, 1.0), 1.0));
+      r = min(r, smax(p.y - sht + 2.0 * exp(min(dsh, 0.0) / 5.0), dsh + lump + 1.5 * blocks(sp, 2.1, 7.7) + 2.0 * blocks(sp, 6.3, 3.1), 1.0));
     } else r = min(r, dsh - 12.0);
     /* the platform: its upper level, and a lower terrace of the flow
        beneath along its north edge */
@@ -267,7 +267,8 @@ float map(vec3 p) {
   } else r = dp - 34.0;
   if (dm < 45.0) {
     float mt = mainTop(q, -dm);
-    float fm = dm < -22.0 ? 0.0 : faceOff(p.y, sm + 900.0, 1.1, 0.8) + lip(p.y, mt, sm) + lump;
+    /* the viewpoint's own cliff is never seen face on: a plain face will do */
+    float fm = lump + 2.0 * noise(vec2(sm / 9.0, p.y / 12.0));
     r = min(r, smax(p.y - mt + 3.0 * exp(min(dm, 0.0) / 5.0), dm + fm, 1.0));
   } else r = min(r, dm - 34.0);
   /* blocks fallen from the faces, heaped at their foot into a beach of

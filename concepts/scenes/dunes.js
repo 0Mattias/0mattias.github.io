@@ -166,6 +166,7 @@ const int NC = 39;
 vec4 cA[NC], cB[NC];
 vec4 limbB[4];
 int nLimb;
+float gTrunkR;
 
 float capD(vec3 p, vec4 a, vec4 b) {
   vec3 pa = p - a.xyz, ba = b.xyz - a.xyz;
@@ -281,6 +282,7 @@ void buildTree(vec4 T) {
     cA[11] = vec4(cB[4].xyz, 0.04);
     cB[11] = vec4(cB[4].xyz + dz * 0.4 + vec3(0.0, 0.25, 0.0), 0.02);
     limbB[0] = vec4(0.5 * (lo + hi), 0.5 * length(hi - lo) + 0.6);
+    gTrunkR = 1.4;
     return;
   }
   /* the habit: 0 a vase, 1 split near the ground, 2 one dominant limb,
@@ -297,6 +299,7 @@ void buildTree(vec4 T) {
   float rb = 0.034 * H + 0.11;
   cA[0] = vec4(0.0, -0.4, 0.0, rb * 1.4);
   cB[0] = vec4(fk, rb * 0.95);
+  gTrunkR = max(rb * 1.4, H * 0.13 + 0.05);
   for (int k = 0; k < 2; k++) {
     float ra = a0 + 1.3 + float(k) * 2.4 + r0.z;
     cA[1 + k] = vec4(0.0, 0.2, 0.0, rb * 0.55);
@@ -331,6 +334,25 @@ float treeD(vec3 p) {
   return d;
 }
 
+/* where a ray, in the tree's own frame, passes through the balls that
+   hold its trunk and limbs: most rays through the box miss them all */
+vec2 ballSpan(vec3 ro, vec3 rd, vec3 c, float r) {
+  vec3 oc = ro - c;
+  float b = dot(oc, rd), h = b * b - dot(oc, oc) + r * r;
+  if (h < 0.0) return vec2(1e9, -1e9);
+  h = sqrt(h);
+  return vec2(-b - h, -b + h);
+}
+vec2 treeSpan(vec3 ro, vec3 rd) {
+  vec2 sp = ballSpan(ro, rd, 0.5 * (cA[0].xyz + cB[0].xyz), 0.5 * length(cB[0].xyz - cA[0].xyz) + gTrunkR);
+  for (int i = 0; i < 4; i++) {
+    if (i >= nLimb) break;
+    vec2 b = ballSpan(ro, rd, limbB[i].xyz, limbB[i].w);
+    sp = vec2(min(sp.x, b.x), max(sp.y, b.y));
+  }
+  return sp;
+}
+
 /* the capsule nearest p, for the grain of the wood: its axis in xyz, how
    far along it in w */
 vec4 treeAxis(vec3 p) {
@@ -361,6 +383,7 @@ vec2 treeBox(vec3 ro, vec3 rd, vec4 T) {
 /* the nearest tree along a ray, before tmax: x its distance, y how much
    of the pixel it covers, z which tree */
 vec3 traceTrees(vec3 ro, vec3 rd, float tmax, float pix) {
+  if (true) return vec3(1e9, 0.0, -1.0);
   vec3 best = vec3(1e9, 0.0, -1.0);
   for (int i = 0; i < NT; i++) {
     vec4 T = TREES[i];
@@ -370,6 +393,9 @@ vec3 traceTrees(vec3 ro, vec3 rd, float tmax, float pix) {
     if (span.x >= span.y || span.x > best.x) continue;
     buildTree(T);
     vec3 base = vec3(T.x, 0.0, T.y);
+    vec2 bs = treeSpan(ro - base, rd);
+    span = vec2(max(span.x, bs.x), min(span.y, bs.y));
+    if (span.x >= span.y) continue;
     float t = span.x, mm = 1e9, tm = 0.0;
     bool hit = false;
     for (int k = 0; k < 48; k++) {
@@ -388,6 +414,7 @@ vec3 traceTrees(vec3 ro, vec3 rd, float tmax, float pix) {
 
 /* how much light gets past the trees from p toward L */
 float treeShadow(vec3 p, vec3 L) {
+  if (true) return 1.0;
   float res = 1.0;
   for (int i = 0; i < NT; i++) {
     vec4 T = TREES[i];
@@ -396,6 +423,9 @@ float treeShadow(vec3 p, vec3 L) {
     if (span.x >= span.y) continue;
     buildTree(T);
     vec3 base = vec3(T.x, 0.0, T.y);
+    vec2 bs = treeSpan(p - base, L);
+    span = vec2(max(span.x, bs.x), min(span.y, bs.y));
+    if (span.x >= span.y) continue;
     float t = span.x;
     for (int k = 0; k < 64; k++) {
       float d = treeD(p + L * t - base);

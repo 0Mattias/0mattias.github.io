@@ -360,37 +360,55 @@ vec3 deckBase(vec2 x, vec2 w) {
   return vec3(base, am, gap);
 }
 
+/* the lobes of the cloud: a union of spherical caps on a jittered grid,
+   each cell holding one of its own radius and height, s the cell's size
+   in metres. Where two meet they are joined by a soft fold, not a crease.
+   .x the height over the base, .y how high up its own lobe the point is,
+   1 on its crown and 0 where it meets the next */
+vec2 lobes(vec2 p, float s, vec2 rr, vec2 pk, float seed) {
+  vec2 g = p / s;
+  vec2 i = floor(g), f = fract(g);
+  /* only the upper part of each sphere shows over the floor, so no lobe
+     stands on a vertical wall */
+  float h = pk.x - 0.42 * rr.y, u = 0.0, best = -1e4;
+  float k = 0.2 * rr.x;
+  for (int y = -1; y <= 1; y++)
+  for (int x = -1; x <= 1; x++) {
+    vec2 c = vec2(float(x), float(y));
+    vec3 r = hash33(vec3(i + c, seed));
+    vec2 d = (c + 0.15 + 0.7 * r.xy - f) * s;
+    float R = mix(rr.x, rr.y, r.z);
+    float top = mix(pk.x, pk.y, hash12(i + c + seed * 1.7));
+    float z = sqrt(max(R * R - dot(d, d), 0.0));
+    float cap = top - R + z;
+    if (cap > best) { best = cap; u = z / R; }
+    h = smax(h, cap, k);
+  }
+  return vec2(h, u);
+}
+
 float cloudH(vec2 x, float fp, out float ao) {
   vec2 w = x + DRIFT;
   vec3 B = deckBase(x, w);
-  vec2 q = w / 620.0;
-  q += 0.8 * vec2(noise(q * 0.55 + 1.3), noise(q * 0.55 + 8.1)) - 0.4;
-  float d1 = puff(q);
-  float hb = 230.0 * (d1 - 0.72);
-  float k1 = smoothstep(420.0, 160.0, fp);
-  if (k1 > 0.0) {
-    vec2 q2 = ROT2 * q * 2.4 + 3.7;
-    float d2 = puff(q2);
-    hb += k1 * 180.0 * (d2 - 0.72) * (0.4 + 0.6 * d1);
-    float k2 = smoothstep(150.0, 55.0, fp);
-    if (k2 > 0.0) hb += k2 * 85.0 * (puff(ROT2 * q2 * 2.35 + 1.1) - 0.72) * (0.3 + 0.7 * d2);
-  }
   /* far out the deck flattens into a smooth bright band */
-  hb *= mix(1.0, 0.25, smoothstep(22000.0, 52000.0, length(x)));
-  float h = B.x + B.y * hb;
-  /* in the gap the deck thins to a low floor of wisps */
-  h = mix(h, 1500.0 + 0.6 * hb, B.z);
-  ao = sat(0.6 + hb / 200.0);
+  float far = mix(1.0, 0.25, smoothstep(22000.0, 52000.0, length(x)));
+  /* big lobes of three to six hundred metres on the banks and towers */
+  vec2 L1 = lobes(w, 380.0, vec2(150.0, 400.0), vec2(0.0, 170.0), 3.0);
+  float h = B.x + B.y * far * L1.x;
+  ao = L1.y;
+  /* and small ones of sixty to a hundred and fifty on those */
+  float k2 = smoothstep(90.0, 35.0, fp);
+  if (k2 > 0.0) {
+    vec2 L2 = lobes(w + 37.0, 105.0, vec2(42.0, 80.0), vec2(0.0, 24.0), 7.0);
+    h += k2 * B.y * far * smax(L2.x, 0.0, 6.0);
+    ao *= mix(1.0, 0.45 + 0.55 * L2.y, k2);
+  }
+  ao = mix(ao, 0.6, 1.0 - far);
   return -smax(-h, -(CTOP - 15.0), 25.0);
 }
 
-/* fine lumps, for the shading only */
-float cloudFine(vec2 x, float fp) {
-  float k = smoothstep(90.0, 30.0, fp);
-  if (k <= 0.0) return 0.0;
-  vec2 w = (x + DRIFT) / 48.0;
-  return k * 6.0 * puff(ROT2 * w + 4.0);
-}
+/* fine lumps, for the shading only: none, the small lobes carry it */
+float cloudFine(vec2 x, float fp) { return 0.0; }
 
 /* the ridges under the gap, forested, crests across the view */
 float terrainH(vec2 x) {
@@ -449,7 +467,7 @@ float traceFar(vec3 ro, vec3 rd, float tmax, out float mat, out vec2 nearL) {
     lt = t;
     /* far out, where the deck's detail has gone under a pixel, it is
        crossed in bolder steps */
-    t += max(c / (mix(0.55, 0.28, smoothstep(15000.0, 45000.0, t)) + max(-rd.y, 0.0)), mat > -40.0 ? t * PA * 2.0 : t * 0.0025 + 1.0);
+    t += max(c / (mix(1.0, 0.3, smoothstep(14000.0, 45000.0, t)) + max(-rd.y, 0.0)), mat > -40.0 ? t * PA * 2.0 : t * 0.0025 + 1.0);
     if (t > t1) return -1.0;
   }
   /* a ray still skimming the tops when the steps run out has found the
@@ -465,8 +483,8 @@ float traceFar(vec3 ro, vec3 rd, float tmax, out float mat, out vec2 nearL) {
    and the ragged line of the forest on it */
 float islandY(float x, float c, float hw, float top, float seed) {
   float u = (x - c) / hw;
-  float y = top - 300.0 * sq(max(abs(u) - 0.3, 0.0) / 0.7) - 40.0 * u;
-  y += 130.0 * (noise(vec2(x / 700.0, seed)) - 0.5) + 70.0 * (ridged(vec2(x / 260.0, seed + 1.0)) - 0.6) + 22.0 * (noise(vec2(x / 70.0, seed + 4.0)) - 0.5);
+  float y = top - 300.0 * u * u - 40.0 * u;
+  y += 190.0 * (noise(vec2(x / 650.0, seed)) - 0.5) + 85.0 * (ridged(vec2(x / 240.0, seed + 1.0)) - 0.6) + 26.0 * (noise(vec2(x / 70.0, seed + 4.0)) - 0.5);
   return y + 7.0 * noise(vec2(x / 13.0, seed + 2.0)) + 4.0 * noise(vec2(x / 5.0, seed + 3.0));
 }
 
@@ -484,13 +502,10 @@ vec4 island(vec3 ro, vec3 rd, float d, float c, float hw, float top, float seed)
 
 vec3 shadeIsland(vec3 ro, vec3 rd, vec4 I, float d, float seed) {
   float x = I.w, yr = ro.y + rd.y * I.y + drop(vec2(x, d));
-  float m = 0.6 * noise(vec2(x / 55.0, yr / 30.0) + seed) + 0.4 * noise(vec2(x / 16.0, yr / 10.0));
-  /* the faces turned toward the sun a little lighter, by which way the
-     skyline falls there */
-  float sl = (islandY(x + 60.0, -2760.0 * step(d, 30000.0) - 5100.0 * step(30000.0, d), d < 30000.0 ? 1150.0 : 1600.0, d < 30000.0 ? 2370.0 : 2320.0, seed) - (yr + I.z)) / 60.0;
-  float lit = sat(0.5 + 1.2 * sl * sign(LD.x)) * sat(LD.y * 3.0 + 0.3);
-  vec3 alb = vec3(0.022, 0.034, 0.026) * (0.55 + 0.9 * m);
-  vec3 col = alb * (LC / PI * (0.25 + 0.6 * lit) + AMB * 0.9);
+  /* forest, mottled the same every way */
+  float m = 0.6 * noise(vec2(x, yr) / 45.0 + seed) + 0.4 * noise(vec2(x, yr) / 14.0);
+  vec3 alb = vec3(0.022, 0.034, 0.026) * (0.6 + 0.8 * m);
+  vec3 col = alb * (LC / PI * 0.5 + AMB * 0.9);
   /* lower down it recedes into the mist over the cloud, and wisps of
      cloud trail along its foot */
   float ao;
@@ -681,7 +696,7 @@ float cloudShadow(vec3 p, float far) {
 /* the differences are taken a pixel's reach apart each way: across the
    view a pixel, along it the foreshortened reach */
 vec3 farNormal(vec3 p, float t, float fp, out float mat, out float cav) {
-  float ex = max(1.5, t * PA * 1.2), ez = max(ex, fp * 0.45);
+  float ex = max(1.5, t * PA * 1.2), ez = max(ex, fp);
   vec3 hh;
   for (int k = 0; k < 3; k++) {
     vec2 x = p.xz + (k == 0 ? vec2(ex, 0.0) : (k == 1 ? vec2(0.0, ez) : vec2(0.0)));
@@ -701,24 +716,16 @@ vec3 farNormal(vec3 p, float t, float fp, out float mat, out float cav) {
    tops and 0 deep in the troughs */
 vec3 shadeCloud(vec3 ro, vec3 rd, float t, vec3 n, float ao) {
   vec3 p = ro + rd * t;
-  float sh = mix(0.35, 1.0, cloudShadow(p, t)) * fujiShadow(p);
+  float sh = mix(0.4, 1.0, cloudShadow(p, t)) * fujiShadow(p);
   vec3 l = normalize(vec3(LD.x, max(LD.y, 0.02), LD.z));
-  float nl = dot(n, l), mu = dot(rd, LD);
-  float dif = sat((nl + 0.45) / 1.45);
-  vec3 sun = LC / PI * dif * sh * (0.3 + 0.7 * ao);
-  /* through the cloud to its shaded sides */
-  sun += LC / PI * look3(0.12, 0.035, 0.12) * (1.0 - dif) * (0.4 + 0.6 * sh) * (0.3 + 0.7 * ao);
-  /* the silver edge */
-  float rim = pow(1.0 - sat(dot(n, -rd)), 3.0) * smoothstep(0.85, 0.4, n.y);
-  sun += LC * rim * sat(nl + 0.25) * sh * (0.02 + 0.3 * hg(mu, 0.7)) * ao;
-  /* the small puffs of the cauliflower, where they are larger than a
-     pixel, as a mottling of the light */
-  float fp = t * PA / max(-rd.y, 0.008);
-  float mo = smoothstep(120.0, 40.0, fp) * (noise3(vec3(p.x + DRIFT.x, p.y * 1.6, p.z + DRIFT.y) / 38.0) - 0.5);
-  sun *= 1.0 + 0.45 * mo * (0.4 + 0.6 * ao);
+  float dif = pow(sat(dot(n, l) * 0.5 + 0.5), 1.5);
+  vec3 sun = LC / PI * dif * sh * (0.55 + 0.45 * ao);
+  /* light through a lobe's thin edge where it stands against the deck
+     behind it */
+  float rim = pow(1.0 - sat(dot(n, -rd)), 4.0) * smoothstep(0.8, 0.3, n.y);
+  sun += LC / PI * 0.22 * rim * sh * ao;
   vec3 col = sun * CT;
-  col += AMB * (0.45 + 0.55 * n.y) * (0.3 + 0.7 * ao) * 1.15;
-  col += CUP * 0.04 * (1.0 - ao);
+  col += AMB * (0.5 + 0.5 * n.y) * (0.45 + 0.55 * ao) * 1.15;
   return col;
 }
 
