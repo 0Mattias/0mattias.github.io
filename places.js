@@ -16,7 +16,7 @@
    one, and the head of the page has told the meadow so already, so it
    does not wake only to be covered. */
 
-(function () {
+(function main(late) {
 'use strict';
 
 var PLACES = [
@@ -28,7 +28,7 @@ var PLACES = [
 ];
 var BASE = '/scenes/';
 /* bumped with each release, so a page never runs with another's files */
-var V = '?v=20261106d';
+var V = '?v=20261114a';
 /* the crossfade, as long as the stylesheet's */
 var FADE = 900;
 /* places kept on the GPU at once */
@@ -54,10 +54,21 @@ if (!hero || !scene || !box) {
   meadowOnly();
   return;
 }
+/* Safari runs this without waiting for the stylesheet, and what follows
+   asks it: where it has not come yet, all of this begins again once it
+   has, or has failed to */
+var sheet = document.querySelector('link[rel="stylesheet"]');
+if (!late && sheet && !sheet.sheet) {
+  sheet.addEventListener('load', main, { once: true });
+  sheet.addEventListener('error', main, { once: true });
+  return;
+}
 /* the control is shown only once its styles are in: a page that met an
    older stylesheet (a cache holding on to it) leaves it hidden rather
-   than set in the line of the name, and keeps to the meadow */
-if (getComputedStyle(box).position !== 'absolute') {
+   than set in the line of the name, and keeps to the meadow. So does a
+   page whose GPU cannot draw the other places, which the meadow marks
+   (sky.js) if it got here first */
+if (root.classList.contains('flat') || getComputedStyle(box).position !== 'absolute') {
   meadowOnly();
   return;
 }
@@ -68,7 +79,7 @@ var sky = document.getElementById('sky');
 var meta = document.querySelector('meta[name="theme-color"]');
 var reduced = matchMedia('(prefers-reduced-motion: reduce)');
 
-/* the places made, by id: { id, cv, st, theme, p, on, vis, full,
+/* the places made, by id: { id, cv, old, st, theme, p, on, vis, full,
    active, used, timer, made } */
 var units = {};
 /* the place named, the place turned to, and the one on show or fading
@@ -223,14 +234,26 @@ function tint(u, w) {
 
 /* ------------------------------------------------------------ places */
 
+/* the canvases of places given up, each with its context alive and
+   emptied by its stage, for the next place made. A browser lets a page
+   hold only so many contexts (Safari, sixteen) and is slow to count out
+   those of canvases thrown away, so a visit that made a canvas for every
+   turn would have the meadow's context taken from it */
+var spare = [];
+
 function make(id) {
-  var cv = document.createElement('canvas');
+  var cv = spare.pop();
+  /* one whose context the GPU has taken since is no use */
+  while (cv && cv.getContext('webgl2').isContextLost()) cv = spare.pop();
+  var old = !!cv;
+  if (!cv) cv = document.createElement('canvas');
   cv.className = 'alt';
+  cv.style.zIndex = '';
   cv.setAttribute('data-for', id);
   cv.setAttribute('aria-hidden', 'true');
   scene.appendChild(cv);
   var u = units[id] = {
-    id: id, cv: cv, st: null, theme: null, p: 0.03,
+    id: id, cv: cv, old: old, st: null, theme: null, p: 0.03,
     on: false, vis: false, full: false, active: false, dead: false, used: 0, timer: 0
   };
   u.made = script(id).then(function (S) {
@@ -261,11 +284,18 @@ function drop(u) {
   if (u.dead) return;
   u.dead = true;
   clearTimeout(u.timer);
+  /* the canvas is kept if its context can serve again: its stage says
+     so; one given up before it had a stage is as it came */
+  var again = u.old;
   if (u.st) {
     u.st.onlost = null;
-    u.st.destroy();
+    again = u.st.destroy() === true;
   }
   u.cv.remove();
+  if (again) {
+    u.cv.width = u.cv.height = 1;
+    spare.push(u.cv);
+  }
   if (units[u.id] === u) delete units[u.id];
   if (top === u.id) top = null;
 }
@@ -377,7 +407,11 @@ function go(u, g) {
    has a picture to show, its own first build if it never had one */
 function home(g) {
   bar.stop();
-  meadow(true);
+  /* a place turned from before it had covered the meadow never put it to
+     sleep, yet has drawn, and left its sky's colour on the browser: the
+     meadow is told all the same, and takes the colour back */
+  if (awake) document.dispatchEvent(new CustomEvent('place', { detail: 'meadow' }));
+  else meadow(true);
   if (top === 'meadow') {
     settle();
     return;
@@ -399,7 +433,8 @@ function home(g) {
 }
 
 /* a place that cannot be drawn: without the GPU for it, none can, and
-   the control goes; otherwise it is left out, or tried again later if
+   the control goes, the keyboard's place on it handed to the look on
+   show beside it; otherwise it is left out, or tried again later if
    only its file failed to come */
 function trouble(u, err, g) {
   /* dropped meanwhile, by whatever dropped it */
@@ -408,7 +443,10 @@ function trouble(u, err, g) {
   drop(u);
   if (why === 'unsupported') {
     broken = true;
+    var held = box.contains(document.activeElement);
     box.hidden = true;
+    var b = held && document.querySelector('.looks button[aria-pressed="true"]');
+    if (b) b.focus();
   } else if (why !== 'network') bad[u.id] = true;
   if (g !== gen) {
     settle();
@@ -464,10 +502,12 @@ function step(d) {
 
 /* ------------------------------------------------------------ wiring */
 
-/* turns wait until the hero has a picture of its own */
+/* turns wait until the hero has a picture of its own; a still the head
+   of the page stood up because the meadow's script never came is not
+   one, there being no control on show to say where a turn has led */
 function ready() {
   var c = root.classList;
-  return !broken && !box.hidden && (c.contains('live') || c.contains('still') || c.contains('placed'));
+  return !broken && !box.hidden && (c.contains('live') || c.contains('placed') || (c.contains('still') && c.contains('sky')));
 }
 
 box.addEventListener('click', function (ev) {

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-9FLLtQUegvdfBgO3RikjBQ7OZNYge3d87YH8EeG699M='; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-ZuZeeES3c/8kft1fddnSrWMylo6wejXf+mkpZFyFmDM='; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="theme-color" content="#6282b6">
     <meta name="description" content="Software engineer in Boston building security tools, AI agents, and low-level systems.">
@@ -40,10 +40,14 @@
             place = q.get('scene') || '';
             look = q.get('look') || sessionStorage.getItem('look') || look;
         } catch (err) {}
-        if (!sky[look]) look = 'day';
+        if (!/^(day|dusk|night)$/.test(look)) look = 'day';
         d.setAttribute('data-look', look);
         d.className += ' js';
         document.querySelector('meta[name="theme-color"]').setAttribute('content', sky[look]);
+        /* the meadow's script never came: its still stands sharp, as it does without WebGL */
+        addEventListener('error', function (ev) {
+            if (ev.target && /\/sky\.js/.test(ev.target.src || '')) d.classList.add('still');
+        }, true);
         /* opened on another place: the meadow sleeps and its still waits */
         if (/^(fjord|dunes|summit|headland)$/.test(place)) {
             d.setAttribute('data-place', place);
@@ -60,9 +64,11 @@
         }
     })();
     </script>
-    <link rel="stylesheet" href="/style.css?v=20261106d">
-    <script src="/sky.js?v=20261106d" defer></script>
-    <script src="/places.js?v=20261106d" defer></script>
+    <link rel="stylesheet" href="/style.css?v=20261114a">
+    <script src="/knit.js?v=20261114a" defer></script>
+    <script src="/sew.js?v=20261114a" defer></script>
+    <script src="/sky.js?v=20261114a" defer></script>
+    <script src="/places.js?v=20261114a" defer></script>
 
     <script type="application/ld+json">
     {
@@ -95,8 +101,7 @@
     <header class="letterhead">
         <div class="scene" aria-hidden="true"><canvas id="sky"></canvas></div>
         <div class="words">
-            <h1 class="name">Mattias Rask</h1>
-            <p class="dateline"><span>security tools</span> &middot; <span>AI agents</span> &middot; <span>low-level systems</span> &middot; <span>Boston, MA</span></p>
+            <h1 class="name" data-sew>Mattias Rask</h1>
         </div>
         <div class="looks" role="group" aria-label="Time of day">
             <button type="button" data-look="day" title="Day" aria-pressed="false">day</button>

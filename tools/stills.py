@@ -15,6 +15,12 @@ are written to stills/<look>-<wide|tall>.webp, and a tiny copy of each
 goes into style.css as the glimpse the page paints, blurred, before
 anything has loaded.
 
+A still is the plain picture, never the knitting: the loom (knit.js)
+and the thread (sew.js) are refused, so sky.js draws its picture
+straight onto its canvas as it does where there is no loom, and the
+words are left printed. The stylesheet lays the knitted relief
+(stills/knit.webp, from tools/fabric.py) over the still itself.
+
 Run:  uv run --with playwright==1.62.0 --with pillow python tools/stills.py
 (once: uv run --with playwright==1.62.0 playwright install webkit)
 """
@@ -61,17 +67,37 @@ STUB = """<script>
 """
 
 
+# the loom and the thread: refused, so the picture comes out plain
+REFUSED = re.compile(r"/(knit|sew)\.js(\?|$)")
+SKY = re.compile(r'<script src="/sky\.js(\?[^"]*)?" defer></script>')
+
+
+def front():
+    html = (REPO / "index.html").read_text()
+    # the page's security policy would refuse the stub; it is dropped here
+    html = re.sub(r'\s*<meta http-equiv="Content-Security-Policy"[^>]*>', "", html)
+    # the stub goes in just ahead of sky.js, whatever version the page asks for
+    html, n = SKY.subn(lambda m: STUB + "    " + m.group(0), html)
+    if n != 1:
+        raise SystemExit("index.html does not load /sky.js as this expects")
+    return html.encode()
+
+
 class Handler(SimpleHTTPRequestHandler):
+    page = b""
+
     def log_message(self, format, *args):
         pass
 
+    def handle(self):
+        try:
+            super().handle()
+        except (BrokenPipeError, ConnectionResetError):
+            pass  # the page moved on to the next still before this file was sent
+
     def do_GET(self):
         if self.path.split("?")[0] in ("/", "/index.html"):
-            html = (REPO / "index.html").read_text()
-            # the page's security policy would refuse the stub; it is dropped here
-            html = re.sub(r'\s*<meta http-equiv="Content-Security-Policy"[^>]*>', "", html)
-            tag = '<script src="/sky.js" defer></script>'
-            body = html.replace(tag, STUB + "    " + tag).encode()
+            body = self.page
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
@@ -90,6 +116,8 @@ def render(page, look, size):
         if done:
             break
         page.wait_for_timeout(5)
+    if page.evaluate("() => !!(window.Knit || window.Sew)"):
+        raise SystemExit("the loom got in for %s at %dx%d; the still would be knitted" % (look, w, h))
     url = page.evaluate("() => { __step(40, 16); var c = document.getElementById('sky'); return c.classList.contains('drawn') ? c.toDataURL('image/png') : ''; }")
     if not url:
         raise SystemExit("the picture did not draw for %s at %dx%d" % (look, w, h))
@@ -104,6 +132,7 @@ def glimpse(img, size):
 
 
 def main():
+    Handler.page = front()
     server = ThreadingHTTPServer(("127.0.0.1", 0), partial(Handler, directory=str(REPO)))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     out = REPO / "stills"
@@ -112,6 +141,7 @@ def main():
     with sync_playwright() as p:
         browser = p.webkit.launch()
         page = browser.new_page(base_url="http://127.0.0.1:%d" % server.server_address[1], device_scale_factor=1)
+        page.route(REFUSED, lambda route: route.abort())
         for look in LOOKS:
             for kind, size in FRAMES.items():
                 img = render(page, look, size)

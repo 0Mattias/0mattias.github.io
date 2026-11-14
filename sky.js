@@ -207,10 +207,12 @@ buttons.forEach(function (b) {
   });
 });
 
+/* only a look named above will do: an address can ask for any word, and
+   some (constructor, toString) every object answers to */
 var initial = root.getAttribute('data-look');
-if (!LOOKS[initial]) {
+if (!LOOKS.hasOwnProperty(initial)) {
   try { initial = new URLSearchParams(location.search).get('look') || sessionStorage.getItem('look'); } catch (err) {}
-  if (!LOOKS[initial]) initial = 'day';
+  if (!LOOKS.hasOwnProperty(initial)) initial = 'day';
 }
 setLook(initial, true);
 root.classList.add('sky');
@@ -229,6 +231,11 @@ try {
 } catch (err) {}
 if (gl && soft()) gl = null;
 if (!gl) {
+  meadowAlone();
+  /* nor does the poster wait, hidden, on a place the address asked for
+     (?scene=) and none can draw */
+  root.classList.remove('afar');
+  if (root.getAttribute('data-place')) root.setAttribute('data-place', 'meadow');
   poster();
   return;
 }
@@ -244,6 +251,19 @@ function soft() {
 }
 
 var HDR = !!gl.getExtension('EXT_color_buffer_float');
+if (!HDR) meadowAlone();
+
+/* The other places ask more of the GPU than the meadow does: their stage
+   (scenes/stage.js) wants all of the above and buffers of floats besides.
+   Where it could not run, the control that turns to them is never
+   offered, rather than fetch a place and go at the first press: it is
+   hidden here, before the page shows it, and the page marked, so that
+   places.js leaves it hidden should it start after this */
+function meadowAlone() {
+  root.classList.add('flat');
+  var box = document.querySelector('.places');
+  if (box) box.hidden = true;
+}
 
 /* -------------------------------------------------------------- the bar */
 /* While the picture is made, a hairline under the words fills as it
@@ -1598,9 +1618,14 @@ function samplesFor(fmt) {
 }
 
 /* everything the context holds, made at the start and again if a lost
-   context comes back */
+   context comes back: the loom first, whose two small programs then link
+   while the picture's queue behind them */
 function initGL() {
   PSC = gl.getExtension('KHR_parallel_shader_compile');
+  loom = null;
+  try { if (window.Knit) loom = Knit.pass(gl); } catch (err) { loom = null; }
+  knit = !!loom;
+  canvas.classList.toggle('woven', knit);
   preProg = program(PRE, TRACE_U);
   landProg = program(LAND, TRACE_U.concat(['PREB', 'REFINE']));
   maskProg = program(MASK, ['LA0', 'LA3', 'FULL']);
@@ -1625,14 +1650,18 @@ function initGL() {
 }
 
 /* true once every program has linked; a program that failed sends the
-   page back to its poster */
+   page back to its poster. The loom is waited for as the picture's own
+   programs are, so the picture is never seen unknitted; a loom that will
+   never link gives the picture back to the canvas as it always was */
 function glUp() {
   if (glReady) return true;
   if (failed || !progs.every(linked)) return false;
+  if (loom && !loom.ready() && !loom.failed) return false;
   if (!progs.every(finish)) {
     fail();
     return false;
   }
+  if (loom && loom.failed) unknit();
   glReady = true;
   return true;
 }
@@ -1717,6 +1746,151 @@ function drop(r) {
   if (r.depth) gl.deleteRenderbuffer(r.depth);
   if (r.ms) { gl.deleteFramebuffer(r.ms); gl.deleteRenderbuffer(r.msc); gl.deleteRenderbuffer(r.msd); }
   gl.deleteFramebuffer(r.fbo);
+}
+
+/* ------------------------------------------------------------ the loom */
+/* The meadow is knitted (knit.js). The picture is made as it always was,
+   only smaller, and its last pass draws into a target the loom hands
+   over instead of onto the canvas; the loom reads it one colour to a
+   stitch and draws the fabric over the whole canvas, whose store is then
+   the loom's to size, at the screen's own pixels, and is marked woven,
+   so that the stylesheet lays that store on its box as it is (a plain
+   picture it crops to cover the box). The stitches are the
+   page's: the canvas is told where it lies on the page and the tile the
+   stylesheet lays its relief with, so its stitches fall where the
+   page's do and are those same stitches. Below the picture the cloth
+   goes on in the paper's own yarn. Without a loom (knit.js did not
+   come, or the context cannot hold one) or with one that never links,
+   the picture goes to the canvas exactly as it did before there was
+   one.
+
+   How small the picture may be was measured, each stitch's colour from
+   one live frame to the next over the grass, its flowers and drifting
+   lights, the sky and the stars, in all three looks, on a phone, a
+   laptop and a wide screen, against the picture at the size it used to
+   have: at six px to a stitch's width, the least the loom asks for, the
+   stitches change no more than they did there, so long as the grass
+   nearest the eye keeps the size it had (frameTargets); drawn smaller,
+   it moves through the stitches in jumps. Only the film grain, new every
+   frame, is then shared by fewer px of a stitch, and stirs it by less
+   than half a level. */
+var PICTURE = 6;
+var TILE = [24, 30];
+var PAPER = { day: srgb('#f6f3ec'), dusk: srgb('#231e22'), night: srgb('#15181d') };
+var loom = null, knit = false, lite = false;
+/* the build whose picture the frames are drawing, and its whole frame
+   while the canvas has another shape */
+var framed = null, held = null;
+
+function unknit() {
+  if (loom) loom.free();
+  loom = null;
+  knit = false;
+  canvas.classList.remove('woven');
+  dropBuild(pend);
+  pend = null;
+}
+
+/* the canvas's box on the page, in CSS px */
+function place() {
+  var r = canvas.getBoundingClientRect();
+  return { x: r.left + (window.pageXOffset || 0), y: r.top + (window.pageYOffset || 0), w: r.width, h: r.height };
+}
+
+/* the fabric's share of the screen's pixels: the governor's, but never
+   so few that a stitch has under six device px, the finest the loom was
+   made for. A page the governor has brought to rest draws only when
+   something changes, once, and then the fabric is drawn whole again,
+   all its pixels and all its light */
+function weft() {
+  if (slow) return 1;
+  var d = Math.min(window.devicePixelRatio || 1, 2);
+  return Math.min(1, Math.max(quality, 6 / (Knit.gauge().w * d)));
+}
+
+/* the paper as the page shows it now, a turn of the looks included, for
+   the cloth that goes on below the picture */
+function paper(w) {
+  var s = '';
+  try { s = getComputedStyle(root).getPropertyValue('--paper').trim(); } catch (err) {}
+  var m = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/.exec(s);
+  if (m) return [m[1] / 255, m[2] / 255, m[3] / 255];
+  if (/^#[0-9a-f]{6}$/i.test(s)) return srgb(s);
+  return [0, 1, 2].map(function (i) { return PAPER.day[i] * w.d + PAPER.dusk[i] * w.u + PAPER.night[i] * w.n; });
+}
+
+/* While a new size is built the picture on screen holds its last frame,
+   and the canvas, which follows its box at once, may by then have
+   another shape. That frame is then cropped to the new shape about its
+   middle, as a picture set to cover would be, and only the crop is
+   knitted: the stitches stay the page's and nothing is stretched. Null
+   when the picture fits the box it is drawn on */
+function cropFor(bx) {
+  var b = framed;
+  if (!b || !b.box || (Math.abs(bx.w - b.box[0]) < 0.5 && Math.abs(bx.h - b.box[1]) < 0.5)) return null;
+  var a = bx.w / bx.h, w = b.w, h = b.h;
+  if (w / h > a) w = Math.max(1, Math.min(b.w, Math.round(h * a)));
+  else h = Math.max(1, Math.min(b.h, Math.round(w / a)));
+  return { x: (b.w - w) >> 1, y: (b.h - h) >> 1, w: w, h: h };
+}
+
+/* the whole frame is drawn here while it is cropped, and let go after */
+function hold(on) {
+  if (on && held && (held.w !== fw || held.h !== fh)) {
+    drop(held);
+    held = null;
+  }
+  if (on && !held) held = target(fw, fh, [gl.RGBA8], false, gl.NEAREST);
+  if (!on && held) {
+    drop(held);
+    held = null;
+  }
+  return held;
+}
+
+/* the picture, drawn by now into the loom's target (or, cropped, into
+   the held frame), knitted over the canvas; the canvas first takes the
+   store the loom wants for its box */
+function weave(bx, crop, t, still, w) {
+  if (crop) {
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, held.fbo);
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, loom.target(crop.w, crop.h));
+    gl.blitFramebuffer(crop.x, crop.y, crop.x + crop.w, crop.y + crop.h, 0, 0, crop.w, crop.h, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+  if (!(bx.w > 0 && bx.h > 0)) return;
+  var st = Knit.fit(bx.w, bx.h, weft());
+  if (canvas.width !== st[0] || canvas.height !== st[1]) {
+    canvas.width = st[0];
+    canvas.height = st[1];
+  }
+  var drawn = loom.draw({
+    cssW: bx.w, cssH: bx.h, x: bx.x, y: bx.y, time: t, still: still, lite: lite && !slow,
+    look: [w.d, w.u, w.n], tile: TILE, ground: paper(w), sides: 'b'
+  });
+  /* it always can once it is ready; should it not, the picture is
+     shown plain rather than not at all */
+  if (!drawn) {
+    var pw = crop ? crop.w : fw, ph = crop ? crop.h : fh;
+    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, loom.target(pw, ph));
+    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+    gl.blitFramebuffer(0, 0, pw, ph, 0, 0, canvas.width, canvas.height, gl.COLOR_BUFFER_BIT, gl.LINEAR);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+}
+
+/* the canvas follows its box at once: when its store no longer fits, the
+   picture on screen is knitted again over the new box before the page is
+   painted, rather than shown stretched until the next frame */
+function refit() {
+  if (!glReady || !framed || !landT || !view) return;
+  var bx = place();
+  if (!(bx.w > 0 && bx.h > 0)) return;
+  var st = Knit.fit(bx.w, bx.h, weft());
+  if (canvas.width === st[0] && canvas.height === st[1]) return;
+  var now = performance.now();
+  draw(now);
+  last = Math.max(last, now);
 }
 
 /* the land of the picture on screen, and the targets every frame draws
@@ -1983,8 +2157,13 @@ function makeBuild(sz) {
   var w = sz[0], h = sz[1];
   var b = {
     w: w, h: h, lay: layoutFor(w / h), phase: 0, y: 0, y1: h, x0: 0, x1: w, rows: 8, cost: 0,
-    prof: new Float32Array(h), k: [0, 4, 16], done: 0, sum: 1
+    prof: new Float32Array(h), k: [0, 4, 16], done: 0, sum: 1, gw: sz[2] || w, gh: sz[3] || h
   };
+  /* knitted, the box it is made for, which the canvas may leave */
+  if (knit) {
+    var bx = place();
+    b.box = [bx.w, bx.h];
+  }
   /* its grass is grown now, while the GPU has the build, so the frame
      that takes the build to the screen has less to do */
   useLayout(b.lay);
@@ -2475,7 +2654,8 @@ function draw(now) {
   if (!still) cloudT += dt * (1 - w.n);
   if (!still) drift += dt * (0.6 + 0.8 * env);
   if (!still) stepEvents(t, w);
-  var W2 = canvas.width, H2 = canvas.height;
+  /* knitted, the picture has a size of its own, the frame targets' */
+  var W2 = knit ? fw : canvas.width, H2 = knit ? fh : canvas.height;
   var cam = camFor(W2, H2, PITCH, YAW0);
   var sun = sunDir(w);
 
@@ -2513,17 +2693,25 @@ function draw(now) {
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 
   var pixr = 2 * cam[1] / H2;
+  /* the middle and nearest grass keep the px of the picture unknitted */
+  var gpixr = knit ? 2 * cam[1] / fgh : pixr;
   var vis = [w.d + 0.5 * w.u, w.d + 0.6 * w.u, w.n];
   gl.activeTexture(gl.TEXTURE0);
   gl.bindTexture(gl.TEXTURE_2D, brushTex);
   drawBand(2, farT, gcam, eyeg, t, env, w, pixr, vis, true);
-  drawBand(1, midT, gcam, eyeg, t, env, w, pixr, vis, false);
-  drawBand(0, nearT, gcam, eyeg, t, env, w, pixr, vis, false);
+  drawBand(1, midT, gcam, eyeg, t, env, w, gpixr, vis, false);
+  drawBand(0, nearT, gcam, eyeg, t, env, w, gpixr, vis, false);
 
   bokeh(bokeh32Prog, midT.tex[0], midT.w, midT.h, midB, RM);
   bokeh(bokehProg, nearT.tex[0], nearT.w, nearT.h, nearB, RN);
 
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  var bx = null, crop = null, into = null;
+  if (knit) {
+    bx = place();
+    crop = cropFor(bx);
+    into = hold(!!crop) ? held.fbo : loom.target(W2, H2);
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, into);
   gl.viewport(0, 0, W2, H2);
   gl.useProgram(compProg.p);
   u = compProg.u;
@@ -2559,6 +2747,7 @@ function draw(now) {
   gl.uniform1f(u.METL, meteor.life);
   gl.uniform4f(u.MET, meteor.a[0], meteor.a[1], meteor.d[0], meteor.d[1]);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
+  if (knit) weave(bx, crop, t, still, w);
 }
 
 /* ------------------------------------------------------------ the loop */
@@ -2607,7 +2796,9 @@ function frame(now) {
       if (view.phase > 2 && !animating()) draw(now);
     }
     if (view && animating() && now > last) {
-      var busy = tr || brushing || meteor.on || Math.abs(tx - mx) > 0.002 || Math.abs(ty - my) > 0.002;
+      /* the fabric's light follows the pointer at every frame until it
+         has settled */
+      var busy = tr || brushing || meteor.on || Math.abs(tx - mx) > 0.002 || Math.abs(ty - my) > 0.002 || (knit && Knit.moving());
       if (now - last >= (busy ? 0 : 30)) {
         if (probing) timed(now);
         else draw(now);
@@ -2646,9 +2837,14 @@ function warm(b, now) {
     progress(0.28);
     return;
   }
-  canvas.width = b.w;
-  canvas.height = b.h;
-  frameTargets(b.w, b.h);
+  /* knitted, the canvas is sized by the frame itself, and the loom's
+     programs are put to use with the rest */
+  if (!knit) {
+    canvas.width = b.w;
+    canvas.height = b.h;
+  }
+  frameTargets(b.w, b.h, b.gw, b.gh);
+  framed = b;
   landT = b.land;
   maskT = b.mask;
   setLooks(skyProg);
@@ -2691,6 +2887,15 @@ function timed(now) {
   times = [];
   probing = false;
   if (med < 28) return;
+  /* knitted, the fabric gives up first what it can best spare, the
+     depth of its stitches under the eye and its finest light, which
+     costs it a third; then the shrinking takes the fabric's pixels down
+     with the picture's */
+  if (knit && !lite) {
+    lite = true;
+    probing = true;
+    return;
+  }
   if (quality > MINQ + 0.01 && retunes < 2) {
     retunes++;
     quality = Math.max(MINQ, quality * Math.sqrt(16 / med));
@@ -2716,7 +2921,7 @@ function timed(now) {
    targets every frame draws through and the grass are made for it, and
    it fades in over what was there, the picture the page opened with or
    the last frame of the size before */
-var under = null, veil = 0, fw = 0, fh = 0;
+var under = null, veil = 0, fw = 0, fh = 0, fgw = 0, fgh = 0;
 
 function show(b, now) {
   var swap = !!view && canvas.classList.contains('drawn');
@@ -2727,12 +2932,13 @@ function show(b, now) {
     }
     dropBuild(view);
   }
-  if (canvas.width !== b.w || canvas.height !== b.h) {
+  if (!knit && (canvas.width !== b.w || canvas.height !== b.h)) {
     canvas.width = b.w;
     canvas.height = b.h;
   }
   useLayout(b.lay);
-  frameTargets(b.w, b.h);
+  frameTargets(b.w, b.h, b.gw, b.gh);
+  framed = b;
   landT = b.land;
   maskT = b.mask;
   setLooks(skyProg);
@@ -2744,18 +2950,23 @@ function show(b, now) {
   reveal(swap);
 }
 
-function frameTargets(cw, ch) {
-  if (skyT && fw === cw && fh === ch) return;
+function frameTargets(cw, ch, gw, gh) {
+  if (skyT && fw === cw && fh === ch && fgw === gw && fgh === gh) return;
   fw = cw;
   fh = ch;
+  fgw = gw;
+  fgh = gh;
   [skyT, farT, midT, nearT, midB, nearB].forEach(drop);
   var hw = Math.max(1, Math.round(cw * 0.5)), hh = Math.max(1, Math.round(ch * 0.5));
   /* the middle and nearest grass are drawn small, at half and a quarter
      of the picture on a wide canvas, and softened; a narrow canvas draws
-     them larger, so their blades keep their shape under the blur */
-  var ms = Math.min(1, Math.max(0.5, 1000 / cw)), ns = Math.min(0.5, Math.max(0.25, 500 / cw));
-  var mw = Math.max(1, Math.round(cw * ms)), mh = Math.max(1, Math.round(ch * ms));
-  var nw = Math.max(1, Math.round(cw * ns)), nh = Math.max(1, Math.round(ch * ns));
+     them larger, so their blades keep their shape under the blur. They
+     are sized from the picture the canvas would have unknitted (gw by
+     gh): the knitted picture is smaller, and grass drawn smaller than it
+     was moves through the stitches in jumps */
+  var ms = Math.min(1, Math.max(0.5, 1000 / gw)), ns = Math.min(0.5, Math.max(0.25, 500 / gw));
+  var mw = Math.max(1, Math.round(gw * ms)), mh = Math.max(1, Math.round(gh * ms));
+  var nw = Math.max(1, Math.round(gw * ns)), nh = Math.max(1, Math.round(gh * ns));
   skyT = target(hw, hh, [CFMT, CFMT], false);
   farT = msTarget(cw, ch);
   midT = target(mw, mh, [CFMT], true);
@@ -2764,8 +2975,8 @@ function frameTargets(cw, ch) {
   nearB = target(nw, nh, [CFMT], false);
   /* the softness is sized to the frame: the nearest grass is a wash,
      the middle grass soft strokes, on every frame alike */
-  RN = 0.04 * ch * ns;
-  RM = 0.0055 * ch * ms;
+  RN = 0.04 * gh * ns;
+  RM = 0.0055 * gh * ms;
 }
 
 /* the last frame of the old size, kept on a plain canvas under the new
@@ -2779,6 +2990,7 @@ function keep() {
   }
   under.width = canvas.width;
   under.height = canvas.height;
+  under.classList.toggle('woven', canvas.classList.contains('woven'));
   var c = under.getContext('2d');
   if (c) c.drawImage(canvas, 0, 0);
   under.classList.add('on');
@@ -2844,14 +3056,25 @@ function sleep() {
 
 /* the screen's pixels up to one and a half per point, and no more than
    about two and a half million in all, so a wide screen is drawn as
-   finely as a laptop's; a slow GPU draws fewer */
+   finely as a laptop's; a slow GPU draws fewer. This is the picture's
+   size; knitted, the canvas's own store is the loom's */
 function canvasSize() {
   var w = hero.clientWidth, h = hero.clientHeight;
   if (!w || !h) return null;
   var scale = Math.min(window.devicePixelRatio || 1, 1.5);
   if (w * h * scale * scale > 2.6e6) scale = Math.sqrt(2.6e6 / (w * h));
-  scale = Math.min(scale * quality, LIM / w, LIM / h);
-  return [Math.max(1, Math.round(w * scale)), Math.max(1, Math.round(h * scale))];
+  var full = Math.min(scale * quality, LIM / w, LIM / h);
+  var sz = [Math.max(1, Math.round(w * full)), Math.max(1, Math.round(h * full))];
+  if (!knit) return sz;
+  /* knitted, the picture needs only so many px to a stitch; the grass
+     nearest the eye keeps the size it always had (frameTargets) */
+  var pic = Math.min(Math.min(scale, PICTURE / Knit.gauge().w) * quality, LIM / w, LIM / h);
+  return [Math.max(1, Math.round(w * pic)), Math.max(1, Math.round(h * pic)), sz[0], sz[1]];
+}
+
+/* whether a build is of that size, its grass's included */
+function sized(b, sz) {
+  return b.w === sz[0] && b.h === sz[1] && b.gw === (sz[2] || sz[0]) && b.gh === (sz[3] || sz[1]);
 }
 
 /* a window being dragged rebuilds once it settles, the picture on screen
@@ -2864,11 +3087,12 @@ function resize() {
     staleSize = true;
     return;
   }
+  if (knit) refit();
   var sz = canvasSize();
-  if (!sz || (pend && pend.w === sz[0] && pend.h === sz[1])) return;
+  if (!sz || (pend && sized(pend, sz))) return;
   clearTimeout(pending);
   pending = 0;
-  if (view && view.w === sz[0] && view.h === sz[1]) {
+  if (view && sized(view, sz)) {
     dropBuild(pend);
     pend = null;
     return;
@@ -2988,6 +3212,11 @@ canvas.addEventListener('webglcontextlost', function (ev) {
   landT = maskT = skyT = farT = midT = nearT = midB = nearB = null;
   meadow = null;
   glReady = false;
+  /* the loom went with the context; another is asked for on the one
+     that comes back */
+  if (loom) loom.free();
+  loom = null;
+  framed = held = null;
   canvas.classList.remove('drawn');
   if (under) under.classList.remove('on');
   clearTimeout(lostTimer);
