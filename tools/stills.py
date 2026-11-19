@@ -37,7 +37,7 @@ from PIL import Image
 from playwright.sync_api import sync_playwright
 
 REPO = Path(__file__).resolve().parent.parent
-LOOKS = ["day", "dusk", "night"]
+LOOKS = ["day", "dusk"]
 FRAMES = {"wide": (3600, 900), "tall": (840, 1200)}
 GLIMPSE = {"wide": (120, 30), "tall": (21, 30)}
 

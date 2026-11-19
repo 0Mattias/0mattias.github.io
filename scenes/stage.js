@@ -1024,6 +1024,7 @@ function knitted(now, still) {
     tile: TILE,
     ground: paper(w),
     sides: 'b',
+    fade: window.Knit.length ? window.Knit.length('--fade') : 0,
     lite: WEAVES[weave].lite
   });
   if (done) woven = true;

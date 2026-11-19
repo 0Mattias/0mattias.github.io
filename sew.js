@@ -9,6 +9,17 @@
    canvas rides with its element, so the name rises with its stitches
    on.
 
+   Every word on the page is sewn so, each in its own colour: the
+   stylesheet's colour for the words, or the thread it names in
+   --sew-thread and --sew-edge, and a colour it gives part transparent is
+   the colour that shows over the paper. Each link is a strand of its own,
+   so the pointer can turn its colour alone, and its underline is a running
+   stitch (in --sew-under) that stops short of the letters it crosses. An
+   element marked data-sew-dot is sewn as a padded dot, and ringed while it
+   is pressed (in --sew-ring). Lettering marked data-sew="still" lies on
+   cloth that lies at rest, and is lit as that cloth is: only the words over
+   the live picture follow the pointer's light.
+
    Nothing runs at rest. The lettering is sewn again when the fonts
    come, when the window or the element changes size, when another
    script changes the element's style or its words, when the look
@@ -28,7 +39,7 @@ if (!Knit || !Knit.thread || !Knit.ink || !Knit.reach || !document.querySelector
 
 var reduced = matchMedia('(prefers-reduced-motion: reduce)');
 var forced = matchMedia('(forced-colors: active)');
-var LOOKS = { day: [1, 0, 0], dusk: [0, 1, 0], night: [0, 0, 1] };
+var LOOKS = { day: [1, 0, 0], dusk: [0, 1, 0] };
 
 /* how long words nobody has seen yet wait, unseen, for their first
    stitches before they are let rise as they are; and how long words
@@ -125,7 +136,7 @@ function restore() {
   lost = false;
   /* a mask's own canvas may have lost its paint with the GPU: all of
      them are painted again */
-  pieces.forEach(function (p) { p.key = ''; });
+  pieces.forEach(function (p) { p.strands.forEach(function (s) { s.key = ''; }); });
   stale(MEASURE | SEW, true);
 }
 
@@ -175,25 +186,55 @@ function looked() {
 var tint = document.createElement('canvas').getContext('2d');
 
 /* a colour the stylesheet gives, any way it writes it, as display sRGB
-   0..1; undefined where it gives none, and the thread's own is used */
+   0..1 and its alpha; undefined where it gives none (or none that shows) */
 function colour(v) {
   v = (v || '').trim();
-  if (!v || !tint) return undefined;
+  if (!v || !tint || /^(transparent|currentcolor)$/i.test(v)) return undefined;
   tint.fillStyle = '#010203';
   tint.fillStyle = v;
   var s = String(tint.fillStyle), m;
   if (s === '#010203' && !/^#010203$/i.test(v)) return undefined;
   if ((m = /^#([0-9a-f]{6})$/i.exec(s))) {
     var n = parseInt(m[1], 16);
-    return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255];
+    return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255, 1];
   }
-  if ((m = /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i.exec(s))) return [m[1] / 255, m[2] / 255, m[3] / 255];
+  if ((m = /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+))?/i.exec(s))) {
+    var a = m[4] === undefined ? 1 : +m[4];
+    return a > 0.004 ? [m[1] / 255, m[2] / 255, m[3] / 255, a] : undefined;
+  }
   return undefined;
 }
 
+/* the paper the words lie on, as the page shows it now (a turn of the
+   looks included) */
+function paper() {
+  return colour(getComputedStyle(root).getPropertyValue('--paper')) || [0.965, 0.953, 0.925, 1];
+}
+
+/* a colour as a thread can be dyed: one the stylesheet gives part
+   transparent is the colour it shows over the paper */
+function dyed(c, under) {
+  if (!c) return undefined;
+  var a = c[3] === undefined ? 1 : c[3];
+  return [0, 1, 2].map(function (i) { return c[i] * a + under[i] * (1 - a); });
+}
+
+/* the thread couched round a letter's edge, where the stylesheet names
+   none: the floss's own colour gone part of the way toward the paper, so
+   small lettering keeps its weight and its outline is the floss's own */
+var EDGE = 0.7;
+
+function edged(c, under) {
+  return [0, 1, 2].map(function (i) { return c[i] + (under[i] - c[i]) * EDGE; });
+}
+
 /* --------------------------------------------------------- the lettering */
-/* Each piece: the element, its canvas, the mask Knit.ink paints for it,
-   and where on the page it was last laid. */
+/* Each piece: the element, its canvas, and the strands it is sewn in.
+   A strand is what one thread sews: a colour of the lettering at one
+   size, a link (whose colour the pointer may change alone), the running
+   stitch under a link, a dot, a ring; each has a mask of its own, only
+   as large as what it sews, and is sewn into its own corner of the
+   piece's canvas. */
 
 var pieces = [];
 
@@ -204,29 +245,49 @@ function Piece(el) {
   this.cv.setAttribute('aria-hidden', 'true');
   if (ours) ours.add(this.cv);
   this.cx = this.cv.getContext('2d');
-  this.mask = document.createElement('canvas');
-  this.mx = this.mask.getContext('2d');
+  this.strands = [];
   this.w = this.h = 0;
   this.px = 1;
-  this.size = 16;
   this.at = [0, 0];
-  this.key = '';
   this.want = MEASURE | SEW;
   this.seen = true;
   this.shown = false;
+  this.hot = 0;
+  /* lettering on cloth that lies at rest (the paper, the ground below
+     the picture) is lit as that cloth is, with the light at rest */
+  this.still = el.getAttribute('data-sew') === 'still';
+}
+
+function Strand(id) {
+  this.id = id;
+  this.mask = document.createElement('canvas');
+  this.mx = this.mask.getContext('2d');
+  this.key = '';
+  this.x = this.y = this.w = this.h = 0;
+}
+
+function unpick(s) {
+  if (t) t.forget(s.mask);
+  s.mask.width = s.mask.height = 0;
+  s.key = '';
 }
 
 /* The words as the browser has set them, line by line: for every text
    node, a range over each of its letters says on which line it fell and
    where, and a probe of no size set in after the node finds the true
-   baseline. Lengths are the viewport's, as the element now lies. */
+   baseline. Lengths are the viewport's, as the element now lies. Words
+   in another piece, in a dot, or set at no size are left out, and words
+   hidden inside a piece that can itself be seen. */
 function lines(el) {
   var out = [], walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null), range = document.createRange(), n;
+  var shown = getComputedStyle(el).visibility === 'visible';
   while ((n = walk.nextNode())) {
     var host = n.parentElement, d = n.data;
-    if (!host || !d) continue;
+    if (!host || !d || host.closest('[data-sew]') !== el || host.closest('[data-sew-dot]')) continue;
     var cs = getComputedStyle(host);
-    if (cs.visibility !== 'visible') continue;
+    if (shown && cs.visibility !== 'visible') continue;
+    var size = parseFloat(cs.fontSize) || 0;
+    if (!(size > 1)) continue;
     var set = [], line = null, i = 0;
     while (i < d.length) {
       var len = d.codePointAt(i) > 0xffff ? 2 : 1, ch = d.substr(i, len), white = /\s/.test(ch);
@@ -244,7 +305,10 @@ function lines(el) {
       line.text += white ? ' ' : ch;
       line.right = Math.max(line.right, r.right);
       line.bottom = Math.max(line.bottom, r.bottom);
-      if (!white) line.to = i;
+      if (!white) {
+        line.to = i;
+        line.end = r.right;
+      }
     }
     if (!set.length) continue;
     /* a letter's own box may be rounded where the line's is not: where
@@ -258,24 +322,134 @@ function lines(el) {
         l.top = q.top;
       }
     });
-    var probe = document.createElement('span'), ps = probe.style;
-    ps.display = 'inline-block';
-    ps.width = ps.height = ps.margin = ps.padding = ps.borderWidth = '0';
-    ps.verticalAlign = 'baseline';
-    if (ours) ours.add(probe);
-    host.insertBefore(probe, n.nextSibling);
-    var drop = probe.getBoundingClientRect().bottom - set[set.length - 1].top;
-    host.removeChild(probe);
-    var size = parseFloat(cs.fontSize) || 16, gap = parseFloat(cs.letterSpacing) || 0;
+    var drop = fall(host, n, set);
+    var gap = parseFloat(cs.letterSpacing) || 0;
     var stretch = { '50%': 'ultra-condensed', '62.5%': 'extra-condensed', '75%': 'condensed', '87.5%': 'semi-condensed', '112.5%': 'semi-expanded', '125%': 'expanded', '150%': 'extra-expanded', '200%': 'ultra-expanded' }[cs.fontStretch] || '';
     var font = [cs.fontStyle, cs.fontVariantCaps === 'small-caps' ? 'small-caps' : '', cs.fontWeight, stretch, size + 'px', cs.fontFamily].join(' ').replace(/\s+/g, ' ').trim();
     set.forEach(function (l) {
       var text = l.text.replace(/\s+$/, '');
       if (cs.textTransform === 'uppercase') text = text.toUpperCase();
       else if (cs.textTransform === 'lowercase') text = text.toLowerCase();
-      out.push({ text: text, left: l.left, top: l.top, right: l.right, bottom: l.bottom, base: l.top + drop, font: font, size: size, spacing: gap, kerning: cs.fontKerning });
+      out.push({ text: text, left: l.left, top: l.top, right: l.right, end: l.end || l.right, bottom: l.bottom, base: l.top + drop, font: font, size: size, spacing: gap, kerning: cs.fontKerning, host: host });
     });
   }
+  return out;
+}
+
+/* How far below the top of a line of this text its baseline lies: a
+   probe of no size is set in after the node, and failing that before
+   it, and read on whichever of the node's own lines it falls (one set in
+   after words that end a line may wrap onto the next, which holds none
+   of them). Every line of a node is in one face, so one will do. */
+function fall(host, n, set) {
+  var probe = document.createElement('span'), ps = probe.style, drop = null;
+  ps.display = 'inline-block';
+  ps.width = ps.height = ps.margin = ps.padding = ps.borderWidth = '0';
+  ps.verticalAlign = 'baseline';
+  if (ours) ours.add(probe);
+  [n.nextSibling, n].some(function (at, k) {
+    host.insertBefore(probe, at);
+    var b = probe.getBoundingClientRect().bottom;
+    host.removeChild(probe);
+    for (var i = 0; i < set.length; i++) {
+      if (b >= set[i].top - 0.5 && b <= set[i].bottom + 0.5) {
+        drop = b - set[i].top;
+        return true;
+      }
+    }
+    if (!k) drop = b - set[set.length - 1].top;
+    return false;
+  });
+  return drop;
+}
+
+/* the element within the piece that underlines a host's words, if any
+   does: a decoration is drawn by the box that asks for it, through every
+   box inside */
+function underliner(host, el) {
+  for (var e = host; e && e !== el.parentElement; e = e.parentElement) {
+    if (/underline/.test(getComputedStyle(e).textDecorationLine || '')) return e;
+    if (e === el) break;
+  }
+  return null;
+}
+
+/* What a piece sews, strand by strand, each with its runs in viewport
+   CSS px less the element's own rise (tx, ty), its size, the element its
+   colours are read from, and the box it reaches. */
+var STITCH = 0.26;
+
+function strands(el, tx, ty) {
+  var set = lines(el), out = [], by = {};
+  var links = [], unders = [];
+  function strand(id, kind, host, size) {
+    if (!by[id]) {
+      by[id] = { id: id, kind: kind, host: host, size: size, runs: [], box: [1e9, 1e9, -1e9, -1e9] };
+      out.push(by[id]);
+    }
+    return by[id];
+  }
+  function reach(s, l, t, r, b) {
+    var f = Knit.reach(s.size);
+    s.box[0] = Math.min(s.box[0], l - f);
+    s.box[1] = Math.min(s.box[1], t - f);
+    s.box[2] = Math.max(s.box[2], r + f);
+    s.box[3] = Math.max(s.box[3], b + f);
+  }
+  set.forEach(function (l) {
+    var a = l.host.closest('a'), id;
+    if (a && !el.contains(a)) a = null;
+    if (a) {
+      if (links.indexOf(a) < 0) links.push(a);
+      id = 'a' + links.indexOf(a) + '/' + l.size;
+    } else {
+      var cs = getComputedStyle(l.host);
+      id = 'c' + (cs.getPropertyValue('--sew-thread').trim() || cs.color) + '/' + l.size;
+    }
+    var s = strand(id, 'text', a || l.host, l.size);
+    s.runs.push({ text: l.text, x: l.left - tx, base: l.base - ty, font: l.font, size: l.size, spacing: l.spacing });
+    s.kerning = l.kerning;
+    reach(s, l.left - tx, l.top - ty, l.right - tx, l.bottom - ty);
+    /* the running stitch under a link, line by line, stopping short of
+       every letter it crosses */
+    var u = underliner(l.host, el);
+    if (u) {
+      if (unders.indexOf(u) < 0) unders.push(u);
+      var ucs = getComputedStyle(u);
+      var off = parseFloat(ucs.textUnderlineOffset) || 0.1 * l.size, wide = parseFloat(ucs.textDecorationThickness) || 1;
+      var us = strand('u' + unders.indexOf(u), 'under', u, l.size), y = Math.round(l.base - ty + off + wide / 2) + (wide % 2 ? 0.5 : 0), seg = null;
+      for (var i = 0; i < us.runs.length; i++) {
+        var r = us.runs[i];
+        if (r.line && Math.abs(r.line[1] - y) < 0.5) seg = r;
+      }
+      if (seg) {
+        seg.line[0] = Math.min(seg.line[0], l.left - tx);
+        seg.line[2] = Math.max(seg.line[2], l.end - tx);
+      } else us.runs.unshift({ line: [l.left - tx, y, l.end - tx], width: wide, dash: [STITCH * l.size, STITCH * l.size], size: l.size });
+      us.runs.push({ text: l.text, x: l.left - tx, base: l.base - ty, font: l.font, size: l.size, spacing: l.spacing, clear: 0.9 });
+      reach(us, l.left - tx, y - wide, l.end - tx, y + wide);
+    }
+  });
+  /* the dots, padded, and a ring round the one that is pressed */
+  Array.prototype.forEach.call(el.querySelectorAll('[data-sew-dot]'), function (d, i) {
+    var b = d.getBoundingClientRect(), cs = getComputedStyle(d);
+    if (!(b.width > 0 && b.height > 0) || cs.display === 'none') return;
+    var size = parseFloat(cs.getPropertyValue('--sew-size')) || 36, g = Knit.reach(size);
+    var cx = (b.left + b.right) / 2 - tx, cy = (b.top + b.bottom) / 2 - ty, rr = Math.min(b.width, b.height) / 2;
+    var core = Math.max(rr - 0.024 * size - 0.65, 1);
+    var s = strand('d' + i, 'dot', d, size);
+    s.runs.push({ dot: [cx, cy, core], size: size });
+    reach(s, cx - rr, cy - rr, cx + rr, cy + rr);
+    if (d.getAttribute('aria-pressed') === 'true') {
+      var ring = strand('r', 'ring', d, 16);
+      ring.runs.push({ ring: [cx, cy, rr / (b.width / (d.offsetWidth || b.width)) + 3.5], width: 0.6, size: 16 });
+      reach(ring, cx - rr - 5, cy - rr - 5, cx + rr + 5, cy + rr + 5);
+    }
+  });
+  /* each sewn in turn: the running stitch first, so the letters' shadow
+     falls over it, the ring last */
+  var order = { under: 0, text: 1, dot: 2, ring: 3 };
+  out.sort(function (a, b) { return order[a.kind] - order[b.kind]; });
   return out;
 }
 
@@ -291,106 +465,160 @@ function shift(cs) {
   return [0, 0];
 }
 
-/* The canvas covers the element's box and every line of its text, with
+/* The canvas covers the element's box and everything it sews, with
    Knit.reach all round for the edge thread and the shadow, out to whole
    CSS px: a browser sets a canvas down on a whole CSS px whatever layout
    says (half a px out and it moves it), and only there is its store, as
    many px as Knit.fit gives, laid on the screen's own without being
    resampled. (A transform that moves it by a fraction resamples it all
    the same, which is why the words are raised with top and not with a
-   transform.) The mask is painted again only when what it holds has
-   changed. False if the element is not laid out.
+   transform.) Each strand is given a whole number of device px of it,
+   and its mask is painted again only when what it holds has changed.
+   False if the element is not laid out.
 
    Where layout sets the element between two px, the browsers part ways:
    one rounds the canvas and the text's baseline to whole CSS px of the
    page, another rounds each positioned box against the one it lies in,
-   to device px, and the text within it likewise. So the element is first
-   moved, by half a px at most, to lie on a whole CSS px itself: then its
-   canvas lies on one too, by a whole number of px from it, and the
-   letters fall where the stitches are in either, to within a device px. */
+   to device px, and the text within it likewise. So an element laid out
+   in the flow is first moved, by half a px at most, to lie on a whole
+   CSS px itself: then its canvas lies on one too, by a whole number of
+   px from it, and the letters fall where the stitches are in either, to
+   within a device px. One placed outright is left where it is. */
 function place(p) {
   var el = p.el, cs = getComputedStyle(el), box = el.getBoundingClientRect();
   if (cs.display === 'none' || !(box.width > 0 && box.height > 0)) {
-    if (p.w && t) t.forget(p.mask);
+    p.strands.forEach(unpick);
+    p.strands = [];
     p.w = p.h = 0;
-    p.key = '';
     return false;
   }
   var size = parseFloat(cs.fontSize) || 16, reach = Knit.reach(size);
-  var off = shift(cs), sx = off[0], sy = off[1];
-  var was = p.nudge || [0, 0], fx = box.left - sx - was[0], fy = box.top - sy - was[1];
-  var nudge = [Math.round(fx) - fx, Math.round(fy) - fy];
-  if (Math.abs(nudge[0] - was[0]) > 0.004 || Math.abs(nudge[1] - was[1]) > 0.004) {
-    p.nudge = nudge;
-    el.style.left = Math.abs(nudge[0]) > 0.004 ? nudge[0] + 'px' : '';
-    el.style.top = Math.abs(nudge[1]) > 0.004 ? nudge[1] + 'px' : '';
-    box = el.getBoundingClientRect();
+  var off = shift(cs), tx = off[0], ty = off[1];
+  if (cs.position === 'relative') {
+    var was = p.nudge || [0, 0], fx = box.left - tx - was[0], fy = box.top - ty - was[1];
+    var nudge = [Math.round(fx) - fx, Math.round(fy) - fy];
+    if (Math.abs(nudge[0] - was[0]) > 0.004 || Math.abs(nudge[1] - was[1]) > 0.004) {
+      p.nudge = nudge;
+      el.style.left = Math.abs(nudge[0]) > 0.004 ? nudge[0] + 'px' : '';
+      el.style.top = Math.abs(nudge[1]) > 0.004 ? nudge[1] + 'px' : '';
+      box = el.getBoundingClientRect();
+    }
   }
-  var set = lines(el), x0 = box.left, y0 = box.top, x1 = box.right, y1 = box.bottom;
-  set.forEach(function (l) {
-    x0 = Math.min(x0, l.left);
-    y0 = Math.min(y0, l.top);
-    x1 = Math.max(x1, l.right);
-    y1 = Math.max(y1, l.bottom);
+  var list = strands(el, tx, ty);
+  var x0 = box.left - tx - reach, y0 = box.top - ty - reach, x1 = box.right - tx + reach, y1 = box.bottom - ty + reach;
+  list.forEach(function (s) {
+    x0 = Math.min(x0, s.box[0]);
+    y0 = Math.min(y0, s.box[1]);
+    x1 = Math.max(x1, s.box[2]);
+    y1 = Math.max(y1, s.box[3]);
   });
-  var L = Math.floor(x0 - sx - reach), T = Math.floor(y0 - sy - reach);
-  var R = Math.ceil(x1 - sx + reach), B = Math.ceil(y1 - sy + reach);
+  var L = Math.floor(x0), T = Math.floor(y0), R = Math.ceil(x1), B = Math.ceil(y1);
   var cssW = R - L, cssH = B - T, store = Knit.fit(cssW, cssH), px = store[0] / cssW;
-  var runs = set.map(function (l) {
-    return { text: l.text, x: l.left - sx - L, y: Math.round((l.base - sy - T) * px) / px, font: l.font, size: l.size, spacing: l.spacing };
-  });
-  var s = p.cv.style;
-  s.left = (L - (box.left - sx)) + 'px';
-  s.top = (T - (box.top - sy)) + 'px';
-  s.width = cssW + 'px';
-  s.height = cssH + 'px';
+  var c = p.cv.style;
+  c.left = (L - (box.left - tx)) + 'px';
+  c.top = (T - (box.top - ty)) + 'px';
+  c.width = cssW + 'px';
+  c.height = cssH + 'px';
   p.at = [L + window.scrollX, T + window.scrollY];
-  var thread = colour(cs.getPropertyValue('--sew-thread')), edge = colour(cs.getPropertyValue('--sew-edge'));
-  var key = JSON.stringify([store, cssW, cssH, size, runs, set.length && set[0].kerning]);
-  var hue = JSON.stringify([thread, edge]);
-  if (hue !== p.hue) {
-    p.hue = hue;
-    p.thread = thread;
-    p.edge = edge;
-    p.want |= SEW;
-  }
-  if (key === p.key) return true;
-  p.key = key;
   if (p.cv.width !== store[0] || p.cv.height !== store[1]) {
     p.cv.width = store[0];
     p.cv.height = store[1];
   }
-  if (p.mask.width !== store[0] || p.mask.height !== store[1]) {
-    p.mask.width = store[0];
-    p.mask.height = store[1];
-  }
+  if (p.w !== store[0] || p.h !== store[1] || p.px !== px) p.want |= SEW;
   p.w = store[0];
   p.h = store[1];
   p.px = px;
-  p.size = size;
-  if ('fontKerning' in p.mx && set.length) p.mx.fontKerning = set[0].kerning === 'none' ? 'none' : set[0].kerning === 'normal' ? 'normal' : 'auto';
-  Knit.ink(p.mx, runs, { px: p.px });
-  p.want |= SEW;
+
+  var kept = {};
+  p.strands.forEach(function (s) { kept[s.id] = s; });
+  p.strands = list.map(function (m) {
+    var s = kept[m.id] || new Strand(m.id);
+    delete kept[m.id];
+    s.kind = m.kind;
+    s.host = m.host;
+    s.size = m.size;
+    var sx = Math.max(0, Math.floor((m.box[0] - L) * px)), sy = Math.max(0, Math.floor((m.box[1] - T) * px));
+    var ex = Math.min(store[0], Math.ceil((m.box[2] - L) * px)), ey = Math.min(store[1], Math.ceil((m.box[3] - T) * px));
+    var w = Math.max(1, ex - sx), h = Math.max(1, ey - sy), ox = L + sx / px, oy = T + sy / px;
+    var runs = m.runs.map(function (r) {
+      var q = {}, k;
+      for (k in r) if (Object.prototype.hasOwnProperty.call(r, k)) q[k] = r[k];
+      if (r.text !== undefined) {
+        q.x = r.x - ox;
+        q.y = (Math.round((r.base - T) * px) - sy) / px;
+        delete q.base;
+      }
+      if (r.line) q.line = [r.line[0] - ox, (Math.round((r.line[1] - T) * px * 2) / 2 - sy) / px, r.line[2] - ox];
+      if (r.dot) q.dot = [r.dot[0] - ox, r.dot[1] - oy, r.dot[2]];
+      if (r.ring) q.ring = [r.ring[0] - ox, r.ring[1] - oy, r.ring[2]];
+      return q;
+    });
+    s.x = sx;
+    s.y = sy;
+    var key = JSON.stringify([w, h, px, runs, m.kerning]);
+    if (key !== s.key) {
+      s.key = key;
+      if (s.mask.width !== w || s.mask.height !== h) {
+        s.mask.width = w;
+        s.mask.height = h;
+      }
+      s.w = w;
+      s.h = h;
+      if ('fontKerning' in s.mx) s.mx.fontKerning = m.kerning === 'none' ? 'none' : m.kerning === 'normal' ? 'normal' : 'auto';
+      Knit.ink(s.mx, runs, { px: px });
+      p.want |= SEW;
+    }
+    return s;
+  });
+  Object.keys(kept).forEach(function (id) {
+    unpick(kept[id]);
+    p.want |= SEW;
+  });
   return true;
 }
 
-/* the floss, sewn into the shared context and copied onto the piece's
-   own canvas, whole */
-function sew(p, now, look) {
-  if (glc.width < p.w || glc.height < p.h) {
-    glc.width = Math.max(glc.width, p.w);
-    glc.height = Math.max(glc.height, p.h);
-  }
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  var ok = t.draw({
-    mask: p.mask, w: p.w, h: p.h, px: p.px, size: p.size,
-    thread: p.thread, edge: p.edge,
-    look: look, time: now / 1000, still: reduced.matches,
-    x: p.at[0], y: p.at[1]
+/* each strand's colours, read again before every sewing, so that a turn
+   of the looks or a pointer over a link is followed as it goes */
+function dye(p) {
+  var under = paper();
+  p.strands.forEach(function (s) {
+    var cs = getComputedStyle(s.host), own = colour(cs.getPropertyValue('--sew-thread')), rim = colour(cs.getPropertyValue('--sew-edge'));
+    var c;
+    if (s.kind === 'under') c = dyed(colour(cs.getPropertyValue('--sew-under')) || colour(cs.color), under);
+    else if (s.kind === 'ring') c = dyed(colour(cs.getPropertyValue('--sew-ring')) || colour(cs.color), under);
+    else c = dyed(own || colour(cs.color), under);
+    s.thread = c || [under[0], under[1], under[2]];
+    s.edge = s.kind !== 'under' && s.kind !== 'ring' && rim ? dyed(rim, under) : edged(s.thread, under);
   });
-  if (!ok) return false;
-  p.cx.globalCompositeOperation = 'copy';
-  p.cx.drawImage(glc, 0, glc.height - p.h, p.w, p.h, 0, 0, p.w, p.h);
+}
+
+/* the strands, sewn one after another into the shared context and each
+   laid into its own corner of the piece's canvas */
+function sew(p, now, look) {
+  dye(p);
+  var mw = 1, mh = 1;
+  p.strands.forEach(function (s) {
+    mw = Math.max(mw, s.w);
+    mh = Math.max(mh, s.h);
+  });
+  if (glc.width < mw || glc.height < mh) {
+    glc.width = Math.max(glc.width, mw);
+    glc.height = Math.max(glc.height, mh);
+  }
+  p.cx.globalCompositeOperation = 'source-over';
+  p.cx.clearRect(0, 0, p.w, p.h);
+  for (var i = 0; i < p.strands.length; i++) {
+    var s = p.strands[i];
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    var ok = t.draw({
+      mask: s.mask, w: s.w, h: s.h, px: p.px, size: s.size,
+      thread: s.thread, edge: s.edge,
+      look: look, time: now / 1000, still: reduced.matches || p.still,
+      x: p.at[0] + s.x / p.px, y: p.at[1] + s.y / p.px
+    });
+    if (!ok) return false;
+    p.cx.drawImage(glc, 0, glc.height - s.h, s.w, s.h, s.x, s.y, s.w, s.h);
+  }
   return true;
 }
 
@@ -466,7 +694,7 @@ function shown(p) {
 function mark(el, early) {
   for (var i = 0; i < pieces.length; i++) if (pieces[i].el === el) return;
   var p = new Piece(el);
-  if (!p.cx || !p.mx) return;
+  if (!p.cx) return;
   el.insertBefore(p.cv, el.firstChild);
   /* a stylesheet that does not know the thread (an older one a cache
      holds on to, or none at all) leaves the canvas in the line of the
@@ -488,17 +716,18 @@ function mark(el, early) {
     if (el.parentElement) sizes.observe(el.parentElement);
   }
   if (sight) sight.observe(el);
-  if (edits) edits.observe(el, { attributes: true, attributeFilter: ['class', 'style'], attributeOldValue: true, childList: true, characterData: true, subtree: true });
+  if (edits) edits.observe(el, { attributes: true, attributeFilter: ['class', 'style', 'aria-pressed'], attributeOldValue: true, childList: true, characterData: true, subtree: true });
 }
 
 function unmark(p) {
-  if (t) t.forget(p.mask);
+  p.strands.forEach(unpick);
+  p.strands = [];
   if (p.cv.parentNode) p.cv.parentNode.removeChild(p.cv);
   p.el.classList.remove('sewn', 'basting');
   if (p.nudge) p.el.style.left = p.el.style.top = '';
   if (sizes) sizes.unobserve(p.el);
   if (sight) sight.unobserve(p.el);
-  p.mask.width = p.mask.height = p.cv.width = p.cv.height = 0;
+  p.cv.width = p.cv.height = 0;
   pieces.splice(pieces.indexOf(p), 1);
 }
 
@@ -557,11 +786,18 @@ function frame(now) {
   }
   if (pieces.length && !root.classList.contains('sewing')) root.classList.add('sewing');
   var look = mix(now).slice(), turning = !!turn || root.classList.contains('turning');
-  var moving = !reduced.matches && Knit.moving(), any = false;
+  var moving = !reduced.matches && Knit.moving(), any = false, warm = false;
   pieces.slice().forEach(function (p) {
     if (!p.el.isConnected) {
       unmark(p);
       return;
+    }
+    /* a pointer has come to a link or a button in it, or left one: its
+       colour and its size are followed, frame by frame, through the
+       stylesheet's own transition */
+    if (p.hot > now) {
+      p.want |= p.grows ? MEASURE | SEW : SEW;
+      warm = true;
     }
     /* a screen of another density that sent no word of it: the store is
        no longer what the loom gives the canvas's box, and it is read
@@ -575,8 +811,8 @@ function frame(now) {
       if (!place(p)) return;
     }
     if (!p.w) return;
-    if (p.seen) any = true;
-    if ((p.want & SEW) || (p.seen && (moving || turning))) {
+    if (p.seen && !p.still) any = true;
+    if ((p.want & SEW) || (p.seen && ((moving && !p.still) || turning))) {
       if (sew(p, now, look)) {
         p.want &= ~SEW;
         shown(p);
@@ -589,7 +825,7 @@ function frame(now) {
      linked in this one, holding it up, would start the rise from when
      this one began and show it already half risen */
   if (held.length && pieces.every(function (q) { return q.shown || !q.w; })) requestAnimationFrame(release);
-  if (turning || (any && !reduced.matches && Knit.moving())) wake();
+  if (turning || warm || (any && !reduced.matches && Knit.moving())) wake();
 }
 
 /* ------------------------------------------------------------ the cues */
@@ -661,6 +897,34 @@ if (document.fonts) {
   if (document.fonts.ready) document.fonts.ready.then(function () { stale(MEASURE, true); });
   if (document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', function () { stale(MEASURE, true); });
 }
+
+/* a link or a button the pointer or the keyboard comes to, or leaves.
+   A finger leaves a link it tapped hovered until the next tap, and that
+   one may land on no link at all, so the link the pointer was last over
+   is read again too whenever it comes to anything else */
+var HOT = 360, was = null;
+
+function heat(c, until) {
+  pieces.forEach(function (p) {
+    if (!p.el.contains(c)) return;
+    p.hot = until;
+    /* a link only changes colour; a button may grow, and is read again */
+    p.grows = c.tagName === 'BUTTON';
+  });
+}
+
+function stir(ev) {
+  var c = ev.target && ev.target.closest ? ev.target.closest('a, button') : null;
+  var left = was && was !== c ? was : null, until = performance.now() + HOT;
+  if (ev.type === 'pointerover') was = c;
+  if (left) heat(left, until);
+  if (c) heat(c, until);
+  if (c || left) wake();
+}
+
+['pointerover', 'pointerout', 'focusin', 'focusout'].forEach(function (k) {
+  document.addEventListener(k, stir, { passive: true });
+});
 
 /* the light follows a mouse or a pen; a finger leaves it be */
 addEventListener('pointermove', function (ev) {

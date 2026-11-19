@@ -34,6 +34,10 @@
                               give those steps too: only a stitch that is
                               a whole number of CSS px lets a tile fall on
                               whole device px (see the tile, below).
+   Knit.length(name)          a length the stylesheet gives the root in a
+                              custom property ('--fade'), in CSS px; 0
+                              where it gives none. Measured once, and
+                              again after the window changes size.
    Knit.fit(cssW, cssH, q)    [w, h]: the backing store a canvas of that
                               CSS size should have under the fabric: the
                               screen's pixels up to two per CSS px, times
@@ -128,6 +132,15 @@
                               with, the canvas's edge cannot be found.
        o.sides                which edges the ground lies beyond: any of
                               the letters l, t, r, b; 'b' if left out
+       o.fade                 CSS px: with the ground below, how far above
+                              the canvas's bottom edge the picture begins
+                              to give way to it, worked as colourwork is,
+                              stitch by stitch, each a whole stitch of the
+                              one yarn or the other or a shade between, more
+                              of them the ground's the nearer the edge; and
+                              over the same rows the cloth comes to rest,
+                              so the edge cannot be found while the pointer
+                              moves either. 0 if left out
        o.point                [x, y]: a pointer to use instead of
                               Knit.point (for a picture that must come out
                               the same twice)
@@ -184,7 +197,18 @@
                               the run's first letter starts, y its
                               alphabetic baseline; font the CSS shorthand
                               with its size, size that size again as a
-                              number, spacing the letter-spacing in px
+                              number, spacing the letter-spacing in px.
+                              A run may instead be a shape, cut by its
+                              size as lettering is: { line: [x0, y, x1],
+                              width, dash: [on, off] } a thread laid
+                              across, whole or in running stitches;
+                              { dot: [x, y, r] } a padded dot; { ring:
+                              [x, y, r], width } a ring. And a run of
+                              lettering with clear: n set is not sewn but
+                              cuts its way through what the runs before
+                              it painted, as far as its edge thread would
+                              reach and n CSS px more: an underline that
+                              stops short of every letter it crosses
        o.px                   device px to a CSS px
                               Gives back { left, top, right, bottom }, the
                               box in the mask's CSS px that the lettering
@@ -315,7 +339,36 @@ function gauge() {
   return cell;
 }
 
-addEventListener('resize', function () { cell = null; });
+addEventListener('resize', function () { cell = null; lengths = {}; });
+
+/* any length the stylesheet gives the root as a custom property (--fade,
+   say), in CSS px, measured as the gauge is, and again after a resize */
+var lengths = {};
+
+function length(name) {
+  name = String(name);
+  if (!/^--[\w-]+$/.test(name)) return 0;
+  if (!(name in lengths)) {
+    var v = 0;
+    try {
+      if (getComputedStyle(root).getPropertyValue(name).trim()) {
+        var probe = document.createElement('div'), s = probe.style;
+        s.position = 'fixed';
+        s.left = s.top = s.margin = s.padding = s.borderWidth = s.minHeight = '0';
+        s.maxHeight = 'none';
+        s.boxSizing = 'content-box';
+        s.visibility = 'hidden';
+        s.pointerEvents = 'none';
+        s.height = 'var(' + name + ')';
+        root.appendChild(probe);
+        v = probe.getBoundingClientRect().height;
+        root.removeChild(probe);
+      }
+    } catch (err) {}
+    lengths[name] = v > 0 ? v : 0;
+  }
+  return lengths[name];
+}
 
 /* a length a caller gives: a number, not negative, not endless */
 function span(v) {
@@ -429,6 +482,7 @@ uniform vec4 GROUND;    /* rgb: the cloth the canvas is set in; a: 1 where there
 uniform ivec4 OWN;      /* the first and the last stitch that are the picture's own, across and down */
 uniform ivec2 FIRST;    /* the stitch the map's first texel stands for */
 uniform ivec4 WRAP;     /* a stitch's own number repeats every xy stitches; zw lifts the index clear of zero */
+uniform vec2 FADE;      /* the row the picture begins to give way to the ground below it, and over how many rows */
 out vec4 o;
 void main() {
   vec2 cell = floor(gl_FragCoord.xy);
@@ -478,6 +532,17 @@ void main() {
   n ^= n >> 12u;
   n *= 0x297a2d39u;
   n ^= n >> 15u;
+  /* Above the ground the picture gives way to it as colourwork does: row
+     by row more of the stitches are worked in the ground's yarn, each
+     stitch taking it at its own row, so the last rows of the picture are
+     flecked with the ground and the first of the ground with the picture,
+     and no stitch is ever cut by the change */
+  if (FADE.y > 0.0 && GROUND.a > 0.5) {
+    float s = clamp((float(at.y) + 1.0 - FADE.x) / FADE.y, 0.0, 1.0);
+    float u = mix(0.3, 0.7, float((n >> 8u) & 255u) / 255.0);
+    vec3 d = mix(sqrt(max(c, 0.0)), GROUND.rgb, smoothstep(u - 0.3, u + 0.3, s));
+    c = d * d;
+  }
   o = vec4(sqrt(max(c, 0.0)), float(n >> 24u) / 255.0);
 }`;
 
@@ -520,6 +585,7 @@ uniform vec2 LEVEL;     /* the eye's tilt at rest */
 uniform vec4 WX;        /* the hand's wander: its frequencies across */
 uniform vec4 WY;        /* and down */
 uniform vec2 TRIM;      /* the exposure a fine gauge needs: over all, and more as the yarn is paler */
+uniform float SETTLE;   /* over how many rows the cloth comes to rest above the ground below it */
 out vec4 o;
 
 const float EB = 0.18, ET = 0.42, LEN = 1.60;
@@ -583,9 +649,9 @@ void main() {
   float calm = 0.0;
   vec3 light = LIGHT;
   vec2 lean = EYE.xy;
-  if (st.x < CALM.x + 0.9 || st.y < CALM.y + 0.9 || st.x > CALM.z - 0.9 || st.y > CALM.w - 0.9) {
+  if (st.x < CALM.x + 0.9 || st.y < CALM.y + 0.9 || st.x > CALM.z - 0.9 || st.y > CALM.w - SETTLE) {
     calm = max(max(1.0 - smoothstep(CALM.x, CALM.x + 0.9, st.x), smoothstep(CALM.z - 0.9, CALM.z, st.x)),
-      max(1.0 - smoothstep(CALM.y, CALM.y + 0.9, st.y), smoothstep(CALM.w - 0.9, CALM.w, st.y)));
+      max(1.0 - smoothstep(CALM.y, CALM.y + 0.9, st.y), smoothstep(CALM.w - SETTLE, CALM.w, st.y)));
     light = mix(LIGHT, REST.xyz, calm);
     light.xy *= 0.905 * inversesqrt(max(dot(light.xy, light.xy), 0.01));
     lean = mix(EYE.xy, LEVEL, calm);
@@ -942,8 +1008,8 @@ function pass(gl) {
   if (!webgl2(gl)) return null;
 
   var PSC = gl.getExtension('KHR_parallel_shader_compile');
-  var reduce = program(gl, REDUCE, ['PIC', 'BOX', 'FLAT', 'GROUND', 'OWN', 'FIRST', 'WRAP']);
-  var fabric = program(gl, FABRIC, ['MAP', 'BOX', 'CELL', 'FRAME', 'GAUGE', 'LIGHT', 'EYE', 'KEY', 'FILL', 'CALM', 'REST', 'LEVEL', 'WX', 'WY', 'TRIM']);
+  var reduce = program(gl, REDUCE, ['PIC', 'BOX', 'FLAT', 'GROUND', 'OWN', 'FIRST', 'WRAP', 'FADE']);
+  var fabric = program(gl, FABRIC, ['MAP', 'BOX', 'CELL', 'FRAME', 'GAUGE', 'LIGHT', 'EYE', 'KEY', 'FILL', 'CALM', 'REST', 'LEVEL', 'WX', 'WY', 'TRIM', 'SETTLE']);
   var vao = gl.createVertexArray();
   if (!reduce || !fabric || !vao) {
     scrap(gl, PSC, [reduce, fabric]);
@@ -1057,6 +1123,8 @@ function pass(gl) {
       edges.indexOf('r') < 0 ? FAR : Math.floor((x + cssW) / kw + 0.02) - 1,
       edges.indexOf('b') < 0 ? FAR : Math.floor((y + cssH) / kh - 0.38) - 1
     ];
+    /* and the rows over which the picture gives way to the ground under it */
+    var fade = edges.indexOf('b') < 0 ? 0 : clamp(+o.fade || 0, 0, cssH) / kh;
 
     /* what repeats, repeats in whole turns of every wave */
     var nx = 1 << 20, ny = 1 << 20;
@@ -1104,6 +1172,7 @@ function pass(gl) {
     gl.uniform4i(reduce.u.OWN, own[0], own[1], own[2], own[3]);
     gl.uniform2i(reduce.u.FIRST, i0 - 2, j0 - 2);
     gl.uniform4i(reduce.u.WRAP, nx, ny, nx * Math.floor((1 << 24) / nx), ny * Math.floor((1 << 24) / ny));
+    gl.uniform2f(reduce.u.FADE, own[3] + 1 - fade, fade);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 
     /* the stitch map to the fabric */
@@ -1129,6 +1198,9 @@ function pass(gl) {
     gl.uniform4f(fabric.u.WY, wy[0], wy[1], wy[2], wy[3]);
     /* small stitches have their hollows eased, and come out lighter for it: measured, and taken back */
     gl.uniform2f(fabric.u.TRIM, 1 - 0.175 * (1 - ramp(5.5, 15, sw)), 1 - 0.7 * ramp(8.5, 12, sw) - 0.3 * ramp(13, 20, sw));
+    /* the stitches worked in the ground lie as the ground does, the more of
+       them the nearer the ground, so where the canvas ends nothing moves */
+    gl.uniform1f(fabric.u.SETTLE, Math.max(0.9, fade));
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 
     gl.bindTexture(gl.TEXTURE_2D, null);
@@ -1227,6 +1299,12 @@ function ink(ctx, runs, o) {
     var run = runs[r], text = String(run.text === undefined ? '' : run.text);
     var g = cut(run.size, px), gap = +run.spacing || 0, y = +run.y || 0;
     var bits = [], i;
+    if (run.line || run.dot || run.ring) {
+      most = Math.max(most, g.size);
+      far = Math.max(far, g.reach);
+      shape(ctx, run, g, box);
+      continue;
+    }
     ctx.font = run.font;
     if (spaced) ctx.letterSpacing = gap + 'px';
     if (spaced || !gap) bits.push([text, +run.x || 0]);
@@ -1236,6 +1314,21 @@ function ink(ctx, runs, o) {
         upto += each[i];
         bits.push([each[i], (+run.x || 0) + ctx.measureText(upto).width - ctx.measureText(each[i]).width + i * gap]);
       }
+    }
+    /* lettering that only cuts its way through what is painted before it
+       (an underline's thread, which stops short of every letter it would
+       cross): painted out, all three channels, as wide as its edge thread
+       reaches and as far again as it asks */
+    if (run.clear) {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2 * (g.plump + g.cord + Math.max(+run.clear || 0, 0));
+      for (i = 0; i < bits.length; i++) {
+        ctx.strokeText(bits[i][0], bits[i][1], y);
+        ctx.fillText(bits[i][0], bits[i][1], y);
+      }
+      ctx.globalCompositeOperation = 'lighter';
+      continue;
     }
     most = Math.max(most, g.size);
     far = Math.max(far, g.reach);
@@ -1266,6 +1359,51 @@ function ink(ctx, runs, o) {
   if (blind) box = null;
   inked.set(c, { n: ++stamp, box: box, size: most || 16, px: px });
   return box ? { left: box[0], top: box[1], right: box[2], bottom: box[3] } : null;
+}
+
+/* What is sewn and is not lettering, painted as lettering is, each
+   channel as wide as its round asks: a line of thread (an underline),
+   whole or in running stitches, with round ends; a padded dot; a ring.
+   Lengths in CSS px, the run's size cutting the plump and the edge as a
+   font size does */
+function shape(ctx, run, g, box) {
+  var rounds = [['#f00', 2 * g.plump], ['#0f0', 0], ['#00f', 2 * (g.plump + g.cord)]], k, v, w;
+  var dash = run.dash && run.dash.length === 2 && run.dash[0] > 0 && run.dash[1] > 0 ? [+run.dash[0], +run.dash[1]] : [];
+  for (k = 0; k < 3; k++) {
+    ctx.fillStyle = ctx.strokeStyle = rounds[k][0];
+    ctx.beginPath();
+    if (run.line) {
+      v = run.line;
+      w = Math.max(+run.width || 1, 0.25);
+      ctx.setLineDash(dash);
+      ctx.lineDashOffset = 0;
+      ctx.lineWidth = w + rounds[k][1];
+      ctx.moveTo(+v[0], +v[1]);
+      ctx.lineTo(+v[2], +v[1]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else if (run.dot) {
+      v = run.dot;
+      ctx.arc(+v[0], +v[1], Math.max(+v[2], 0.25), 0, 2 * Math.PI);
+      ctx.fill();
+      if (rounds[k][1] > 0) {
+        ctx.lineWidth = rounds[k][1];
+        ctx.stroke();
+      }
+    } else {
+      v = run.ring;
+      ctx.lineWidth = Math.max(+run.width || 1, 0.25) + rounds[k][1];
+      ctx.arc(+v[0], +v[1], Math.max(+v[2], 0.25), 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+  }
+  var reach = run.line ? Math.max(+run.width || 1, 0.25) / 2 : run.dot ? +run.dot[2] : +run.ring[2] + Math.max(+run.width || 1, 0.25) / 2;
+  var x0 = run.line ? Math.min(+run.line[0], +run.line[2]) : +v[0], x1 = run.line ? Math.max(+run.line[0], +run.line[2]) : +v[0];
+  var yc = +v[1], hair = 1;
+  box[0] = Math.min(box[0], x0 - reach - hair);
+  box[1] = Math.min(box[1], yc - reach - hair);
+  box[2] = Math.max(box[2], x1 + reach + hair);
+  box[3] = Math.max(box[3], yc + reach + hair);
 }
 
 /* The softening, once for each mask and not once a frame: a bell laid
@@ -1731,6 +1869,7 @@ function thread(gl) {
 
 window.Knit = {
   gauge: function () { var g = gauge(); return { w: g.w, h: g.h }; },
+  length: length,
   fit: fit,
   scene: scene,
   point: point,

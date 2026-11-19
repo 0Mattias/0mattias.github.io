@@ -106,7 +106,7 @@ function scene(hex) {
   return srgb(hex).map(function (v) { return acesInv(Math.pow(v, 2.2)); });
 }
 
-var LOOKS = { day: { d: 1, u: 0, n: 0 }, dusk: { d: 0, u: 1, n: 0 }, night: { d: 0, u: 0, n: 1 } };
+var LOOKS = { day: { d: 1, u: 0, n: 0 }, dusk: { d: 0, u: 1, n: 0 } };
 var THEME = { day: srgb('#6282b6'), dusk: srgb('#495282'), night: srgb('#2d313e') };
 
 /* each look: the light (sun, or the moon at night) and its colour, the
@@ -1866,7 +1866,7 @@ function weave(bx, crop, t, still, w) {
   }
   var drawn = loom.draw({
     cssW: bx.w, cssH: bx.h, x: bx.x, y: bx.y, time: t, still: still, lite: lite && !slow,
-    look: [w.d, w.u, w.n], tile: TILE, ground: paper(w), sides: 'b'
+    look: [w.d, w.u, w.n], tile: TILE, ground: paper(w), sides: 'b', fade: Knit.length ? Knit.length('--fade') : 0
   });
   /* it always can once it is ready; should it not, the picture is
      shown plain rather than not at all */
