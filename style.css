@@ -99,6 +99,38 @@ html {
     pointer-events: none;
 }
 
+/* Until the page's knitting is up, its paper lies under a veil of its
+   own colour: as soft as the picture is while it comes, and lifted as
+   the picture comes into focus, on the curve the picture sharpens on.
+   It lies over the cloth a turn lays (which comes after it in the page)
+   and under everything else. A page without the picture lifts it once
+   its cloth is knitted; and should neither ever come, it lifts anyway */
+html.js body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: var(--paper);
+    pointer-events: none;
+    transition: opacity 1.8s cubic-bezier(0.5, 0, 0.15, 1), visibility 0s 1.8s;
+    animation: lift 1.8s cubic-bezier(0.5, 0, 0.15, 1) 12s forwards;
+}
+
+html.js.clothed.live body::after,
+html.js.clothed.still body::after {
+    opacity: 0;
+    visibility: hidden;
+}
+
+html.js.clothed:not(:has(.letterhead)) body::after {
+    opacity: 0;
+    visibility: hidden;
+}
+
+@keyframes lift {
+    to { opacity: 0; visibility: hidden; }
+}
+
 /* forced colours keep a picture laid as a background; the knit would hide
    the user's own Canvas behind it */
 @media (forced-colors: active) {
@@ -677,6 +709,7 @@ footer a { color: inherit; }
     main, footer { max-width: none; padding: 0; }
     html { background: #fff; }
     .skip, .scene, .looks, .places, .load, .thread, .cloth { display: none !important; }
+    body::after { display: none !important; }
     [data-sew].sewn { -webkit-text-fill-color: currentColor; }
     [data-sew].sewn a { text-decoration-color: currentColor; }
     .letterhead { height: auto; min-height: 0; padding: 0 0 32px; color: #000; }

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-cpvatFEeOH8qYifTOsMw77wx1aq+txEA/VGIwBtnaak='; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-NExrqaUykCJQk/wLDgj8OIM+G3PmgjTUhuPQq14ORZI='; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
     <meta name="referrer" content="strict-origin-when-cross-origin">
     <meta name="theme-color" content="#6282b6">
     <meta name="description" content="Software engineer in Boston building security tools, AI agents, and low-level systems.">
@@ -42,9 +42,12 @@
         d.setAttribute('data-look', look);
         d.className += ' js';
         document.querySelector('meta[name="theme-color"]').setAttribute('content', sky[look]);
-        /* the meadow's script never came: its still stands sharp, as it does without WebGL */
+        /* the meadow's script never came: its still stands sharp, as it does without WebGL;
+           the cloth's never came: the paper laid ahead of time is the cloth */
         addEventListener('error', function (ev) {
-            if (ev.target && /\/sky\.js/.test(ev.target.src || '')) d.classList.add('still');
+            var src = ev.target && ev.target.src || '';
+            if (/\/sky\.js/.test(src)) d.classList.add('still');
+            if (/\/cloth\.js/.test(src)) d.classList.add('clothed');
         }, true);
         var w = innerWidth, h = innerHeight, a = w / Math.max(h, 480);
         if (a <= 4) {
@@ -56,10 +59,10 @@
         }
     })();
     </script>
-    <link rel="stylesheet" href="/style.css?v=20261118a">
+    <link rel="stylesheet" href="/style.css?v=20261118b">
     <script src="/knit.js?v=20261118a" defer></script>
     <script src="/sew.js?v=20261118a" defer></script>
-    <script src="/cloth.js?v=20261118a" defer></script>
+    <script src="/cloth.js?v=20261118b" defer></script>
     <script src="/sky.js?v=20261118a" defer></script>
 
     <script type="application/ld+json">
