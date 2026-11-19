@@ -1803,19 +1803,13 @@ function paper(style, w) {
 
 /* and the picture ends in a holiday sweater's yoke, in the page's two
    yarns, a snowflake standing under the middle of the name, and the
-   band clear of the dots that turn the looks, which sit on the plain
-   knitting below it (their ring and a little more above them) */
+   band at the very foot of the picture, its ground running on into the
+   page's paper */
 var YARNS = { a: [0.639, 0.149, 0.173], b: [0.173, 0.353, 0.224] };
 function sweater(style, bx) {
-  var base = 0, dots = document.querySelector('.looks');
-  if (dots && dots.offsetHeight) {
-    var r = dots.getBoundingClientRect();
-    base = r.top + (window.pageYOffset || 0) - 7;
-  }
   return {
     yarns: [tone(style, '--yarn-a') || YARNS.a, tone(style, '--yarn-b') || YARNS.b],
-    mid: bx.x + bx.w / 2,
-    base: base
+    mid: bx.x + bx.w / 2
   };
 }
 

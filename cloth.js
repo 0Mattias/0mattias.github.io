@@ -306,8 +306,6 @@ new MutationObserver(function () {
 
 var foot = document.querySelector('.hem'), cv = null, gl2 = null, loom = null;
 var drawn = '', seen = true, nudge = 0;
-/* the band's ground begins this many rows above the page's last */
-var BELOW = 6;
 var YARNS = [[0xa3, 0x26, 0x2c], [0x2c, 0x5a, 0x39]];
 
 function rgb(c) {
@@ -349,7 +347,7 @@ function hem() {
   var ok = loom.draw({
     flat: flat, ground: flat, sides: 'b', still: true, tile: TILE, look: [1 - f, f, 0],
     x: 0, y: at.y, cssW: at.w, cssH: at.h,
-    sweater: { yarns: [rgb(a), rgb(b)], mid: at.w / 2, base: at.y + at.h - BELOW * g.h }
+    sweater: { yarns: [rgb(a), rgb(b)], mid: at.w / 2 }
   });
   drawn = ok ? key : '';
   foot.classList.toggle('made', ok);

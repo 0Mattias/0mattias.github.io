@@ -24,7 +24,7 @@
        not handed down: a turn that eases them restyles this one element */
     --yarn-a: #a3262c;
     --yarn-b: #2c5a39;
-    --fade: clamp(110px, 17vh, 190px);
+    --fade: calc(var(--kh) * 20);
     --soft: 1.5vh;
     --dissolve: linear-gradient(to bottom,
         #000 calc(100% - var(--fade)),
@@ -48,6 +48,7 @@
     --kw: var(--kw-w);
     --kh: calc(var(--kw) * 0.8);
     --tile: calc(var(--kw) * 24) calc(var(--kh) * 30);
+    --gap: clamp(40px, 7vh, 56px);
     --cloth-day: url(/stills/paper-day.webp?v=20261118a);
     --cloth-dusk: url(/stills/paper-dusk.webp?v=20261118a);
     --cloth: var(--cloth-day);
@@ -506,7 +507,7 @@ html.afar .scene::after {
 .looks {
     position: absolute;
     left: max(22px, env(safe-area-inset-left));
-    bottom: max(22px, env(safe-area-inset-bottom));
+    top: max(22px, env(safe-area-inset-top));
     display: none;
     gap: 10px;
     opacity: 0;
@@ -579,7 +580,7 @@ html.placed .looks {
 .places {
     position: absolute;
     left: calc(max(22px, env(safe-area-inset-left)) + 90px);
-    bottom: max(22px, env(safe-area-inset-bottom));
+    top: max(22px, env(safe-area-inset-top));
     height: 18px;
     display: none;
     align-items: center;
@@ -635,9 +636,11 @@ main {
     padding-right: 24px;
 }
 
-main { padding-top: clamp(44px, 8vh, 72px); }
+main { padding-top: var(--gap); }
 
-section { margin-bottom: clamp(40px, 7vh, 56px); scroll-margin-top: 24px; }
+section { margin-bottom: var(--gap); scroll-margin-top: 24px; }
+
+section:last-child { margin-bottom: 0; }
 
 h2 {
     font: italic 400 19px/1.4 var(--serif);
@@ -701,11 +704,14 @@ p:last-child { margin-bottom: 0; }
 .gone a { color: var(--accent); }
 
 /* the page's last rows, where cloth.js knits a sweater's band into the
-   paper; until it has, and where it cannot, they are the paper */
+   paper, its lower stripe two rows from the foot as the hero's is, and
+   its upper one as far below the last words as the hero's lower one is
+   above the first; until it is knitted, and where it cannot be, they
+   are the paper */
 .hem {
     position: relative;
-    height: calc(var(--kh) * 29);
-    margin-top: clamp(32px, 6vh, 56px);
+    height: calc(var(--kh) * 20);
+    margin-top: calc(var(--gap) - var(--kh) * 3);
     overflow: hidden;
     pointer-events: none;
 }
