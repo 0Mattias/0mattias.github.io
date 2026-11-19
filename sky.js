@@ -1808,15 +1808,38 @@ function weft() {
   return Math.min(1, Math.max(quality, 6 / (Knit.gauge().w * d)));
 }
 
-/* the paper as the page shows it now, a turn of the looks included, for
-   the cloth that goes on below the picture */
-function paper(w) {
+/* a colour of the page's as the page shows it now, a turn of the looks
+   included, or null */
+function tone(style, name) {
   var s = '';
-  try { s = getComputedStyle(root).getPropertyValue('--paper').trim(); } catch (err) {}
+  try { s = style.getPropertyValue(name).trim(); } catch (err) {}
   var m = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/.exec(s);
   if (m) return [m[1] / 255, m[2] / 255, m[3] / 255];
   if (/^#[0-9a-f]{6}$/i.test(s)) return srgb(s);
-  return [0, 1, 2].map(function (i) { return PAPER.day[i] * w.d + PAPER.dusk[i] * w.u + PAPER.night[i] * w.n; });
+  return null;
+}
+
+/* the paper, for the cloth that goes on below the picture */
+function paper(style, w) {
+  return tone(style, '--paper') || [0, 1, 2].map(function (i) { return PAPER.day[i] * w.d + PAPER.dusk[i] * w.u + PAPER.night[i] * w.n; });
+}
+
+/* and the picture ends in a holiday sweater's yoke, in the page's two
+   yarns, a snowflake standing under the middle of the name, and the
+   band clear of the dots that turn the looks, which sit on the plain
+   knitting below it (their ring and a little more above them) */
+var YARNS = { a: [0.639, 0.149, 0.173], b: [0.173, 0.353, 0.224] };
+function sweater(style, bx) {
+  var base = 0, dots = document.querySelector('.looks');
+  if (dots && dots.offsetHeight) {
+    var r = dots.getBoundingClientRect();
+    base = r.top + (window.pageYOffset || 0) - 7;
+  }
+  return {
+    yarns: [tone(style, '--yarn-a') || YARNS.a, tone(style, '--yarn-b') || YARNS.b],
+    mid: bx.x + bx.w / 2,
+    base: base
+  };
 }
 
 /* While a new size is built the picture on screen holds its last frame,
@@ -1864,9 +1887,12 @@ function weave(bx, crop, t, still, w) {
     canvas.width = st[0];
     canvas.height = st[1];
   }
+  var style = null;
+  try { style = getComputedStyle(root); } catch (err) {}
   var drawn = loom.draw({
     cssW: bx.w, cssH: bx.h, x: bx.x, y: bx.y, time: t, still: still, lite: lite && !slow,
-    look: [w.d, w.u, w.n], tile: TILE, ground: paper(w), sides: 'b', fade: Knit.length ? Knit.length('--fade') : 0
+    look: [w.d, w.u, w.n], tile: TILE, ground: paper(style, w), sides: 'b', fade: Knit.length ? Knit.length('--fade') : 0,
+    sweater: sweater(style, bx)
   });
   /* it always can once it is ready; should it not, the picture is
      shown plain rather than not at all */

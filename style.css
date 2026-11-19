@@ -6,6 +6,8 @@
 @property --wash { syntax: '<color>'; inherits: true; initial-value: #e7d8c9; }
 @property --sky { syntax: '<color>'; inherits: true; initial-value: #6282b6; }
 @property --sew-under { syntax: '<color>'; inherits: true; initial-value: transparent; }
+@property --yarn-a { syntax: '<color>'; inherits: false; initial-value: #a3262c; }
+@property --yarn-b { syntax: '<color>'; inherits: false; initial-value: #2c5a39; }
 
 :root {
     color-scheme: light;
@@ -17,6 +19,11 @@
     --accent: #9a4a12;
     --wash: #e7d8c9;
     --sky: #6282b6;
+    /* the yarns of the sweater the picture ends in: snowflakes and
+       stripes, and trees. Only the picture reads them, here, so they are
+       not handed down: a turn that eases them restyles this one element */
+    --yarn-a: #a3262c;
+    --yarn-b: #2c5a39;
     --fade: clamp(110px, 17vh, 190px);
     --soft: 1.5vh;
     --dissolve: linear-gradient(to bottom,
@@ -44,7 +51,7 @@
     --cloth-dusk: url(/stills/paper-dusk.webp?v=20261118a);
     --cloth: var(--cloth-day);
     --was: var(--cloth-dusk);
-    transition-property: --paper, --ink, --quiet, --underline, --accent, --wash, --sky;
+    transition-property: --paper, --ink, --quiet, --underline, --accent, --wash, --sky, --yarn-a, --yarn-b;
     transition-duration: var(--turn, 0s);
     transition-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
 }
@@ -64,6 +71,8 @@
     --accent: #e2a27c;
     --wash: #4b3a3b;
     --sky: #495282;
+    --yarn-a: #eadfd1;
+    --yarn-b: #b8444a;
     --glimpse: var(--glimpse-dusk-wide);
     --poster: url(/stills/dusk-wide.webp);
     --cloth: var(--cloth-dusk);

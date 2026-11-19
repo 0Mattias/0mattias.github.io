@@ -141,6 +141,22 @@
                               over the same rows the cloth comes to rest,
                               so the edge cannot be found while the pointer
                               moves either. 0 if left out
+       o.sweater              { yarns: [[r, g, b], [r, g, b]], mid: x,
+                              base: y }: with the ground below, the
+                              picture gives way to it not stitch by stitch
+                              but as a holiday sweater's yoke does, in a
+                              band of stranded colourwork 20 rows deep:
+                              the picture ends in teeth, then a stripe,
+                              snowflakes in the first yarn between trees
+                              in the second, a stripe, and the ground.
+                              Each stitch is all one yarn. mid, in CSS px
+                              across the page, is where a snowflake
+                              stands; base, in CSS px down the page, is
+                              where the band's ground begins, the ground
+                              going on below it to the canvas's edge (the
+                              canvas's last own row if left out or
+                              lower). o.fade still says over how many
+                              rows the cloth comes to rest
        o.point                [x, y]: a pointer to use instead of
                               Knit.point (for a picture that must come out
                               the same twice)
@@ -483,7 +499,16 @@ uniform ivec4 OWN;      /* the first and the last stitch that are the picture's 
 uniform ivec2 FIRST;    /* the stitch the map's first texel stands for */
 uniform ivec4 WRAP;     /* a stitch's own number repeats every xy stitches; zw lifts the index clear of zero */
 uniform vec2 FADE;      /* the row the picture begins to give way to the ground below it, and over how many rows */
+uniform vec4 YARNA;     /* rgb: the sweater's first yarn (snowflakes, stripes); a: 1 where the picture ends in the sweater's band */
+uniform vec3 YARNB;     /* the second (trees) */
+uniform ivec2 MID;      /* the wale a snowflake stands on, and the band's lowest row */
 out vec4 o;
+/* a snowflake and a tree, 7 stitches across and 9 rows down (a row is
+   shorter than a stitch is wide, so they come out square), a bit a
+   stitch, the top row first. The snowflake's arms that run corner to
+   corner are a V a row, each on its own, as on any knitted snowflake */
+const uint SNOW[9] = uint[9](8u, 73u, 42u, 28u, 119u, 28u, 42u, 73u, 8u);
+const uint TREE[9] = uint[9](8u, 28u, 62u, 28u, 62u, 127u, 8u, 8u, 0u);
 void main() {
   vec2 cell = floor(gl_FragCoord.xy);
   ivec2 at = FIRST + ivec2(cell);
@@ -537,7 +562,31 @@ void main() {
      stitch taking it at its own row, so the last rows of the picture are
      flecked with the ground and the first of the ground with the picture,
      and no stitch is ever cut by the change */
-  if (FADE.y > 0.0 && GROUND.a > 0.5) {
+  /* Or it ends as a holiday sweater's yoke is worked, counted up from
+     its lowest row: two rows of the ground, a stripe, a row of the
+     ground, nine rows of snowflakes between trees with a stitch either
+     side of each, a row of the ground, a stripe, a row of the ground,
+     and the picture's teeth, one stitch at the tip and two more each row
+     up until they meet; and below it the ground. Every stitch is all one
+     yarn */
+  if (YARNA.a > 0.5 && GROUND.a > 0.5) {
+    int b = MID.y - at.y;
+    if (b < 20) {
+      vec3 d = GROUND.rgb;
+      if (b == 2 || b == 14) {
+        d = YARNA.rgb;
+      } else if (b >= 4 && b <= 12) {
+        int m = 12 - b, p = ((at.x - MID.x + 4) % 18 + 18) % 18;
+        int k = p < 9 ? p - 1 : p - 10;
+        uint row = p < 9 ? SNOW[m] : TREE[m];
+        if (k >= 0 && k < 7 && ((row >> uint(k)) & 1u) == 1u) d = p < 9 ? YARNA.rgb : YARNB.rgb;
+      } else if (b >= 16) {
+        int q = ((at.x - MID.x + 4) % 8 + 8) % 8;
+        if (abs(q - 4) <= b - 16) d = sqrt(max(c, 0.0));
+      }
+      c = d * d;
+    }
+  } else if (FADE.y > 0.0 && GROUND.a > 0.5) {
     float s = clamp((float(at.y) + 1.0 - FADE.x) / FADE.y, 0.0, 1.0);
     float u = mix(0.3, 0.7, float((n >> 8u) & 255u) / 255.0);
     vec3 d = mix(sqrt(max(c, 0.0)), GROUND.rgb, smoothstep(u - 0.3, u + 0.3, s));
@@ -1008,7 +1057,7 @@ function pass(gl) {
   if (!webgl2(gl)) return null;
 
   var PSC = gl.getExtension('KHR_parallel_shader_compile');
-  var reduce = program(gl, REDUCE, ['PIC', 'BOX', 'FLAT', 'GROUND', 'OWN', 'FIRST', 'WRAP', 'FADE']);
+  var reduce = program(gl, REDUCE, ['PIC', 'BOX', 'FLAT', 'GROUND', 'OWN', 'FIRST', 'WRAP', 'FADE', 'YARNA', 'YARNB', 'MID']);
   var fabric = program(gl, FABRIC, ['MAP', 'BOX', 'CELL', 'FRAME', 'GAUGE', 'LIGHT', 'EYE', 'KEY', 'FILL', 'CALM', 'REST', 'LEVEL', 'WX', 'WY', 'TRIM', 'SETTLE']);
   var vao = gl.createVertexArray();
   if (!reduce || !fabric || !vao) {
@@ -1173,6 +1222,12 @@ function pass(gl) {
     gl.uniform2i(reduce.u.FIRST, i0 - 2, j0 - 2);
     gl.uniform4i(reduce.u.WRAP, nx, ny, nx * Math.floor((1 << 24) / nx), ny * Math.floor((1 << 24) / ny));
     gl.uniform2f(reduce.u.FADE, own[3] + 1 - fade, fade);
+    var yoke = edges.indexOf('b') >= 0 && o.sweater && o.sweater.yarns ? o.sweater : null;
+    var ya = yoke ? yoke.yarns[0] || [] : [], yb = yoke ? yoke.yarns[1] || [] : [];
+    gl.uniform4f(reduce.u.YARNA, clamp(+ya[0] || 0, 0, 1), clamp(+ya[1] || 0, 0, 1), clamp(+ya[2] || 0, 0, 1), yoke ? 1 : 0);
+    gl.uniform3f(reduce.u.YARNB, clamp(+yb[0] || 0, 0, 1), clamp(+yb[1] || 0, 0, 1), clamp(+yb[2] || 0, 0, 1));
+    var base = yoke && yoke.base > 0 ? Math.min(own[3], Math.floor(clamp(+yoke.base, -1e6, 1e6) / kh)) : own[3];
+    gl.uniform2i(reduce.u.MID, yoke ? Math.floor(clamp(+yoke.mid || 0, -1e6, 1e6) / kw) : 0, base);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
 
     /* the stitch map to the fabric */
