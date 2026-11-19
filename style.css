@@ -44,7 +44,8 @@
     --glimpse-dusk-tall: url(data:image/webp;base64,UklGRtIAAABXRUJQVlA4IMYAAAAQBQCdASoVAB4APp1GnUslo6KhqAgAsBOJQBWEGEd/AKSKWjG00wijfhHxbK4fWkEAAP65wkYaIP+5Ha4MsL9kvDEsm4q1BuMSaghQ6qCeptcBmq50zT5LxJJ4tEzY1IUBe35o9TlHomlta0+ymHyhvC5ONGk3F911tsOssy9haoDWkIHl6P8MHECiDniyp23PWk8q3NvhSu1aUKuqDxBkd5q5P4a3lxzW4nyU7LorEfIMuDLJosZ8TnYu3+pWAxmCWw0AAAA=);
     --glimpse: var(--glimpse-day-wide);
     --poster: url(/stills/day-wide.webp);
-    --kw: 7px;
+    --kw-w: 7px;
+    --kw: var(--kw-w);
     --kh: calc(var(--kw) * 0.8);
     --tile: calc(var(--kw) * 24) calc(var(--kh) * 30);
     --cloth-day: url(/stills/paper-day.webp?v=20261118a);
@@ -79,10 +80,18 @@
     --was: var(--cloth-day);
 }
 
-@media (min-width: 725px) { :root { --kw: 8px; } }
-@media (min-width: 975px) { :root { --kw: 9px; } }
-@media (min-width: 1225px) { :root { --kw: 10px; } }
-@media (min-width: 1475px) { :root { --kw: 11px; } }
+@media (min-width: 725px) { :root { --kw-w: 8px; } }
+@media (min-width: 975px) { :root { --kw-w: 9px; } }
+@media (min-width: 1225px) { :root { --kw-w: 10px; } }
+@media (min-width: 1475px) { :root { --kw-w: 11px; } }
+
+/* and no bigger than a hundred and twenty to the hero's height, so a wide
+   screen counts as many rows down its hero as a phone does, and the
+   meadow, the band and the grass under it stand alike on both; in whole
+   px, as the steps are */
+@supports (width: round(1px, 1px)) and (height: 1svh) {
+    :root { --kw: max(7px, min(var(--kw-w), round(100svh / 120, 1px))); }
+}
 
 @media (max-aspect-ratio: 3/2), (max-width: 720px) and (max-height: 480px) {
     :root { --glimpse: var(--glimpse-day-tall); --poster: url(/stills/day-tall.webp); }
@@ -144,7 +153,7 @@ html.js.clothed:not(:has(.letterhead)) body::after {
    the user's own Canvas behind it */
 @media (forced-colors: active) {
     html { background-image: none; }
-    .cloth { display: none; }
+    .cloth, .hem canvas { display: none; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -381,9 +390,12 @@ html.afar .scene::after {
     top: -4vh;
 }
 
-.letterhead .name {
+.letterhead .name,
+.letterhead .dateline {
     animation: rise 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
+
+.letterhead .dateline { animation-delay: 0.14s; }
 
 @keyframes rise {
     from { opacity: 0; transform: translateY(12px); }
@@ -436,7 +448,7 @@ html.afar .scene::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .letterhead .name, .load { animation: none; }
+    .letterhead .name, .letterhead .dateline, .load { animation: none; }
     .load::after { display: none; }
 }
 
@@ -447,6 +459,18 @@ html.afar .scene::after {
     --sew-thread: rgb(246, 243, 236);
     --sew-edge: rgb(38, 44, 62);
 }
+
+.letterhead .dateline {
+    margin: 14px 0 0;
+    font: 400 clamp(16px, 1.7vw, 20px)/1.5 var(--serif);
+    color: rgb(246, 243, 236);
+    text-shadow: 0 1px 12px rgba(20, 30, 60, 0.34);
+    text-wrap: balance;
+    --sew-thread: rgb(246, 243, 236);
+    --sew-edge: rgb(38, 44, 62);
+}
+
+.dateline span { white-space: nowrap; }
 
 [data-sew] { position: relative; }
 
@@ -604,7 +628,7 @@ html.placed .places {
     outline-offset: 1px;
 }
 
-main, footer {
+main {
     max-width: 34em;
     margin: 0 auto;
     padding-left: 24px;
@@ -676,15 +700,26 @@ p:last-child { margin-bottom: 0; }
 
 .gone a { color: var(--accent); }
 
-footer {
-    margin-top: clamp(48px, 9vh, 80px);
-    padding-bottom: clamp(40px, 7vh, 64px);
-    text-align: center;
-    font-size: 13px;
-    color: var(--quiet);
+/* the page's last rows, where cloth.js knits a sweater's band into the
+   paper; until it has, and where it cannot, they are the paper */
+.hem {
+    position: relative;
+    height: calc(var(--kh) * 29);
+    margin-top: clamp(32px, 6vh, 56px);
+    overflow: hidden;
+    pointer-events: none;
 }
 
-footer a { color: inherit; }
+.hem canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: -1;
+    display: block;
+    visibility: hidden;
+}
+
+.hem.made canvas { visibility: visible; }
 
 @media (pointer: coarse) {
     .looks { gap: 16px; }
@@ -695,7 +730,7 @@ footer a { color: inherit; }
 
 @media (max-width: 540px) {
     body { font-size: 16px; }
-    main, footer { padding-left: 20px; padding-right: 20px; }
+    main { padding-left: 20px; padding-right: 20px; }
     .letterhead { padding: 0 20px; }
     .annot { white-space: normal; }
 }
@@ -715,15 +750,16 @@ footer a { color: inherit; }
     }
     body { background: #fff; }
     body:has(.letterhead)::before { display: none; }
-    main, footer { max-width: none; padding: 0; }
+    main { max-width: none; padding: 0; }
     html { background: #fff; }
-    .skip, .scene, .looks, .places, .load, .thread, .cloth { display: none !important; }
+    .skip, .scene, .looks, .places, .load, .thread, .cloth, .hem { display: none !important; }
     body::after { display: none !important; }
     [data-sew].sewn { -webkit-text-fill-color: currentColor; }
     [data-sew].sewn a { text-decoration-color: currentColor; }
     .letterhead { height: auto; min-height: 0; padding: 0 0 32px; color: #000; }
     .letterhead .words { top: 0; }
-    .letterhead .name { text-shadow: none; }
+    .letterhead .name, .letterhead .dateline { text-shadow: none; }
+    .letterhead .dateline { color: #555; }
     a { color: #000; text-decoration: none; }
     #contact a[href^="http"]::after {
         content: " (" attr(href) ")";

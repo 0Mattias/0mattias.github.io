@@ -26,7 +26,16 @@
    the upper one let through by how far the colour has gone between
    them. The paper's colour is read from the stylesheet, as the hero
    reads it, so the cloth beyond the hero and the cloth the hero knits
-   itself turn together. */
+   itself turn together.
+
+   The page ends as the hero's picture does, in a sweater's band: the
+   hem, the last rows of the page, is knitted on a canvas of its own in
+   the paper's yarn, at rest as the tiles are and given their tile, so
+   its edges cannot be found, with the band worked into it in the yarns
+   the stylesheet gives the hero's (--yarn-a, --yarn-b), its snowflakes
+   in the hero's columns. It is knitted again whenever it moves on the
+   page or the gauge or the screen changes, and on every frame of a turn
+   while it is in sight. It lies under the veil, as the paper does. */
 
 (function () {
 'use strict';
@@ -180,6 +189,7 @@ addEventListener('resize', soon);
     if (mq.removeEventListener) mq.removeEventListener('change', once);
     else if (mq.removeListener) mq.removeListener(once);
     soon();
+    hem();
     dense();
   };
   if (mq.addEventListener) mq.addEventListener('change', once);
@@ -198,11 +208,12 @@ addEventListener('resize', soon);
 
 var layers = null, raf = 0;
 
+/* first in the page, so that they lie under the hem */
 function layer() {
   var el = document.createElement('div');
   el.className = 'cloth';
   el.setAttribute('aria-hidden', 'true');
-  document.body.appendChild(el);
+  document.body.insertBefore(el, document.body.firstChild);
   return { el: el, url: null };
 }
 
@@ -230,9 +241,11 @@ function rungs(lo, hi, t) {
   lay(b, ladder[hi], true, t);
 }
 
-function colour() {
+/* a colour the stylesheet gives the root (the paper's, if not named),
+   0..255 */
+function colour(name) {
   var s = '';
-  try { s = getComputedStyle(root).getPropertyValue('--paper').trim(); } catch (err) {}
+  try { s = getComputedStyle(root).getPropertyValue(name || '--paper').trim(); } catch (err) {}
   var m = /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/.exec(s);
   if (m) return [+m[1], +m[2], +m[3]];
   m = /^#([0-9a-f]{6})$/i.exec(s);
@@ -277,6 +290,7 @@ function frame() {
     lay(layers[0], '', false, 0);
     lay(layers[1], '', true, Math.abs(f - end));
   }
+  if (seen) hem();
   if (on || root.classList.contains('turning')) raf = requestAnimationFrame(frame);
 }
 
@@ -287,6 +301,102 @@ new MutationObserver(function () {
   cancelAnimationFrame(raf);
   frame();
 }).observe(root, { attributes: true, attributeFilter: ['data-look'] });
+
+/* ----------------------------------------------------------------- hem */
+
+var foot = document.querySelector('.hem'), cv = null, gl2 = null, loom = null;
+var drawn = '', seen = true, nudge = 0;
+/* the band's ground begins this many rows above the page's last */
+var BELOW = 6;
+var YARNS = [[0xa3, 0x26, 0x2c], [0x2c, 0x5a, 0x39]];
+
+function rgb(c) {
+  return [c[0] / 255, c[1] / 255, c[2] / 255];
+}
+
+/* the hem laid on a whole CSS px of the page, as the thread lays its
+   words (sew.js): there a canvas lies on the screen's own px and meets the
+   tile laid round it stitch for stitch. Its box, or null */
+function lie() {
+  var box = foot.getBoundingClientRect();
+  if (!(box.width > 0 && box.height > 0)) return null;
+  var top = box.top + (window.pageYOffset || 0) - nudge, want = Math.round(top) - top;
+  if (Math.abs(want - nudge) > 0.004) {
+    nudge = want;
+    foot.style.top = Math.abs(nudge) > 0.004 ? nudge + 'px' : '';
+  }
+  var y = Math.round(top), w = Math.round(box.width), h = Math.floor(box.height + 1e-3);
+  return h > 0 && w > 0 ? { y: y, w: w, h: h } : null;
+}
+
+function hem() {
+  if (!foot || !loom || loom.failed || !loom.ready() || gl2.isContextLost()) return;
+  var at = lie();
+  if (!at) return;
+  var f = along();
+  if (f === null) f = root.getAttribute('data-look') === 'dusk' ? 1 : 0;
+  var paper = colour() || PAPER.day, a = colour('--yarn-a') || YARNS[0], b = colour('--yarn-b') || YARNS[1];
+  var g = Knit.gauge(), size = Knit.fit(at.w, at.h);
+  var key = [at.y, at.w, at.h, size[0], size[1], g.w, g.h, paper, a, b, f.toFixed(4)].join();
+  if (key === drawn) return;
+  cv.style.width = at.w + 'px';
+  cv.style.height = at.h + 'px';
+  if (cv.width !== size[0] || cv.height !== size[1]) {
+    cv.width = size[0];
+    cv.height = size[1];
+  }
+  var flat = rgb(paper);
+  var ok = loom.draw({
+    flat: flat, ground: flat, sides: 'b', still: true, tile: TILE, look: [1 - f, f, 0],
+    x: 0, y: at.y, cssW: at.w, cssH: at.h,
+    sweater: { yarns: [rgb(a), rgb(b)], mid: at.w / 2, base: at.y + at.h - BELOW * g.h }
+  });
+  drawn = ok ? key : '';
+  foot.classList.toggle('made', ok);
+}
+
+function warp() {
+  drawn = '';
+  try {
+    gl2 = cv.getContext('webgl2', { alpha: false, antialias: false, depth: false, stencil: false, powerPreference: 'low-power' });
+  } catch (err) {
+    gl2 = null;
+  }
+  loom = gl2 ? Knit.pass(gl2) : null;
+  if (!loom) return;
+  var mine = loom;
+  (function poll() {
+    if (loom !== mine || mine.failed || gl2.isContextLost()) return;
+    if (!mine.ready()) {
+      requestAnimationFrame(poll);
+      return;
+    }
+    hem();
+  })();
+}
+
+if (foot) {
+  cv = document.createElement('canvas');
+  foot.appendChild(cv);
+  cv.addEventListener('webglcontextlost', function (ev) {
+    ev.preventDefault();
+    loom = null;
+    drawn = '';
+    foot.classList.remove('made');
+  }, false);
+  cv.addEventListener('webglcontextrestored', warp, false);
+  warp();
+  addEventListener('resize', hem);
+  if ('ResizeObserver' in window) new ResizeObserver(function () { hem(); }).observe(document.body);
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (es) {
+      seen = es[es.length - 1].isIntersecting;
+      if (seen) hem();
+    }, { rootMargin: '200px 0px' }).observe(foot);
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(hem, function () {});
+  addEventListener('load', hem);
+}
 
 knit();
 

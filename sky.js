@@ -16,9 +16,7 @@
    bent at every vertex by a steady breeze whose waves run across them,
    drawn in three planes of focus so the nearest blades blur to soft
    streaks. Seeds and pollen drift in the light by day and fireflies
-   glow in the grass at night, and a hand drawn through the grass
-   presses it aside along its path, the blades springing back once it
-   has passed. A phone sits up a little and turns toward the horn so it
+   glow in the grass at night. A phone sits up a little and turns toward the horn so it
    stands whole above the words. WebGL2, no libraries, no build step. */
 
 'use strict';
@@ -1091,20 +1089,9 @@ void main() {
 var STALK = `
 uniform float T, WENV;
 uniform vec2 WIND;
-uniform sampler2D BRUSHT;
-uniform vec4 BRUSHM;
 float gust(vec2 p, float t) {
   vec2 q = p * vec2(0.42, 0.55) - vec2(t * 1.05, t * 0.12);
   return 0.62 * vn(q) + 0.38 * vn(q * 2.3 + 11.7);
-}
-/* how far the hand has pressed the grass aside here, read from the grid
-   it is kept on (the hand, below) */
-vec2 pressed(vec2 p) {
-  float z = max(p.y, 0.0);
-  float v = (log(BRUSHM.x + BRUSHM.y * z) - BRUSHM.z) * BRUSHM.w;
-  float u = p.x / (${TANG.toFixed(3)} * z + 0.3) * 0.5 + 0.5;
-  if (u <= 0.0 || u >= 1.0 || v <= 0.0 || v >= 1.0) return vec2(0.0);
-  return textureLod(BRUSHT, vec2(u, v), 0.0).rg;
 }
 vec3 stalk(vec4 a0, vec4 a1, vec4 a2, float s, out vec3 tng) {
   vec2 root = a0.xy;
@@ -1116,9 +1103,6 @@ vec3 stalk(vec4 a0, vec4 a1, vec4 a2, float s, out vec3 tng) {
              + flex * 0.04 * sin(T * (1.6 + 0.9 * fract(ph * 7.0)) + ph * 6.2832) * (0.25 + WENV);
   vec2 lean = vec2(cos(a1.x), sin(a1.x)) * a1.y;
   vec2 off = lean + WIND * bend;
-  /* a hand drawn through the grass presses it aside, and it springs
-     back; each blade gives a little more or less than its neighbours */
-  off += pressed(root) * (0.8 + 0.4 * fract(ph * 13.7));
   vec3 P0 = vec3(root.x, y0, root.y);
   vec3 P2 = P0 + normalize(vec3(off.x, 1.0, off.y)) * h;
   P2.y = max(P2.y - a2.z * h * 0.25 * length(off), y0 + 0.06 * h);
@@ -1600,7 +1584,7 @@ function setLooks(prog) {
 }
 
 var TRACE_U = ['CAM', 'EYE', 'RES', 'PIX'];
-var GU = ['CAM', 'EYEG', 'CLIP', 'T', 'WENV', 'WIND', 'BRUSHT', 'BRUSHM', 'LDIR', 'LCOL', 'AMB', 'TRN', 'GSCALE', 'PIXR'];
+var GU = ['CAM', 'EYEG', 'CLIP', 'T', 'WENV', 'WIND', 'LDIR', 'LCOL', 'AMB', 'TRN', 'GSCALE', 'PIXR'];
 var preProg, landProg, maskProg, skyProg, bokehProg, bokeh32Prog, bladeProg, headProg, partProg, compProg;
 var progs = [], glReady = false, failed = false;
 var PSC = null, SAMPLES = 0;
@@ -1640,13 +1624,6 @@ function initGL() {
   glReady = false;
   warmed = 0;
   SAMPLES = samplesFor(CFMT);
-  brushTex = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, brushTex);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG16F, BW, BH, 0, gl.RG, gl.FLOAT, bD);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 }
 
 /* true once every program has linked; a program that failed sends the
@@ -2405,8 +2382,7 @@ function sunDir(w, key) {
 
 /* --------------------------------------------------------------- state */
 
-var mx = 0, my = 0, tx = 0, ty = 0;
-var raf = 0, last = 0, frameNo = 0, brushing = false;
+var raf = 0, last = 0, frameNo = 0;
 var visible = !document.hidden, inView = true;
 var cloudT = 120;
 /* how far the breeze has carried the seeds, summed frame by frame so a
@@ -2429,161 +2405,6 @@ function bokeh(prog, src, w, h, dst, rad) {
 
 var RN = 12, RM = 3;
 
-/* the hand: where the pointer passes over the meadow it presses the
-   grass aside, out from its path and a little on along it, and once it
-   has gone the blades spring back, swinging a little past upright
-   before they settle. The push is kept on a grid laid over the meadow,
-   its cells about a third of the hand's reach wherever they lie, so
-   finer near the eye. Every point the pointer passed through since the
-   last frame is laid into it as a stroke from the one before, so a
-   quick sweep leaves an unbroken wake, and every cell rides a spring:
-   a stiff one while the hand presses, a soft, lively one as the grass
-   rises after it. A hand that rests lets the grass up again. */
-var BW = 160, BH = 112, BZ0 = 0.3, BZ1 = 16, BR0 = 0.16, BR1 = 0.03;
-var BL0 = Math.log(BR0 + BR1 * BZ0), BL1 = Math.log(BR0 + BR1 * BZ1);
-var bD = new Float32Array(BW * BH * 2), bV = new Float32Array(BW * BH * 2), bT = new Float32Array(BW * BH * 2);
-var bZ = new Float32Array(BH), bAct = null;
-for (var bj = 0; bj < BH; bj++) bZ[bj] = (Math.exp(BL0 + (bj + 0.5) / BH * (BL1 - BL0)) - BR0) / BR1;
-var brushTex = null;
-
-var path = [], hand = null, handK = 0, handDir = [0, 0];
-
-function rayAt(u, v, cam) {
-  var px = (u * 2 - 1) * cam[0], py = (v * 2 - 1) * cam[1];
-  var l = Math.hypot(px, py, 1);
-  var d = [px / l, py / l, 1 / l];
-  var cp = Math.cos(cam[2]), sp = Math.sin(cam[2]);
-  var e = [d[0], d[1] * cp + d[2] * sp, -d[1] * sp + d[2] * cp];
-  var cy = Math.cos(cam[3]), sy = Math.sin(cam[3]);
-  return [e[0] * cy + e[2] * sy, e[1], -e[0] * sy + e[2] * cy];
-}
-
-/* where the pointer at (u, v) meets the meadow, or null */
-function groundAt(u, v, cam, eyeg) {
-  var d = rayAt(u, v, cam);
-  var den = d[1] + 0.012 * d[2];
-  if (den > -1e-4) return null;
-  var t = (2300 - eyeg[1] - 0.012 * eyeg[2]) / den;
-  var x = eyeg[0] + d[0] * t, z = eyeg[2] + d[2] * t;
-  return t > 0 && z > BZ0 && z < BZ1 - 1.5 ? [x, z] : null;
-}
-
-function bRow(z) {
-  return (Math.log(BR0 + BR1 * Math.max(z, 0)) - BL0) / (BL1 - BL0) * BH - 0.5;
-}
-
-/* a stroke of the hand from a to b, at weight k, moving along dir: under
-   the hand the blades go on along its path, toward its rim out to the
-   side; each cell keeps the strongest push laid on it */
-function stroke(a, b, k, dir) {
-  var mx2 = b[0] - a[0], mz2 = b[1] - a[1], ml = mx2 * mx2 + mz2 * mz2;
-  var reach = BR0 + BR1 * Math.max(a[1], b[1]);
-  var x0 = Math.min(a[0], b[0]) - reach, x1 = Math.max(a[0], b[0]) + reach;
-  var j0 = Math.max(0, Math.floor(bRow(Math.min(a[1], b[1]) - reach)));
-  var j1 = Math.min(BH - 1, Math.ceil(bRow(Math.max(a[1], b[1]) + reach)));
-  var ia = BW, ib = -1;
-  for (var j = j0; j <= j1; j++) {
-    var z = bZ[j], hw = TANG * z + 0.3, r = BR0 + BR1 * z;
-    var i0 = Math.max(0, Math.floor((x0 / hw * 0.5 + 0.5) * BW - 0.5));
-    var i1 = Math.min(BW - 1, Math.ceil((x1 / hw * 0.5 + 0.5) * BW - 0.5));
-    if (i1 < i0) continue;
-    ia = Math.min(ia, i0);
-    ib = Math.max(ib, i1);
-    for (var i = i0; i <= i1; i++) {
-      var x = ((i + 0.5) / BW * 2 - 1) * hw;
-      var h = ml > 0 ? Math.max(0, Math.min(1, ((x - a[0]) * mx2 + (z - a[1]) * mz2) / ml)) : 0;
-      var dx = x - a[0] - mx2 * h, dz = z - a[1] - mz2 * h;
-      var d = Math.hypot(dx, dz);
-      if (d >= r) continue;
-      var side = d > 1e-6 ? smooth01(0, 0.45 * r, d) / d : 0;
-      var px = dx * side + dir[0] * 0.7, pz = dz * side + dir[1] * 0.7;
-      var pl = Math.hypot(px, pz);
-      if (pl < 1e-6) continue;
-      var m = 1.8 * k * (1 - smooth01(0.45 * r, r, d)) / pl;
-      px *= m;
-      pz *= m;
-      var c = (j * BW + i) * 2;
-      if (px * px + pz * pz > bT[c] * bT[c] + bT[c + 1] * bT[c + 1]) {
-        bT[c] = px;
-        bT[c + 1] = pz;
-      }
-    }
-  }
-  if (ib < ia) return;
-  if (!bAct) bAct = [ia, ib, j0, j1];
-  else bAct = [Math.min(bAct[0], ia), Math.max(bAct[1], ib), Math.min(bAct[2], j0), Math.max(bAct[3], j1)];
-}
-
-/* a damped spring of rate w and damping z stepped exactly over dt, as
-   the matrix taking (offset, velocity) to their new values */
-function springK(w, z, dt) {
-  var wd = w * Math.sqrt(1 - z * z), e = Math.exp(-z * w * dt), c = Math.cos(wd * dt), s = Math.sin(wd * dt);
-  return [e * (c + z * w / wd * s), e * s / wd, -e * w * w / wd * s, e * (c - z * w / wd * s)];
-}
-
-/* every cell the hand has touched moves toward what it asks of it, the
-   hand's mark fades behind it, and once the wake is still the grid
-   rests until the hand comes back */
-function relax(dt) {
-  if (!bAct) return false;
-  var P = springK(34, 0.9, dt), R = springK(8.5, 0.3, dt), fade = Math.exp(-dt / 0.18);
-  var live = 0, i, j, c;
-  for (j = bAct[2]; j <= bAct[3]; j++) {
-    for (i = bAct[0]; i <= bAct[1]; i++) {
-      c = (j * BW + i) * 2;
-      var tx = bT[c], tz = bT[c + 1], dx = bD[c], dz = bD[c + 1], vx = bV[c], vz = bV[c + 1];
-      if (tx === 0 && tz === 0 && dx === 0 && dz === 0 && vx === 0 && vz === 0) continue;
-      var K = tx * tx + tz * tz > dx * dx + dz * dz ? P : R;
-      var ex = dx - tx, ez = dz - tz;
-      bD[c] = tx + K[0] * ex + K[1] * vx;
-      bD[c + 1] = tz + K[0] * ez + K[1] * vz;
-      bV[c] = K[2] * ex + K[3] * vx;
-      bV[c + 1] = K[2] * ez + K[3] * vz;
-      bT[c] = tx * fade;
-      bT[c + 1] = tz * fade;
-      live = Math.max(live, Math.abs(bD[c]) + Math.abs(bD[c + 1]) + 0.1 * (Math.abs(bV[c]) + Math.abs(bV[c + 1])) + Math.abs(tx) + Math.abs(tz));
-    }
-  }
-  var j0 = bAct[2], rows = bAct[3] - j0 + 1;
-  if (live < 2e-3) {
-    for (j = bAct[2]; j <= bAct[3]; j++) {
-      for (i = bAct[0]; i <= bAct[1]; i++) {
-        c = (j * BW + i) * 2;
-        bD[c] = bD[c + 1] = bV[c] = bV[c + 1] = bT[c] = bT[c + 1] = 0;
-      }
-    }
-    bAct = null;
-  }
-  gl.bindTexture(gl.TEXTURE_2D, brushTex);
-  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, j0, BW, rows, gl.RG, gl.FLOAT, bD, j0 * BW * 2);
-  return !!bAct;
-}
-
-/* lay the pointer's path since the last frame into the grid, the
-   direction of travel smoothed over about half the hand's reach, and
-   step the springs */
-function stepBrush(dt, cam, eyeg) {
-  var moved = path.length > 0;
-  for (var n = 0; n < path.length; n++) {
-    var g = groundAt(path[n][0], path[n][1], cam, eyeg);
-    if (g && hand) {
-      var reach = BR0 + BR1 * g[1];
-      var hx = handDir[0] * reach * 0.5 + g[0] - hand[0], hz = handDir[1] * reach * 0.5 + g[1] - hand[1];
-      var hl = Math.hypot(hx, hz);
-      if (hl > 1e-6) handDir = [hx / hl, hz / hl];
-      stroke(hand, g, 1, handDir);
-    } else if (g) stroke(g, g, 1, handDir);
-    hand = g;
-  }
-  path.length = 0;
-  if (moved) handK = 1;
-  else if (hand && handK > 0.02) {
-    handK *= Math.exp(-dt / 0.35);
-    stroke(hand, hand, handK, handDir);
-  }
-  return relax(dt);
-}
-
 function grassUniforms(prog, cam, eyeg, t, env, w, pixr) {
   var u = prog.u;
   gl.useProgram(prog.p);
@@ -2593,10 +2414,6 @@ function grassUniforms(prog, cam, eyeg, t, env, w, pixr) {
   gl.uniform1f(u.T, t);
   gl.uniform1f(u.WENV, env);
   gl.uniform2f(u.WIND, 0.94, -0.33);
-  if (u.BRUSHT) {
-    gl.uniform1i(u.BRUSHT, 0);
-    gl.uniform4f(u.BRUSHM, BR0, BR1, BL0, 1 / (BL1 - BL0));
-  }
   var sun = sunDir(w);
   u3(u.LDIR, sun);
   var sc = blend('sunc', w), gs = blend('gsun', w);
@@ -2670,9 +2487,6 @@ function draw(now) {
   turn(now);
   var still = reduced.matches || slow;
   var dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
-  var l = still ? 1 : 1 - Math.exp(-(now - last) / 160);
-  mx += (tx - mx) * l;
-  my += (ty - my) * l;
   var t = still ? 1000 : now / 1000;
   var w = wCur;
   var wind = 1 - 0.8 * w.n;
@@ -2685,12 +2499,10 @@ function draw(now) {
   var cam = camFor(W2, H2, PITCH, YAW0);
   var sun = sunDir(w);
 
-  /* the head moves with the pointer and the breath: the grass shifts
-     against the far land, which stays put */
+  /* the head rises and falls with the breath: the grass shifts against
+     the far land, which stays put */
   var breath = still ? 0 : 0.0025 * Math.sin(t * 1.3);
-  var eyeg = [EYE[0] + mx * 0.03, EYE[1] + my * 0.012 + breath, EYE[2]];
-  var gcam = [cam[0], cam[1], cam[2] + my * 0.004, cam[3] + mx * 0.006];
-  brushing = !still && stepBrush(dt, gcam, eyeg);
+  var eyeg = [EYE[0], EYE[1] + breath, EYE[2]];
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, skyT.fbo);
   gl.viewport(0, 0, skyT.w, skyT.h);
@@ -2722,11 +2534,9 @@ function draw(now) {
   /* the middle and nearest grass keep the px of the picture unknitted */
   var gpixr = knit ? 2 * cam[1] / fgh : pixr;
   var vis = [w.d + 0.5 * w.u, w.d + 0.6 * w.u, w.n];
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, brushTex);
-  drawBand(2, farT, gcam, eyeg, t, env, w, pixr, vis, true);
-  drawBand(1, midT, gcam, eyeg, t, env, w, gpixr, vis, false);
-  drawBand(0, nearT, gcam, eyeg, t, env, w, gpixr, vis, false);
+  drawBand(2, farT, cam, eyeg, t, env, w, pixr, vis, true);
+  drawBand(1, midT, cam, eyeg, t, env, w, gpixr, vis, false);
+  drawBand(0, nearT, cam, eyeg, t, env, w, gpixr, vis, false);
 
   bokeh(bokeh32Prog, midT.tex[0], midT.w, midT.h, midB, RM);
   bokeh(bokehProg, nearT.tex[0], nearT.w, nearT.h, nearB, RN);
@@ -2822,9 +2632,7 @@ function frame(now) {
       if (view.phase > 2 && !animating()) draw(now);
     }
     if (view && animating() && now > last) {
-      /* the fabric's light follows the pointer at every frame until it
-         has settled */
-      var busy = tr || brushing || meteor.on || Math.abs(tx - mx) > 0.002 || Math.abs(ty - my) > 0.002 || (knit && Knit.moving());
+      var busy = tr || meteor.on;
       if (now - last >= (busy ? 0 : 30)) {
         if (probing) timed(now);
         else draw(now);
@@ -3146,31 +2954,6 @@ function watchDensity() {
 }
 
 /* -------------------------------------------------------------- wiring */
-
-hero.addEventListener('pointermove', function (ev) {
-  if (reduced.matches || slow || ev.pointerType === 'touch') return;
-  var r = hero.getBoundingClientRect();
-  var u = (ev.clientX - r.left) / r.width, v = (ev.clientY - r.top) / r.height;
-  tx = (u - 0.5) * 2;
-  ty = (v - 0.5) * -2;
-  /* every point the pointer passed through since the last event, not
-     just the last, so a quick sweep is followed all the way */
-  var evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : null;
-  if (!evs || !evs.length) evs = [ev];
-  for (var i = 0; i < evs.length; i++) {
-    path.push([(evs[i].clientX - r.left) / r.width, 1 - (evs[i].clientY - r.top) / r.height]);
-  }
-  if (path.length > 96) path.splice(0, path.length - 96);
-  wake();
-});
-
-hero.addEventListener('pointerleave', function () {
-  tx = 0;
-  ty = 0;
-  path.length = 0;
-  hand = null;
-  wake();
-});
 
 var fallback = 0;
 document.addEventListener('place', function (ev) {

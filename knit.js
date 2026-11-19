@@ -11,8 +11,8 @@
    next, and wool for a material: light that gets about inside pale yarn
    and fills its hollows, plies, a sheen along the fibres, a nap that
    catches the light along every lit edge. The light comes from the upper
-   left; the pointer swings it round and tilts the cloth a little under
-   the eye. Every yarn comes back, on average, the colour it was given, so
+   left, and the pointer moves neither it nor the cloth (a caller may still
+   lean them with o.point, below). Every yarn comes back, on average, the colour it was given, so
    the picture keeps its brightness and the page its paper.
 
    One lattice runs through the whole page. A stitch is a cell of --kw by
@@ -49,18 +49,10 @@
    Knit.scene(cssW, cssH, q)  [w, h]: the size at which the picture is
                               worth rendering: six px to a stitch's width,
                               times q, both even. More does no harm.
-   Knit.point                 { x, y }: the pointer the light follows,
-                              eased, -1..1 across the viewport, x to the
-                              right and y down; (0, 0) at rest, and always
-                              at rest under reduced motion and for a
-                              finger. It eases as draw calls arrive, a
-                              loom's or a thread's, by their own clock,
-                              whether or not the call itself is still,
-                              brings its own pointer or can draw at all;
-                              nothing runs otherwise.
-   Knit.moving()              true while it has not settled: whoever draws
-                              on demand keeps drawing, and it settles
-                              within a second and a half of draws.
+   Knit.point                 { x, y }: where the light leans, -1..1, x
+                              to the right and y down: (0, 0), at rest,
+                              for the pointer leads nothing.
+   Knit.moving()              false: nothing is left to settle.
 
    var k = Knit.pass(gl)      a loom on a WebGL2 context the caller owns;
                               null where there can be none.
@@ -92,8 +84,7 @@
        o.time                 seconds, the caller's clock: the light sways
                               by it, and nothing else moves
        o.still                true when nothing may move: the light holds
-                              and the fabric lies as with the pointer at
-                              rest
+                              and the fabric lies at rest
        o.look                 [day, dusk, night], weights
        o.lite                 true for the cheaper fabric: the eye's ray
                               is not followed (no parallax), the walk
@@ -297,7 +288,6 @@
 'use strict';
 
 var root = document.documentElement;
-var reduced = matchMedia('(prefers-reduced-motion: reduce)');
 
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
 
@@ -416,45 +406,14 @@ function scene(cssW, cssH, q) {
 }
 
 /* -------------------------------------------------------- the pointer */
-/* Where the pointer is across the viewport, followed a little behind.
-   Only a mouse or a pen leads it, and it goes home when the pointer
-   leaves the window. Every draw call brings it a step nearer by the time
-   that has passed; calls that fall within the same frame share a step,
-   so two canvases drawn together are lit alike. */
+/* The page holds still under the pointer: the light and the eye stay at
+   rest wherever it goes, so Knit.point is always (0, 0) and nothing is
+   ever left to settle. */
 
 var point = { x: 0, y: 0 };
-var aim = { x: 0, y: 0 };
-var stepped = 0;
-
-function home() { aim.x = aim.y = 0; }
-
-addEventListener('pointermove', function (ev) {
-  if (reduced.matches || (ev.pointerType && ev.pointerType !== 'mouse' && ev.pointerType !== 'pen')) return;
-  aim.x = clamp(ev.clientX / Math.max(window.innerWidth, 1) * 2 - 1, -1, 1);
-  aim.y = clamp(ev.clientY / Math.max(window.innerHeight, 1) * 2 - 1, -1, 1);
-}, { passive: true });
-root.addEventListener('mouseleave', home);
-addEventListener('blur', home);
-
-function follow() {
-  var now = performance.now(), dt = now - stepped;
-  if (reduced.matches) {
-    aim.x = aim.y = point.x = point.y = 0;
-    return;
-  }
-  if (dt < 3) return;
-  stepped = now;
-  var k = 1 - Math.exp(-Math.min(dt, 50) / 150);
-  point.x += (aim.x - point.x) * k;
-  point.y += (aim.y - point.y) * k;
-  if (Math.abs(aim.x - point.x) + Math.abs(aim.y - point.y) < 0.002) {
-    point.x = aim.x;
-    point.y = aim.y;
-  }
-}
 
 function moving() {
-  return !reduced.matches && (point.x !== aim.x || point.y !== aim.y);
+  return false;
 }
 
 /* ------------------------------------------------------------ shaders */
@@ -946,12 +905,8 @@ var FAR = 1 << 30;
 /* the hand's wander: how fast each of its waves turns, across and down */
 var WAVES = { x: [0.23, 0.53, 2.39, 1.37], y: [0.71, 0.37, 1.13, 2.71] };
 
-/* the pointer a draw call is to use: the one it was given, none when
-   nothing may move, or the eased one. The eased one is the page's and not
-   any one draw's, so every draw call steps it on first, whichever it uses
-   itself and whether or not it can draw at all: otherwise a page whose
-   draws are all still, or whose loom is not ready or has lost its
-   context, would wait for ever on moving() */
+/* the pointer a draw call is to use: the one it was given, or the
+   page's, at rest */
 function aimed(o) {
   var pt = o.point || (o.still ? [0, 0] : [point.x, point.y]);
   return [clamp(+pt[0] || 0, -1, 1), clamp(+pt[1] || 0, -1, 1)];
@@ -1126,7 +1081,6 @@ function pass(gl) {
 
   k.draw = function (o) {
     o = o || {};
-    follow();
     var W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
     if (!k.ready() || !(W > 0 && H > 0) || (!o.flat && !asked)) return false;
     var cssW = o.cssW > 0 ? o.cssW : W, cssH = o.cssH > 0 ? o.cssH : H;
@@ -1835,7 +1789,6 @@ function thread(gl) {
 
   t.draw = function (o) {
     o = o || {};
-    follow();
     var mask = o.mask;
     if (!t.ready() || !mask || !(mask.width > 0 && mask.height > 0) || mask.width > most || mask.height > most) return false;
     var note = inked.get(mask) || { n: 0, box: null, size: 0, px: 0 };

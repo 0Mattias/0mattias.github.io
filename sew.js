@@ -17,14 +17,12 @@
    stitch (in --sew-under) that stops short of the letters it crosses. An
    element marked data-sew-dot is sewn as a padded dot, and ringed while it
    is pressed (in --sew-ring). Lettering marked data-sew="still" lies on
-   cloth that lies at rest, and is lit as that cloth is: only the words over
-   the live picture follow the pointer's light.
+   cloth that lies at rest, and is lit as that cloth is.
 
    Nothing runs at rest. The lettering is sewn again when the fonts
    come, when the window or the element changes size, when another
    script changes the element's style or its words, when the look
-   turns (every frame of the turn), and while the light still follows a
-   pointer over lettering that is on screen. Where there is no WebGL2
+   turns (every frame of the turn). Where there is no WebGL2
    (or only one in software), no thread, no stylesheet that knows the
    thread, or the colours are forced, nothing is marked and the words
    stand as they always have; the root is marked 'sewing' only while
@@ -925,14 +923,6 @@ function stir(ev) {
 ['pointerover', 'pointerout', 'focusin', 'focusout'].forEach(function (k) {
   document.addEventListener(k, stir, { passive: true });
 });
-
-/* the light follows a mouse or a pen; a finger leaves it be */
-addEventListener('pointermove', function (ev) {
-  if (reduced.matches || (ev.pointerType && ev.pointerType !== 'mouse' && ev.pointerType !== 'pen')) return;
-  wake();
-}, { passive: true });
-root.addEventListener('mouseleave', wake);
-addEventListener('blur', wake);
 
 new MutationObserver(function () {
   if (looked()) stale(MEASURE | SEW, false);
